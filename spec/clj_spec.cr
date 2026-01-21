@@ -560,6 +560,70 @@ describe CLJ do
       result.valid?.should be_false
       result.errors.should contain("Missing required field: result_id")
     end
+
+    it "uses default subcommand when no subcommand given" do
+      cli = CLJ.new("xerp")
+      cli.subcommand("index", %({
+        "type": "object",
+        "properties": {
+          "rebuild": {"type": "boolean"}
+        }
+      }))
+      cli.subcommand("query", %({
+        "type": "object",
+        "positional": ["query_text"],
+        "properties": {
+          "query_text": {"type": "string"},
+          "top": {"type": "integer", "default": 10, "short": "n"}
+        }
+      }))
+      cli.default_subcommand("query")
+
+      result = cli.parse(["retry backoff", "-n", "5"])
+      result.valid?.should be_true
+      result.subcommand.should eq("query")
+      result["query_text"].as_s.should eq("retry backoff")
+      result["top"].as_i64.should eq(5)
+    end
+
+    it "uses default subcommand with empty args" do
+      cli = CLJ.new("myapp")
+      cli.subcommand("list", %({
+        "type": "object",
+        "properties": {
+          "all": {"type": "boolean", "default": false}
+        }
+      }))
+      cli.default_subcommand("list")
+
+      result = cli.parse([] of String)
+      result.valid?.should be_true
+      result.subcommand.should eq("list")
+      result["all"].as_bool.should be_false
+    end
+
+    it "prefers explicit subcommand over default" do
+      cli = CLJ.new("xerp")
+      cli.subcommand("index", %({
+        "type": "object",
+        "properties": {
+          "rebuild": {"type": "boolean"}
+        }
+      }))
+      cli.subcommand("query", %({
+        "type": "object",
+        "positional": ["query_text"],
+        "properties": {
+          "query_text": {"type": "string"}
+        }
+      }))
+      cli.default_subcommand("query")
+
+      result = cli.parse(["index", "--rebuild"])
+      result.valid?.should be_true
+      result.subcommand.should eq("index")
+      result["rebuild"].as_bool.should be_true
+    end
   end
 
   describe "help with new features" do

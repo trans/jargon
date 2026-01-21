@@ -189,6 +189,34 @@ git clone https://github.com/user/repo -d 1
 git commit -m "Initial commit" -a
 ```
 
+### Default Subcommand
+
+Set a default subcommand to use when no subcommand name is given:
+
+```crystal
+cli = CLJ.new("xerp")
+
+cli.subcommand("index", %({...}))
+cli.subcommand("query", %({
+  "type": "object",
+  "positional": ["query_text"],
+  "properties": {
+    "query_text": {"type": "string"},
+    "top": {"type": "integer", "default": 10, "short": "n"}
+  }
+}))
+
+cli.default_subcommand("query")
+```
+
+```sh
+# These are equivalent:
+xerp query "search term" -n 5
+xerp "search term" -n 5
+```
+
+Note: If the first argument matches a subcommand name, it's treated as a subcommand, not as input to the default. Use the explicit form if you need to search for a term that matches a subcommand name.
+
 ## Features
 
 - **Validation**: Required fields, enum values, type checking
@@ -197,6 +225,7 @@ git commit -m "Initial commit" -a
 - **Positional args**: Non-flag arguments assigned by position
 - **Short flags**: Single-character flag aliases (`-v`, `-n 5`)
 - **Subcommands**: Named sub-parsers with independent schemas
+- **Default subcommand**: Fall back to a subcommand when none specified
 - **$ref support**: Reuse definitions with `$ref: "#/$defs/typename"`
 
 ```crystal

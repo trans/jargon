@@ -6,14 +6,17 @@ module CLJ
     getter schema : Schema?
     getter program_name : String
     getter subcommands : Hash(String, Schema)
+    getter default_subcommand : String?
 
     def initialize(@schema : Schema, @program_name : String = "cli")
       @subcommands = {} of String => Schema
+      @default_subcommand = nil
     end
 
     def initialize(@program_name : String)
       @schema = nil
       @subcommands = {} of String => Schema
+      @default_subcommand = nil
     end
 
     def subcommand(name : String, schema : Schema | String)
@@ -21,6 +24,10 @@ module CLJ
       when String then Schema.from_json(schema)
       else             schema
       end
+    end
+
+    def default_subcommand(name : String)
+      @default_subcommand = name
     end
 
     def parse(args : Array(String)) : Result
@@ -32,17 +39,27 @@ module CLJ
     end
 
     private def parse_with_subcommands(args : Array(String)) : Result
+      # Check if first arg matches a known subcommand
+      if args.any? && (subcmd_schema = @subcommands[args[0]]?)
+        subcmd_name = args[0]
+        result = parse_flat(args[1..], subcmd_schema)
+        return Result.new(result.data, result.errors, subcmd_name)
+      end
+
+      # Fall back to default subcommand if set
+      if default = @default_subcommand
+        if subcmd_schema = @subcommands[default]?
+          result = parse_flat(args, subcmd_schema)
+          return Result.new(result.data, result.errors, default)
+        end
+      end
+
+      # No match and no default
       if args.empty?
-        return Result.new({} of String => JSON::Any, ["No subcommand specified"])
+        Result.new({} of String => JSON::Any, ["No subcommand specified"])
+      else
+        Result.new({} of String => JSON::Any, ["Unknown subcommand: #{args[0]}"])
       end
-
-      subcmd_name = args[0]
-      unless subcmd_schema = @subcommands[subcmd_name]?
-        return Result.new({} of String => JSON::Any, ["Unknown subcommand: #{subcmd_name}"])
-      end
-
-      result = parse_flat(args[1..], subcmd_schema)
-      Result.new(result.data, result.errors, subcmd_name)
     end
 
     private def parse_flat(args : Array(String), schema : Schema) : Result
