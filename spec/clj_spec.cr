@@ -343,4 +343,264 @@ describe CLJ do
       result["user"]["age"].as_i64.should eq(30)
     end
   end
+
+  describe "positional arguments" do
+    it "parses positional args in order" do
+      cli = CLJ.from_json(%({
+        "type": "object",
+        "positional": ["name", "count"],
+        "properties": {
+          "name": {"type": "string"},
+          "count": {"type": "integer"}
+        }
+      }))
+
+      result = cli.parse(["John", "42"])
+      result.valid?.should be_true
+      result["name"].as_s.should eq("John")
+      result["count"].as_i64.should eq(42)
+    end
+
+    it "mixes positional and flags" do
+      cli = CLJ.from_json(%({
+        "type": "object",
+        "positional": ["name", "count"],
+        "properties": {
+          "name": {"type": "string"},
+          "count": {"type": "integer"},
+          "verbose": {"type": "boolean"}
+        }
+      }))
+
+      result = cli.parse(["John", "--verbose", "42"])
+      result.valid?.should be_true
+      result["name"].as_s.should eq("John")
+      result["count"].as_i64.should eq(42)
+      result["verbose"].as_bool.should be_true
+    end
+
+    it "errors on unexpected positional args" do
+      cli = CLJ.from_json(%({
+        "type": "object",
+        "positional": ["name"],
+        "properties": {
+          "name": {"type": "string"}
+        }
+      }))
+
+      result = cli.parse(["John", "extra"])
+      result.valid?.should be_false
+      result.errors.should contain("Unexpected argument: extra")
+    end
+
+    it "validates required positional args" do
+      cli = CLJ.from_json(%({
+        "type": "object",
+        "positional": ["name"],
+        "properties": {
+          "name": {"type": "string"}
+        },
+        "required": ["name"]
+      }))
+
+      result = cli.parse([] of String)
+      result.valid?.should be_false
+      result.errors.should contain("Missing required field: name")
+    end
+  end
+
+  describe "short flags" do
+    it "parses short flags" do
+      cli = CLJ.from_json(%({
+        "type": "object",
+        "properties": {
+          "count": {"type": "integer", "short": "n"}
+        }
+      }))
+
+      result = cli.parse(["-n", "5"])
+      result.valid?.should be_true
+      result["count"].as_i64.should eq(5)
+    end
+
+    it "parses short boolean flags" do
+      cli = CLJ.from_json(%({
+        "type": "object",
+        "properties": {
+          "verbose": {"type": "boolean", "short": "v"}
+        }
+      }))
+
+      result = cli.parse(["-v"])
+      result.valid?.should be_true
+      result["verbose"].as_bool.should be_true
+    end
+
+    it "mixes short and long flags" do
+      cli = CLJ.from_json(%({
+        "type": "object",
+        "properties": {
+          "count": {"type": "integer", "short": "n"},
+          "verbose": {"type": "boolean"}
+        }
+      }))
+
+      result = cli.parse(["-n", "5", "--verbose"])
+      result.valid?.should be_true
+      result["count"].as_i64.should eq(5)
+      result["verbose"].as_bool.should be_true
+    end
+
+    it "errors on unknown short flag" do
+      cli = CLJ.from_json(%({
+        "type": "object",
+        "properties": {
+          "count": {"type": "integer", "short": "n"}
+        }
+      }))
+
+      result = cli.parse(["-x"])
+      result.valid?.should be_false
+      result.errors.should contain("Unknown short flag: -x")
+    end
+  end
+
+  describe "subcommands" do
+    it "parses subcommand with its options" do
+      cli = CLJ.new("myapp")
+      cli.subcommand("run", %({
+        "type": "object",
+        "positional": ["file"],
+        "properties": {
+          "file": {"type": "string"},
+          "verbose": {"type": "boolean"}
+        }
+      }))
+
+      result = cli.parse(["run", "test.cr", "--verbose"])
+      result.valid?.should be_true
+      result.subcommand.should eq("run")
+      result["file"].as_s.should eq("test.cr")
+      result["verbose"].as_bool.should be_true
+    end
+
+    it "errors on missing subcommand" do
+      cli = CLJ.new("myapp")
+      cli.subcommand("run", %({"type": "object", "properties": {}}))
+
+      result = cli.parse([] of String)
+      result.valid?.should be_false
+      result.errors.should contain("No subcommand specified")
+    end
+
+    it "errors on unknown subcommand" do
+      cli = CLJ.new("myapp")
+      cli.subcommand("run", %({"type": "object", "properties": {}}))
+
+      result = cli.parse(["unknown"])
+      result.valid?.should be_false
+      result.errors.should contain("Unknown subcommand: unknown")
+    end
+
+    it "parses multiple subcommands independently" do
+      cli = CLJ.new("xerp")
+      cli.subcommand("index", %({
+        "type": "object",
+        "properties": {
+          "rebuild": {"type": "boolean"}
+        }
+      }))
+      cli.subcommand("query", %({
+        "type": "object",
+        "positional": ["query_text"],
+        "properties": {
+          "query_text": {"type": "string"},
+          "top": {"type": "integer", "default": 10, "short": "n"}
+        }
+      }))
+
+      result1 = cli.parse(["index", "--rebuild"])
+      result1.valid?.should be_true
+      result1.subcommand.should eq("index")
+      result1["rebuild"].as_bool.should be_true
+
+      result2 = cli.parse(["query", "retry backoff", "-n", "5"])
+      result2.valid?.should be_true
+      result2.subcommand.should eq("query")
+      result2["query_text"].as_s.should eq("retry backoff")
+      result2["top"].as_i64.should eq(5)
+    end
+
+    it "applies defaults in subcommands" do
+      cli = CLJ.new("myapp")
+      cli.subcommand("query", %({
+        "type": "object",
+        "properties": {
+          "top": {"type": "integer", "default": 10}
+        }
+      }))
+
+      result = cli.parse(["query"])
+      result.valid?.should be_true
+      result["top"].as_i64.should eq(10)
+    end
+
+    it "validates required fields in subcommands" do
+      cli = CLJ.new("myapp")
+      cli.subcommand("mark", %({
+        "type": "object",
+        "positional": ["result_id"],
+        "properties": {
+          "result_id": {"type": "string"}
+        },
+        "required": ["result_id"]
+      }))
+
+      result = cli.parse(["mark"])
+      result.valid?.should be_false
+      result.errors.should contain("Missing required field: result_id")
+    end
+  end
+
+  describe "help with new features" do
+    it "generates help with short flags" do
+      cli = CLJ.from_json(%({
+        "type": "object",
+        "properties": {
+          "count": {"type": "integer", "short": "n", "description": "Number of items"}
+        }
+      }), "myapp")
+
+      help = cli.help
+      help.should contain("-n, --count")
+      help.should contain("Number of items")
+    end
+
+    it "generates help with positional args" do
+      cli = CLJ.from_json(%({
+        "type": "object",
+        "positional": ["file"],
+        "properties": {
+          "file": {"type": "string", "description": "Input file"},
+          "verbose": {"type": "boolean"}
+        }
+      }), "myapp")
+
+      help = cli.help
+      help.should contain("Arguments:")
+      help.should contain("file")
+      help.should contain("Input file")
+    end
+
+    it "generates help for subcommands" do
+      cli = CLJ.new("myapp")
+      cli.subcommand("run", %({"type": "object", "properties": {}}))
+      cli.subcommand("test", %({"type": "object", "properties": {}}))
+
+      help = cli.help
+      help.should contain("Commands:")
+      help.should contain("run")
+      help.should contain("test")
+    end
+  end
 end

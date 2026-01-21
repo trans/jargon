@@ -3,93 +3,231 @@ require "./result"
 
 module CLJ
   class CLI
-    getter schema : Schema
+    getter schema : Schema?
     getter program_name : String
+    getter subcommands : Hash(String, Schema)
 
     def initialize(@schema : Schema, @program_name : String = "cli")
+      @subcommands = {} of String => Schema
+    end
+
+    def initialize(@program_name : String)
+      @schema = nil
+      @subcommands = {} of String => Schema
+    end
+
+    def subcommand(name : String, schema : Schema | String)
+      @subcommands[name] = case schema
+      when String then Schema.from_json(schema)
+      else             schema
+      end
     end
 
     def parse(args : Array(String)) : Result
+      if @subcommands.any?
+        parse_with_subcommands(args)
+      else
+        parse_flat(args, @schema.not_nil!)
+      end
+    end
+
+    private def parse_with_subcommands(args : Array(String)) : Result
+      if args.empty?
+        return Result.new({} of String => JSON::Any, ["No subcommand specified"])
+      end
+
+      subcmd_name = args[0]
+      unless subcmd_schema = @subcommands[subcmd_name]?
+        return Result.new({} of String => JSON::Any, ["Unknown subcommand: #{subcmd_name}"])
+      end
+
+      result = parse_flat(args[1..], subcmd_schema)
+      Result.new(result.data, result.errors, subcmd_name)
+    end
+
+    private def parse_flat(args : Array(String), schema : Schema) : Result
       data = {} of String => JSON::Any
       errors = [] of String
+      positional_names = schema.positional
+      positional_index = 0
+      short_to_long = build_short_map(schema)
       i = 0
 
       while i < args.size
         arg = args[i]
-        key, value, consumed = parse_argument(arg, args, i)
 
-        if key
-          set_nested_value(data, key, value, errors)
+        if is_short_flag?(arg)
+          short_key = arg[1..]
+          if long_key = short_to_long[short_key]?
+            key, value, consumed = parse_long_flag("--#{long_key}", args, i, schema)
+            if key
+              set_nested_value(data, key, value, errors)
+            end
+            i += consumed
+          else
+            errors << "Unknown short flag: #{arg}"
+            i += 1
+          end
+        elsif is_flag?(arg)
+          key, value, consumed = parse_long_flag(arg, args, i, schema)
+          if key
+            set_nested_value(data, key, value, errors)
+          else
+            errors << "Unknown argument: #{arg}"
+          end
+          i += consumed
+        elsif positional_index < positional_names.size
+          key = positional_names[positional_index]
+          set_nested_value(data, key, coerce_value(key, arg, schema), errors)
+          positional_index += 1
+          i += 1
         else
-          errors << "Unknown argument: #{arg}"
+          key, value, consumed = parse_argument(arg, args, i, schema)
+          if key
+            set_nested_value(data, key, value, errors)
+          else
+            errors << "Unexpected argument: #{arg}"
+          end
+          i += consumed
         end
-
-        i += consumed
       end
 
-      apply_defaults(data)
-      validate(data, errors)
+      apply_defaults(data, schema)
+      validate(data, errors, schema)
 
       Result.new(data, errors)
     end
 
-    def help : String
-      lines = ["Usage: #{program_name} [OPTIONS]", "", "Options:"]
+    private def is_flag?(arg : String) : Bool
+      arg.starts_with?("--")
+    end
 
-      root = resolve_property(schema.root)
+    private def is_short_flag?(arg : String) : Bool
+      arg.starts_with?("-") && !arg.starts_with?("--") && arg.size > 1
+    end
+
+    private def build_short_map(schema : Schema) : Hash(String, String)
+      map = {} of String => String
+      root = resolve_property(schema.root, schema)
       if props = root.properties
         props.each do |name, prop|
-          build_help_lines(lines, name, resolve_property(prop), "")
+          if short = prop.short
+            map[short] = name
+          end
+        end
+      end
+      map
+    end
+
+    private def parse_long_flag(arg : String, args : Array(String), index : Int32, schema : Schema) : {String?, JSON::Any?, Int32}
+      key = arg[2..]
+      if key.includes?("=")
+        parts = key.split("=", 2)
+        {parts[0], coerce_value(parts[0], parts[1], schema), 1}
+      elsif index + 1 < args.size && !args[index + 1].starts_with?("-")
+        if boolean_property?(key, schema)
+          {key, JSON::Any.new(true), 1}
+        else
+          {key, coerce_value(key, args[index + 1], schema), 2}
+        end
+      else
+        {key, JSON::Any.new(true), 1}
+      end
+    end
+
+    def help : String
+      if @subcommands.any?
+        help_with_subcommands
+      elsif s = @schema
+        help_flat(s)
+      else
+        "Usage: #{program_name} <command> [options]"
+      end
+    end
+
+    private def help_with_subcommands : String
+      lines = ["Usage: #{program_name} <command> [options]", "", "Commands:"]
+      @subcommands.each do |name, _|
+        lines << "  #{name}"
+      end
+      lines << ""
+      lines << "Run '#{program_name} <command> --help' for command-specific options."
+      lines.join("\n")
+    end
+
+    private def help_flat(schema : Schema) : String
+      lines = [] of String
+      positional_names = schema.positional
+      root = resolve_property(schema.root, schema)
+
+      # Build usage line
+      usage_parts = ["Usage: #{program_name}"]
+      positional_names.each do |name|
+        if prop = root.properties.try(&.[name]?)
+          if prop.required
+            usage_parts << "<#{name}>"
+          else
+            usage_parts << "[#{name}]"
+          end
+        else
+          usage_parts << "<#{name}>"
+        end
+      end
+      usage_parts << "[options]"
+      lines << usage_parts.join(" ")
+      lines << ""
+
+      # Arguments section
+      unless positional_names.empty?
+        lines << "Arguments:"
+        positional_names.each do |name|
+          if prop = root.properties.try(&.[name]?)
+            desc = prop.description || ""
+            lines << "  #{name}    #{desc}"
+          end
+        end
+        lines << ""
+      end
+
+      # Options section
+      lines << "Options:"
+      if props = root.properties
+        props.each do |name, prop|
+          next if positional_names.includes?(name)
+          build_help_lines(lines, name, resolve_property(prop, schema), "", schema)
         end
       end
 
       lines.join("\n")
     end
 
-    private def parse_argument(arg : String, args : Array(String), index : Int32) : {String?, JSON::Any?, Int32}
-      # Style 1: Traditional --key value or --key=value
-      if arg.starts_with?("--")
-        key = arg[2..]
-        if key.includes?("=")
-          parts = key.split("=", 2)
-          {parts[0], coerce_value(parts[0], parts[1]), 1}
-        elsif index + 1 < args.size && !args[index + 1].starts_with?("-")
-          # Check if this is a boolean flag (no value needed)
-          if boolean_property?(key)
-            {key, JSON::Any.new(true), 1}
-          else
-            {key, coerce_value(key, args[index + 1]), 2}
-          end
-        else
-          # Boolean flag
-          {key, JSON::Any.new(true), 1}
-        end
-      # Style 2: key=value
-      elsif arg.includes?("=")
+    private def parse_argument(arg : String, args : Array(String), index : Int32, schema : Schema) : {String?, JSON::Any?, Int32}
+      # Style 1: key=value
+      if arg.includes?("=")
         parts = arg.split("=", 2)
-        {parts[0], coerce_value(parts[0], parts[1]), 1}
-      # Style 3: key:value
+        {parts[0], coerce_value(parts[0], parts[1], schema), 1}
+      # Style 2: key:value
       elsif arg.includes?(":")
         parts = arg.split(":", 2)
-        {parts[0], coerce_value(parts[0], parts[1]), 1}
+        {parts[0], coerce_value(parts[0], parts[1], schema), 1}
       else
         {nil, nil, 1}
       end
     end
 
-    private def boolean_property?(key : String) : Bool
-      prop = find_property(key)
+    private def boolean_property?(key : String, schema : Schema) : Bool
+      prop = find_property(key, schema)
       prop.try(&.type.boolean?) || false
     end
 
-    private def find_property(key : String) : Property?
+    private def find_property(key : String, schema : Schema) : Property?
       parts = key.split(".")
-      current = resolve_property(schema.root)
+      current = resolve_property(schema.root, schema)
 
       parts.each_with_index do |part, i|
         if props = current.properties
           if prop = props[part]?
-            resolved = resolve_property(prop)
+            resolved = resolve_property(prop, schema)
             if i == parts.size - 1
               return resolved
             elsif resolved.type.object?
@@ -108,7 +246,7 @@ module CLJ
       nil
     end
 
-    private def resolve_property(prop : Property) : Property
+    private def resolve_property(prop : Property, schema : Schema) : Property
       if ref = prop.ref
         schema.resolve_ref(ref) || prop
       else
@@ -116,8 +254,8 @@ module CLJ
       end
     end
 
-    private def coerce_value(key : String, value : String) : JSON::Any
-      prop = find_property(key)
+    private def coerce_value(key : String, value : String, schema : Schema) : JSON::Any
+      prop = find_property(key, schema)
 
       case prop.try(&.type)
       when Property::Type::Integer
@@ -160,16 +298,16 @@ module CLJ
       end
     end
 
-    private def apply_defaults(data : Hash(String, JSON::Any))
-      root = resolve_property(schema.root)
+    private def apply_defaults(data : Hash(String, JSON::Any), schema : Schema)
+      root = resolve_property(schema.root, schema)
       return unless props = root.properties
 
       props.each do |name, prop|
-        apply_property_defaults(data, name, resolve_property(prop))
+        apply_property_defaults(data, name, resolve_property(prop, schema), schema)
       end
     end
 
-    private def apply_property_defaults(data : Hash(String, JSON::Any), name : String, prop : Property)
+    private def apply_property_defaults(data : Hash(String, JSON::Any), name : String, prop : Property, schema : Schema)
       unless data.has_key?(name)
         if default = prop.default
           data[name] = default
@@ -179,22 +317,22 @@ module CLJ
       if prop.type.object? && (nested_props = prop.properties)
         if nested_data = data[name]?.try(&.as_h?)
           nested_props.each do |nested_name, nested_prop|
-            apply_property_defaults(nested_data, nested_name, resolve_property(nested_prop))
+            apply_property_defaults(nested_data, nested_name, resolve_property(nested_prop, schema), schema)
           end
         end
       end
     end
 
-    private def validate(data : Hash(String, JSON::Any), errors : Array(String))
-      root = resolve_property(schema.root)
+    private def validate(data : Hash(String, JSON::Any), errors : Array(String), schema : Schema)
+      root = resolve_property(schema.root, schema)
       return unless props = root.properties
 
       props.each do |name, prop|
-        validate_property(data, name, resolve_property(prop), errors, "")
+        validate_property(data, name, resolve_property(prop, schema), errors, "", schema)
       end
     end
 
-    private def validate_property(data : Hash(String, JSON::Any), name : String, prop : Property, errors : Array(String), prefix : String)
+    private def validate_property(data : Hash(String, JSON::Any), name : String, prop : Property, errors : Array(String), prefix : String, schema : Schema)
       full_name = prefix.empty? ? name : "#{prefix}.#{name}"
       value = data[name]?
 
@@ -221,7 +359,7 @@ module CLJ
       if prop.type.object? && (nested_props = prop.properties)
         if nested_data = value.as_h?
           nested_props.each do |nested_name, nested_prop|
-            validate_property(nested_data, nested_name, resolve_property(nested_prop), errors, full_name)
+            validate_property(nested_data, nested_name, resolve_property(nested_prop, schema), errors, full_name, schema)
           end
         end
       end
@@ -240,19 +378,29 @@ module CLJ
       end
     end
 
-    private def build_help_lines(lines : Array(String), name : String, prop : Property, prefix : String)
+    private def build_help_lines(lines : Array(String), name : String, prop : Property, prefix : String, schema : Schema)
       full_name = prefix.empty? ? name : "#{prefix}.#{name}"
       type_str = prop.type.to_s.downcase
       required_str = prop.required ? " (required)" : ""
       default_str = prop.default ? " [default: #{prop.default}]" : ""
       desc = prop.description || ""
 
-      lines << "  --#{full_name}=<#{type_str}>#{required_str}#{default_str}"
+      flag_str = if short = prop.short
+        "-#{short}, --#{full_name}"
+      else
+        "    --#{full_name}"
+      end
+
+      if prop.type.boolean?
+        lines << "  #{flag_str}#{required_str}#{default_str}"
+      else
+        lines << "  #{flag_str}=<#{type_str}>#{required_str}#{default_str}"
+      end
       lines << "      #{desc}" unless desc.empty?
 
       if prop.type.object? && (nested_props = prop.properties)
         nested_props.each do |nested_name, nested_prop|
-          build_help_lines(lines, nested_name, resolve_property(nested_prop), full_name)
+          build_help_lines(lines, nested_name, resolve_property(nested_prop, schema), full_name, schema)
         end
       end
     end

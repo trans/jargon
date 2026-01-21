@@ -19,6 +19,7 @@ module CLJ
     getter properties : Hash(String, Property)?
     getter items : Property?
     getter ref : String?
+    getter short : String?
 
     def initialize(
       @name : String,
@@ -29,7 +30,8 @@ module CLJ
       @enum_values : Array(JSON::Any)? = nil,
       @properties : Hash(String, Property)? = nil,
       @items : Property? = nil,
-      @ref : String? = nil
+      @ref : String? = nil,
+      @short : String? = nil
     )
     end
 
@@ -39,6 +41,7 @@ module CLJ
       default = json["default"]?
       enum_values = json["enum"]?.try(&.as_a?)
       ref = json["$ref"]?.try(&.as_s?)
+      short = json["short"]?.try(&.as_s?)
       is_required = required_fields.includes?(name)
 
       properties = if type.object? && (props = json["properties"]?)
@@ -61,7 +64,8 @@ module CLJ
         enum_values: enum_values,
         properties: properties,
         items: items,
-        ref: ref
+        ref: ref,
+        short: short
       )
     end
 

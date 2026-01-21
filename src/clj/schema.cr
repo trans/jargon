@@ -5,8 +5,9 @@ module CLJ
   class Schema
     getter root : Property
     getter definitions : Hash(String, Property)
+    getter positional : Array(String)
 
-    def initialize(@root : Property, @definitions : Hash(String, Property) = {} of String => Property)
+    def initialize(@root : Property, @definitions : Hash(String, Property) = {} of String => Property, @positional : Array(String) = [] of String)
     end
 
     def self.from_json(json_string : String) : Schema
@@ -21,6 +22,7 @@ module CLJ
 
     def self.from_json_any(json : JSON::Any) : Schema
       required_fields = json["required"]?.try(&.as_a.map(&.as_s)) || [] of String
+      positional = json["positional"]?.try(&.as_a.map(&.as_s)) || [] of String
 
       root = Property.from_json("root", json, required_fields)
 
@@ -32,7 +34,7 @@ module CLJ
         {} of String => Property
       end
 
-      Schema.new(root, definitions)
+      Schema.new(root, definitions, positional)
     end
 
     def resolve_ref(ref : String) : Property?

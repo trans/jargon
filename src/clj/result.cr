@@ -4,11 +4,12 @@ module CLJ
   class Result
     getter data : JSON::Any
     getter errors : Array(String)
+    getter subcommand : String?
 
-    def initialize(@data : JSON::Any, @errors : Array(String) = [] of String)
+    def initialize(@data : JSON::Any, @errors : Array(String) = [] of String, @subcommand : String? = nil)
     end
 
-    def initialize(data : Hash(String, JSON::Any), @errors : Array(String) = [] of String)
+    def initialize(data : Hash(String, JSON::Any), @errors : Array(String) = [] of String, @subcommand : String? = nil)
       @data = JSON::Any.new(data)
     end
 
