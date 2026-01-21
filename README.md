@@ -9,7 +9,7 @@ Add the dependency to your `shard.yml`:
 ```yaml
 dependencies:
   clj:
-    github: transfire/clj
+    github: trans/clj
 ```
 
 Then run `shards install`.
