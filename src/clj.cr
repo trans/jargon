@@ -3,7 +3,7 @@ require "./clj/cli"
 require "./clj/result"
 
 module CLJ
-  VERSION = "0.1.0"
+  VERSION = "0.1.1"
 
   # Convenience method to create a CLI with just a program name (for subcommand mode)
   def self.new(program_name : String) : CLI
