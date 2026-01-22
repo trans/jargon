@@ -231,6 +231,16 @@ echo '{"result_id": "abc123", "useful": true}' | xerp mark -
 
 If no `subcommand` field is present in `xerp -`, the default subcommand is used (if set).
 
+The field name is configurable:
+
+```crystal
+cli.subcommand_key("op")  # default is "subcommand"
+```
+
+```sh
+echo '{"op": "query", "query_text": "search"}' | xerp -
+```
+
 ## Features
 
 - **Validation**: Required fields, enum values, type checking
