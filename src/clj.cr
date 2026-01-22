@@ -21,4 +21,20 @@ module CLJ
     schema = Schema.from_file(path)
     CLI.new(schema, program_name)
   end
+
+  # Merge global schema properties into a subcommand schema.
+  # Properties from global are added to sub (sub takes precedence if both define same key).
+  def self.merge(sub : String, global : String) : String
+    sub_json = JSON.parse(sub).as_h
+    global_json = JSON.parse(global).as_h
+
+    sub_props = sub_json["properties"]?.try(&.as_h) || {} of String => JSON::Any
+    global_props = global_json["properties"]?.try(&.as_h) || {} of String => JSON::Any
+
+    # Global properties first, then sub properties override
+    merged_props = global_props.merge(sub_props)
+    sub_json["properties"] = JSON::Any.new(merged_props)
+
+    sub_json.to_json
+  end
 end

@@ -217,6 +217,45 @@ xerp "search term" -n 5
 
 Note: If the first argument matches a subcommand name, it's treated as a subcommand, not as input to the default. Use the explicit form if you need to search for a term that matches a subcommand name.
 
+### Global Options
+
+Use `CLJ.merge` to add common options to all subcommands:
+
+```crystal
+global = %({
+  "type": "object",
+  "properties": {
+    "verbose": {"type": "boolean", "short": "v", "description": "Verbose output"},
+    "config": {"type": "string", "short": "c", "description": "Config file path"}
+  }
+})
+
+cli = CLJ.new("myapp")
+
+cli.subcommand("clone", CLJ.merge(%({
+  "type": "object",
+  "positional": ["repo"],
+  "properties": {
+    "repo": {"type": "string"},
+    "depth": {"type": "integer", "short": "d"}
+  }
+}), global))
+
+cli.subcommand("push", CLJ.merge(%({
+  "type": "object",
+  "properties": {
+    "force": {"type": "boolean", "short": "f"}
+  }
+}), global))
+```
+
+```sh
+myapp clone https://github.com/user/repo -v
+myapp push --force --config myconfig.json
+```
+
+Subcommand properties take precedence if there's a conflict with global properties.
+
 ### JSON from Stdin
 
 Use `-` to read JSON input from stdin:
@@ -301,6 +340,9 @@ cli = CLJ.from_file("schema.json", program_name)
 # For subcommands (no root schema)
 cli = CLJ.new(program_name)
 cli.subcommand("name", json_schema_string)
+
+# Merge global options into subcommand schema
+merged = CLJ.merge(subcommand_schema, global_schema)
 
 # Parse arguments
 result = cli.parse(ARGV)

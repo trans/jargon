@@ -815,6 +815,86 @@ describe CLJ do
     end
   end
 
+  describe "schema merge" do
+    it "merges global properties into subcommand schema" do
+      global = %({
+        "type": "object",
+        "properties": {
+          "verbose": {"type": "boolean", "short": "v"},
+          "config": {"type": "string", "short": "c"}
+        }
+      })
+
+      sub = %({
+        "type": "object",
+        "properties": {
+          "file": {"type": "string"}
+        }
+      })
+
+      merged = CLJ.merge(sub, global)
+      parsed = JSON.parse(merged)
+
+      parsed["properties"]["file"].should_not be_nil
+      parsed["properties"]["verbose"].should_not be_nil
+      parsed["properties"]["config"].should_not be_nil
+    end
+
+    it "sub properties take precedence over global" do
+      global = %({
+        "type": "object",
+        "properties": {
+          "output": {"type": "string", "default": "stdout"}
+        }
+      })
+
+      sub = %({
+        "type": "object",
+        "properties": {
+          "output": {"type": "string", "default": "file.txt"}
+        }
+      })
+
+      merged = CLJ.merge(sub, global)
+      parsed = JSON.parse(merged)
+
+      parsed["properties"]["output"]["default"].as_s.should eq("file.txt")
+    end
+
+    it "works with CLI parsing" do
+      global = %({
+        "type": "object",
+        "properties": {
+          "verbose": {"type": "boolean", "short": "v"}
+        }
+      })
+
+      cli = CLJ.new("myapp")
+      cli.subcommand("run", CLJ.merge(%({
+        "type": "object",
+        "positional": ["file"],
+        "properties": {
+          "file": {"type": "string"}
+        }
+      }), global))
+
+      result = cli.parse(["run", "test.cr", "-v"])
+      result.valid?.should be_true
+      result["file"].as_s.should eq("test.cr")
+      result["verbose"].as_bool.should be_true
+    end
+
+    it "handles empty properties gracefully" do
+      global = %({"type": "object", "properties": {"verbose": {"type": "boolean"}}})
+      sub = %({"type": "object"})
+
+      merged = CLJ.merge(sub, global)
+      parsed = JSON.parse(merged)
+
+      parsed["properties"]["verbose"].should_not be_nil
+    end
+  end
+
   describe "public validate method" do
     it "validates data hash directly" do
       cli = CLJ.from_json(%({
