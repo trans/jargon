@@ -781,7 +781,37 @@ describe CLJ do
       result = cli.parse(["-"], input)
 
       result.valid?.should be_false
-      result.errors.should contain("No subcommand specified in JSON")
+      result.errors.should contain("No 'subcommand' specified in JSON")
+    end
+
+    it "uses custom subcommand key" do
+      cli = CLJ.new("xerp")
+      cli.subcommand("query", %({
+        "type": "object",
+        "properties": {
+          "query_text": {"type": "string"}
+        }
+      }))
+      cli.subcommand_key("op")
+
+      input = IO::Memory.new(%({"op": "query", "query_text": "search term"}))
+      result = cli.parse(["-"], input)
+
+      result.valid?.should be_true
+      result.subcommand.should eq("query")
+      result["query_text"].as_s.should eq("search term")
+    end
+
+    it "errors with custom key name in message" do
+      cli = CLJ.new("xerp")
+      cli.subcommand("query", %({"type": "object", "properties": {}}))
+      cli.subcommand_key("op")
+
+      input = IO::Memory.new(%({"foo": "bar"}))
+      result = cli.parse(["-"], input)
+
+      result.valid?.should be_false
+      result.errors.should contain("No 'op' specified in JSON")
     end
   end
 

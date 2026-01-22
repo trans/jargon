@@ -7,16 +7,19 @@ module CLJ
     getter program_name : String
     getter subcommands : Hash(String, Schema)
     getter default_subcommand : String?
+    getter subcommand_key : String
 
     def initialize(@schema : Schema, @program_name : String = "cli")
       @subcommands = {} of String => Schema
       @default_subcommand = nil
+      @subcommand_key = "subcommand"
     end
 
     def initialize(@program_name : String)
       @schema = nil
       @subcommands = {} of String => Schema
       @default_subcommand = nil
+      @subcommand_key = "subcommand"
     end
 
     def subcommand(name : String, schema : Schema | String)
@@ -28,6 +31,10 @@ module CLJ
 
     def default_subcommand(name : String)
       @default_subcommand = name
+    end
+
+    def subcommand_key(key : String)
+      @subcommand_key = key
     end
 
     def parse(args : Array(String)) : Result
@@ -76,14 +83,14 @@ module CLJ
       json = JSON.parse(json_str)
       data = json.as_h? || {} of String => JSON::Any
 
-      # Extract subcommand from JSON
-      subcmd_name = data.delete("subcommand").try(&.as_s?)
+      # Extract subcommand from JSON using configured key
+      subcmd_name = data.delete(@subcommand_key).try(&.as_s?)
 
       # Determine which subcommand to use
       subcmd_name ||= @default_subcommand
 
       unless subcmd_name
-        return Result.new({} of String => JSON::Any, ["No subcommand specified in JSON"])
+        return Result.new({} of String => JSON::Any, ["No '#{@subcommand_key}' specified in JSON"])
       end
 
       unless subcmd_schema = @subcommands[subcmd_name]?
