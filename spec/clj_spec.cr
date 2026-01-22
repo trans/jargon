@@ -667,4 +667,76 @@ describe CLJ do
       help.should contain("test")
     end
   end
+
+  describe "public validate method" do
+    it "validates data hash directly" do
+      cli = CLJ.from_json(%({
+        "type": "object",
+        "properties": {
+          "name": {"type": "string"},
+          "count": {"type": "integer"}
+        },
+        "required": ["name"]
+      }))
+
+      errors = cli.validate({"count" => JSON::Any.new(42_i64)})
+      errors.should contain("Missing required field: name")
+    end
+
+    it "returns empty array for valid data" do
+      cli = CLJ.from_json(%({
+        "type": "object",
+        "properties": {
+          "name": {"type": "string"}
+        },
+        "required": ["name"]
+      }))
+
+      errors = cli.validate({"name" => JSON::Any.new("John")})
+      errors.should be_empty
+    end
+
+    it "validates result object" do
+      cli = CLJ.from_json(%({
+        "type": "object",
+        "properties": {
+          "name": {"type": "string"}
+        },
+        "required": ["name"]
+      }))
+
+      result = cli.parse(["name=John"])
+      errors = cli.validate(result)
+      errors.should be_empty
+    end
+
+    it "validates subcommand data with subcommand name" do
+      cli = CLJ.new("myapp")
+      cli.subcommand("run", %({
+        "type": "object",
+        "properties": {
+          "file": {"type": "string"}
+        },
+        "required": ["file"]
+      }))
+
+      errors = cli.validate({} of String => JSON::Any, "run")
+      errors.should contain("Missing required field: file")
+    end
+
+    it "validates result from subcommand" do
+      cli = CLJ.new("myapp")
+      cli.subcommand("run", %({
+        "type": "object",
+        "properties": {
+          "file": {"type": "string"}
+        },
+        "required": ["file"]
+      }))
+
+      result = cli.parse(["run", "file=test.cr"])
+      errors = cli.validate(result)
+      errors.should be_empty
+    end
+  end
 end

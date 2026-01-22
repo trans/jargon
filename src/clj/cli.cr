@@ -110,7 +110,7 @@ module CLJ
       end
 
       apply_defaults(data, schema)
-      validate(data, errors, schema)
+      validate_data(data, errors, schema)
 
       Result.new(data, errors)
     end
@@ -160,6 +160,24 @@ module CLJ
       else
         "Usage: #{program_name} <command> [options]"
       end
+    end
+
+    # Validate data against a schema, returning any errors.
+    # If no schema is provided, uses the CLI's root schema.
+    # For subcommand validation, pass the subcommand name.
+    def validate(data : Hash(String, JSON::Any), subcommand : String? = nil) : Array(String)
+      errors = [] of String
+      schema = if cmd = subcommand
+        @subcommands[cmd]? || raise ArgumentError.new("Unknown subcommand: #{cmd}")
+      else
+        @schema || raise ArgumentError.new("No schema available")
+      end
+      validate_data(data, errors, schema)
+      errors
+    end
+
+    def validate(result : Result) : Array(String)
+      validate(result.data.as_h, result.subcommand)
     end
 
     private def help_with_subcommands : String
@@ -340,7 +358,7 @@ module CLJ
       end
     end
 
-    private def validate(data : Hash(String, JSON::Any), errors : Array(String), schema : Schema)
+    private def validate_data(data : Hash(String, JSON::Any), errors : Array(String), schema : Schema)
       root = resolve_property(schema.root, schema)
       return unless props = root.properties
 
