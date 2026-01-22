@@ -1,7 +1,7 @@
 require "json"
 require "./schema/property"
 
-module CLJ
+module Jargon
   class Schema
     getter root : Property
     getter definitions : Hash(String, Property)

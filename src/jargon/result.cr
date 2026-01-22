@@ -1,6 +1,6 @@
 require "json"
 
-module CLJ
+module Jargon
   class Result
     getter data : JSON::Any
     getter errors : Array(String)

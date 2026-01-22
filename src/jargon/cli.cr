@@ -1,7 +1,7 @@
 require "./schema"
 require "./result"
 
-module CLJ
+module Jargon
   class CLI
     getter schema : Schema?
     getter program_name : String

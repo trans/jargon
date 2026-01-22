@@ -1,9 +1,9 @@
 require "./spec_helper"
 
-describe CLJ do
+describe Jargon do
   describe "basic parsing" do
     it "parses string values with equals style" do
-      cli = CLJ.from_json(%({
+      cli = Jargon.from_json(%({
         "type": "object",
         "properties": {
           "name": {"type": "string"}
@@ -16,7 +16,7 @@ describe CLJ do
     end
 
     it "parses string values with colon style" do
-      cli = CLJ.from_json(%({
+      cli = Jargon.from_json(%({
         "type": "object",
         "properties": {
           "name": {"type": "string"}
@@ -29,7 +29,7 @@ describe CLJ do
     end
 
     it "parses string values with traditional style" do
-      cli = CLJ.from_json(%({
+      cli = Jargon.from_json(%({
         "type": "object",
         "properties": {
           "name": {"type": "string"}
@@ -42,7 +42,7 @@ describe CLJ do
     end
 
     it "parses --key=value style" do
-      cli = CLJ.from_json(%({
+      cli = Jargon.from_json(%({
         "type": "object",
         "properties": {
           "name": {"type": "string"}
@@ -57,7 +57,7 @@ describe CLJ do
 
   describe "type coercion" do
     it "coerces integer values" do
-      cli = CLJ.from_json(%({
+      cli = Jargon.from_json(%({
         "type": "object",
         "properties": {
           "count": {"type": "integer"}
@@ -70,7 +70,7 @@ describe CLJ do
     end
 
     it "coerces number values" do
-      cli = CLJ.from_json(%({
+      cli = Jargon.from_json(%({
         "type": "object",
         "properties": {
           "rate": {"type": "number"}
@@ -83,7 +83,7 @@ describe CLJ do
     end
 
     it "coerces boolean values" do
-      cli = CLJ.from_json(%({
+      cli = Jargon.from_json(%({
         "type": "object",
         "properties": {
           "verbose": {"type": "boolean"}
@@ -99,7 +99,7 @@ describe CLJ do
     end
 
     it "handles boolean flags without value" do
-      cli = CLJ.from_json(%({
+      cli = Jargon.from_json(%({
         "type": "object",
         "properties": {
           "verbose": {"type": "boolean"}
@@ -112,7 +112,7 @@ describe CLJ do
     end
 
     it "coerces array values" do
-      cli = CLJ.from_json(%({
+      cli = Jargon.from_json(%({
         "type": "object",
         "properties": {
           "tags": {"type": "array", "items": {"type": "string"}}
@@ -127,7 +127,7 @@ describe CLJ do
 
   describe "nested objects" do
     it "parses nested properties with dot notation" do
-      cli = CLJ.from_json(%({
+      cli = Jargon.from_json(%({
         "type": "object",
         "properties": {
           "user": {
@@ -147,7 +147,7 @@ describe CLJ do
     end
 
     it "handles deeply nested properties" do
-      cli = CLJ.from_json(%({
+      cli = Jargon.from_json(%({
         "type": "object",
         "properties": {
           "config": {
@@ -172,7 +172,7 @@ describe CLJ do
 
   describe "validation" do
     it "validates required fields" do
-      cli = CLJ.from_json(%({
+      cli = Jargon.from_json(%({
         "type": "object",
         "properties": {
           "name": {"type": "string"}
@@ -186,7 +186,7 @@ describe CLJ do
     end
 
     it "validates enum values" do
-      cli = CLJ.from_json(%({
+      cli = Jargon.from_json(%({
         "type": "object",
         "properties": {
           "color": {"type": "string", "enum": ["red", "green", "blue"]}
@@ -201,7 +201,7 @@ describe CLJ do
     end
 
     it "validates types" do
-      cli = CLJ.from_json(%({
+      cli = Jargon.from_json(%({
         "type": "object",
         "properties": {
           "count": {"type": "integer"}
@@ -215,7 +215,7 @@ describe CLJ do
 
   describe "defaults" do
     it "applies default values" do
-      cli = CLJ.from_json(%({
+      cli = Jargon.from_json(%({
         "type": "object",
         "properties": {
           "name": {"type": "string", "default": "anonymous"}
@@ -227,7 +227,7 @@ describe CLJ do
     end
 
     it "does not override provided values with defaults" do
-      cli = CLJ.from_json(%({
+      cli = Jargon.from_json(%({
         "type": "object",
         "properties": {
           "name": {"type": "string", "default": "anonymous"}
@@ -241,7 +241,7 @@ describe CLJ do
 
   describe "help" do
     it "generates help text" do
-      cli = CLJ.from_json(%({
+      cli = Jargon.from_json(%({
         "type": "object",
         "properties": {
           "name": {"type": "string", "description": "The user name"}
@@ -259,7 +259,7 @@ describe CLJ do
 
   describe "mixed styles" do
     it "accepts mixed argument styles" do
-      cli = CLJ.from_json(%({
+      cli = Jargon.from_json(%({
         "type": "object",
         "properties": {
           "name": {"type": "string"},
@@ -278,7 +278,7 @@ describe CLJ do
 
   describe "JSON output" do
     it "outputs valid JSON" do
-      cli = CLJ.from_json(%({
+      cli = Jargon.from_json(%({
         "type": "object",
         "properties": {
           "name": {"type": "string"},
@@ -296,7 +296,7 @@ describe CLJ do
 
   describe "$ref resolution" do
     it "resolves local $ref to $defs" do
-      cli = CLJ.from_json(%({
+      cli = Jargon.from_json(%({
         "type": "object",
         "properties": {
           "billing": {"$ref": "#/$defs/address"},
@@ -321,7 +321,7 @@ describe CLJ do
     end
 
     it "resolves local $ref to definitions" do
-      cli = CLJ.from_json(%({
+      cli = Jargon.from_json(%({
         "type": "object",
         "properties": {
           "user": {"$ref": "#/definitions/person"}
@@ -346,7 +346,7 @@ describe CLJ do
 
   describe "positional arguments" do
     it "parses positional args in order" do
-      cli = CLJ.from_json(%({
+      cli = Jargon.from_json(%({
         "type": "object",
         "positional": ["name", "count"],
         "properties": {
@@ -362,7 +362,7 @@ describe CLJ do
     end
 
     it "mixes positional and flags" do
-      cli = CLJ.from_json(%({
+      cli = Jargon.from_json(%({
         "type": "object",
         "positional": ["name", "count"],
         "properties": {
@@ -380,7 +380,7 @@ describe CLJ do
     end
 
     it "errors on unexpected positional args" do
-      cli = CLJ.from_json(%({
+      cli = Jargon.from_json(%({
         "type": "object",
         "positional": ["name"],
         "properties": {
@@ -394,7 +394,7 @@ describe CLJ do
     end
 
     it "validates required positional args" do
-      cli = CLJ.from_json(%({
+      cli = Jargon.from_json(%({
         "type": "object",
         "positional": ["name"],
         "properties": {
@@ -411,7 +411,7 @@ describe CLJ do
 
   describe "short flags" do
     it "parses short flags" do
-      cli = CLJ.from_json(%({
+      cli = Jargon.from_json(%({
         "type": "object",
         "properties": {
           "count": {"type": "integer", "short": "n"}
@@ -424,7 +424,7 @@ describe CLJ do
     end
 
     it "parses short boolean flags" do
-      cli = CLJ.from_json(%({
+      cli = Jargon.from_json(%({
         "type": "object",
         "properties": {
           "verbose": {"type": "boolean", "short": "v"}
@@ -437,7 +437,7 @@ describe CLJ do
     end
 
     it "mixes short and long flags" do
-      cli = CLJ.from_json(%({
+      cli = Jargon.from_json(%({
         "type": "object",
         "properties": {
           "count": {"type": "integer", "short": "n"},
@@ -452,7 +452,7 @@ describe CLJ do
     end
 
     it "errors on unknown short flag" do
-      cli = CLJ.from_json(%({
+      cli = Jargon.from_json(%({
         "type": "object",
         "properties": {
           "count": {"type": "integer", "short": "n"}
@@ -467,7 +467,7 @@ describe CLJ do
 
   describe "subcommands" do
     it "parses subcommand with its options" do
-      cli = CLJ.new("myapp")
+      cli = Jargon.new("myapp")
       cli.subcommand("run", %({
         "type": "object",
         "positional": ["file"],
@@ -485,7 +485,7 @@ describe CLJ do
     end
 
     it "errors on missing subcommand" do
-      cli = CLJ.new("myapp")
+      cli = Jargon.new("myapp")
       cli.subcommand("run", %({"type": "object", "properties": {}}))
 
       result = cli.parse([] of String)
@@ -494,7 +494,7 @@ describe CLJ do
     end
 
     it "errors on unknown subcommand" do
-      cli = CLJ.new("myapp")
+      cli = Jargon.new("myapp")
       cli.subcommand("run", %({"type": "object", "properties": {}}))
 
       result = cli.parse(["unknown"])
@@ -503,7 +503,7 @@ describe CLJ do
     end
 
     it "parses multiple subcommands independently" do
-      cli = CLJ.new("xerp")
+      cli = Jargon.new("xerp")
       cli.subcommand("index", %({
         "type": "object",
         "properties": {
@@ -532,7 +532,7 @@ describe CLJ do
     end
 
     it "applies defaults in subcommands" do
-      cli = CLJ.new("myapp")
+      cli = Jargon.new("myapp")
       cli.subcommand("query", %({
         "type": "object",
         "properties": {
@@ -546,7 +546,7 @@ describe CLJ do
     end
 
     it "validates required fields in subcommands" do
-      cli = CLJ.new("myapp")
+      cli = Jargon.new("myapp")
       cli.subcommand("mark", %({
         "type": "object",
         "positional": ["result_id"],
@@ -562,7 +562,7 @@ describe CLJ do
     end
 
     it "uses default subcommand when no subcommand given" do
-      cli = CLJ.new("xerp")
+      cli = Jargon.new("xerp")
       cli.subcommand("index", %({
         "type": "object",
         "properties": {
@@ -587,7 +587,7 @@ describe CLJ do
     end
 
     it "uses default subcommand with empty args" do
-      cli = CLJ.new("myapp")
+      cli = Jargon.new("myapp")
       cli.subcommand("list", %({
         "type": "object",
         "properties": {
@@ -603,7 +603,7 @@ describe CLJ do
     end
 
     it "prefers explicit subcommand over default" do
-      cli = CLJ.new("xerp")
+      cli = Jargon.new("xerp")
       cli.subcommand("index", %({
         "type": "object",
         "properties": {
@@ -628,7 +628,7 @@ describe CLJ do
 
   describe "help with new features" do
     it "generates help with short flags" do
-      cli = CLJ.from_json(%({
+      cli = Jargon.from_json(%({
         "type": "object",
         "properties": {
           "count": {"type": "integer", "short": "n", "description": "Number of items"}
@@ -641,7 +641,7 @@ describe CLJ do
     end
 
     it "generates help with positional args" do
-      cli = CLJ.from_json(%({
+      cli = Jargon.from_json(%({
         "type": "object",
         "positional": ["file"],
         "properties": {
@@ -657,7 +657,7 @@ describe CLJ do
     end
 
     it "generates help for subcommands" do
-      cli = CLJ.new("myapp")
+      cli = Jargon.new("myapp")
       cli.subcommand("run", %({"type": "object", "properties": {}}))
       cli.subcommand("test", %({"type": "object", "properties": {}}))
 
@@ -670,7 +670,7 @@ describe CLJ do
 
   describe "stdin JSON input" do
     it "parses JSON from stdin with subcommand in JSON" do
-      cli = CLJ.new("xerp")
+      cli = Jargon.new("xerp")
       cli.subcommand("query", %({
         "type": "object",
         "properties": {
@@ -690,7 +690,7 @@ describe CLJ do
     end
 
     it "parses JSON from stdin for explicit subcommand" do
-      cli = CLJ.new("xerp")
+      cli = Jargon.new("xerp")
       cli.subcommand("mark", %({
         "type": "object",
         "properties": {
@@ -710,7 +710,7 @@ describe CLJ do
     end
 
     it "uses default subcommand when not specified in JSON" do
-      cli = CLJ.new("xerp")
+      cli = Jargon.new("xerp")
       cli.subcommand("query", %({
         "type": "object",
         "properties": {
@@ -729,7 +729,7 @@ describe CLJ do
     end
 
     it "applies defaults to JSON input" do
-      cli = CLJ.new("xerp")
+      cli = Jargon.new("xerp")
       cli.subcommand("query", %({
         "type": "object",
         "properties": {
@@ -746,7 +746,7 @@ describe CLJ do
     end
 
     it "validates JSON input" do
-      cli = CLJ.new("xerp")
+      cli = Jargon.new("xerp")
       cli.subcommand("mark", %({
         "type": "object",
         "properties": {
@@ -763,7 +763,7 @@ describe CLJ do
     end
 
     it "errors on invalid JSON" do
-      cli = CLJ.new("xerp")
+      cli = Jargon.new("xerp")
       cli.subcommand("query", %({"type": "object", "properties": {}}))
 
       input = IO::Memory.new("not valid json")
@@ -774,7 +774,7 @@ describe CLJ do
     end
 
     it "errors when no subcommand in JSON and no default" do
-      cli = CLJ.new("xerp")
+      cli = Jargon.new("xerp")
       cli.subcommand("query", %({"type": "object", "properties": {}}))
 
       input = IO::Memory.new(%({"foo": "bar"}))
@@ -785,7 +785,7 @@ describe CLJ do
     end
 
     it "uses custom subcommand key" do
-      cli = CLJ.new("xerp")
+      cli = Jargon.new("xerp")
       cli.subcommand("query", %({
         "type": "object",
         "properties": {
@@ -803,7 +803,7 @@ describe CLJ do
     end
 
     it "errors with custom key name in message" do
-      cli = CLJ.new("xerp")
+      cli = Jargon.new("xerp")
       cli.subcommand("query", %({"type": "object", "properties": {}}))
       cli.subcommand_key("op")
 
@@ -817,7 +817,7 @@ describe CLJ do
 
   describe "nested subcommands" do
     it "parses nested subcommand" do
-      remote = CLJ.new("remote")
+      remote = Jargon.new("remote")
       remote.subcommand("add", %({
         "type": "object",
         "positional": ["name", "url"],
@@ -836,7 +836,7 @@ describe CLJ do
         "required": ["name"]
       }))
 
-      cli = CLJ.new("git")
+      cli = Jargon.new("git")
       cli.subcommand("remote", remote)
       cli.subcommand("status", %({"type": "object", "properties": {}}))
 
@@ -848,7 +848,7 @@ describe CLJ do
     end
 
     it "handles deeply nested subcommands" do
-      level2 = CLJ.new("level2")
+      level2 = Jargon.new("level2")
       level2.subcommand("action", %({
         "type": "object",
         "properties": {
@@ -856,10 +856,10 @@ describe CLJ do
         }
       }))
 
-      level1 = CLJ.new("level1")
+      level1 = Jargon.new("level1")
       level1.subcommand("level2", level2)
 
-      cli = CLJ.new("app")
+      cli = Jargon.new("app")
       cli.subcommand("level1", level1)
 
       result = cli.parse(["level1", "level2", "action", "--flag"])
@@ -869,10 +869,10 @@ describe CLJ do
     end
 
     it "mixes nested CLI and schema subcommands" do
-      remote = CLJ.new("remote")
+      remote = Jargon.new("remote")
       remote.subcommand("add", %({"type": "object", "properties": {"name": {"type": "string"}}}))
 
-      cli = CLJ.new("git")
+      cli = Jargon.new("git")
       cli.subcommand("remote", remote)
       cli.subcommand("status", %({"type": "object", "properties": {"short": {"type": "boolean", "short": "s"}}}))
 
@@ -887,12 +887,12 @@ describe CLJ do
     end
 
     it "uses default subcommand in nested CLI" do
-      remote = CLJ.new("remote")
+      remote = Jargon.new("remote")
       remote.subcommand("list", %({"type": "object", "properties": {"verbose": {"type": "boolean"}}}))
       remote.subcommand("add", %({"type": "object", "properties": {"name": {"type": "string"}}}))
       remote.default_subcommand("list")
 
-      cli = CLJ.new("git")
+      cli = Jargon.new("git")
       cli.subcommand("remote", remote)
 
       result = cli.parse(["remote", "--verbose"])
@@ -902,14 +902,14 @@ describe CLJ do
     end
 
     it "validates nested subcommand data" do
-      remote = CLJ.new("remote")
+      remote = Jargon.new("remote")
       remote.subcommand("add", %({
         "type": "object",
         "properties": {"name": {"type": "string"}},
         "required": ["name"]
       }))
 
-      cli = CLJ.new("git")
+      cli = Jargon.new("git")
       cli.subcommand("remote", remote)
 
       errors = cli.validate({"name" => JSON::Any.new("origin")}, "remote add")
@@ -920,11 +920,11 @@ describe CLJ do
     end
 
     it "shows nested commands in help" do
-      remote = CLJ.new("remote")
+      remote = Jargon.new("remote")
       remote.subcommand("add", %({"type": "object", "properties": {}}))
       remote.subcommand("remove", %({"type": "object", "properties": {}}))
 
-      cli = CLJ.new("git")
+      cli = Jargon.new("git")
       cli.subcommand("remote", remote)
       cli.subcommand("status", %({"type": "object", "properties": {}}))
 
@@ -953,7 +953,7 @@ describe CLJ do
         }
       })
 
-      merged = CLJ.merge(sub, global)
+      merged = Jargon.merge(sub, global)
       parsed = JSON.parse(merged)
 
       parsed["properties"]["file"].should_not be_nil
@@ -976,7 +976,7 @@ describe CLJ do
         }
       })
 
-      merged = CLJ.merge(sub, global)
+      merged = Jargon.merge(sub, global)
       parsed = JSON.parse(merged)
 
       parsed["properties"]["output"]["default"].as_s.should eq("file.txt")
@@ -990,8 +990,8 @@ describe CLJ do
         }
       })
 
-      cli = CLJ.new("myapp")
-      cli.subcommand("run", CLJ.merge(%({
+      cli = Jargon.new("myapp")
+      cli.subcommand("run", Jargon.merge(%({
         "type": "object",
         "positional": ["file"],
         "properties": {
@@ -1009,7 +1009,7 @@ describe CLJ do
       global = %({"type": "object", "properties": {"verbose": {"type": "boolean"}}})
       sub = %({"type": "object"})
 
-      merged = CLJ.merge(sub, global)
+      merged = Jargon.merge(sub, global)
       parsed = JSON.parse(merged)
 
       parsed["properties"]["verbose"].should_not be_nil
@@ -1018,7 +1018,7 @@ describe CLJ do
 
   describe "public validate method" do
     it "validates data hash directly" do
-      cli = CLJ.from_json(%({
+      cli = Jargon.from_json(%({
         "type": "object",
         "properties": {
           "name": {"type": "string"},
@@ -1032,7 +1032,7 @@ describe CLJ do
     end
 
     it "returns empty array for valid data" do
-      cli = CLJ.from_json(%({
+      cli = Jargon.from_json(%({
         "type": "object",
         "properties": {
           "name": {"type": "string"}
@@ -1045,7 +1045,7 @@ describe CLJ do
     end
 
     it "validates result object" do
-      cli = CLJ.from_json(%({
+      cli = Jargon.from_json(%({
         "type": "object",
         "properties": {
           "name": {"type": "string"}
@@ -1059,7 +1059,7 @@ describe CLJ do
     end
 
     it "validates subcommand data with subcommand name" do
-      cli = CLJ.new("myapp")
+      cli = Jargon.new("myapp")
       cli.subcommand("run", %({
         "type": "object",
         "properties": {
@@ -1073,7 +1073,7 @@ describe CLJ do
     end
 
     it "validates result from subcommand" do
-      cli = CLJ.new("myapp")
+      cli = Jargon.new("myapp")
       cli.subcommand("run", %({
         "type": "object",
         "properties": {

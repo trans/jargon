@@ -1,4 +1,4 @@
-# CLJ
+# Jargon
 
 A Crystal library that generates CLI interfaces from JSON Schema definitions. Define your data structure once in JSON Schema, get a CLI parser with validation for free.
 
@@ -8,8 +8,8 @@ Add the dependency to your `shard.yml`:
 
 ```yaml
 dependencies:
-  clj:
-    github: trans/clj
+  jargon:
+    github: trans/jargon
 ```
 
 Then run `shards install`.
@@ -17,7 +17,7 @@ Then run `shards install`.
 ## Usage
 
 ```crystal
-require "clj"
+require "jargon"
 
 # Define your schema
 schema = %({
@@ -31,7 +31,7 @@ schema = %({
 })
 
 # Create CLI and parse arguments
-cli = CLJ.from_json(schema, "myapp")
+cli = Jargon.from_json(schema, "myapp")
 result = cli.parse(ARGV)
 
 if result.valid?
@@ -81,7 +81,7 @@ schema = %({
   }
 })
 
-cli = CLJ.from_json(schema)
+cli = Jargon.from_json(schema)
 result = cli.parse(["user.name=John", "user.email=john@example.com"])
 # => {"user": {"name": "John", "email": "john@example.com"}}
 ```
@@ -113,7 +113,7 @@ schema = %({
   "required": ["file"]
 })
 
-cli = CLJ.from_json(schema, "myapp")
+cli = Jargon.from_json(schema, "myapp")
 result = cli.parse(["input.txt", "output.txt", "--verbose"])
 # => {"file": "input.txt", "output": "output.txt", "verbose": true}
 ```
@@ -136,7 +136,7 @@ schema = %({
   }
 })
 
-cli = CLJ.from_json(schema, "myapp")
+cli = Jargon.from_json(schema, "myapp")
 result = cli.parse(["-v", "-n", "5", "-o", "out.txt"])
 # => {"verbose": true, "count": 5, "output": "out.txt"}
 ```
@@ -151,7 +151,7 @@ myapp --verbose --count 5 --output out.txt  # equivalent
 Create CLIs with subcommands, each with their own schema:
 
 ```crystal
-cli = CLJ.new("git")
+cli = Jargon.new("git")
 
 cli.subcommand("clone", %({
   "type": "object",
@@ -194,7 +194,7 @@ git commit -m "Initial commit" -a
 Create nested subcommands by passing a `CLI` instance as the subcommand:
 
 ```crystal
-remote = CLJ.new("remote")
+remote = Jargon.new("remote")
 remote.subcommand("add", %({
   "type": "object",
   "positional": ["name", "url"],
@@ -212,7 +212,7 @@ remote.subcommand("remove", %({
   }
 }))
 
-cli = CLJ.new("git")
+cli = Jargon.new("git")
 cli.subcommand("remote", remote)
 cli.subcommand("status", %({"type": "object", "properties": {}}))
 
@@ -242,7 +242,7 @@ The `result.subcommand` returns the full path as a space-separated string (e.g.,
 Set a default subcommand to use when no subcommand name is given:
 
 ```crystal
-cli = CLJ.new("xerp")
+cli = Jargon.new("xerp")
 
 cli.subcommand("index", %({...}))
 cli.subcommand("query", %({
@@ -267,7 +267,7 @@ Note: If the first argument matches a subcommand name, it's treated as a subcomm
 
 ### Global Options
 
-Use `CLJ.merge` to add common options to all subcommands:
+Use `Jargon.merge` to add common options to all subcommands:
 
 ```crystal
 global = %({
@@ -278,9 +278,9 @@ global = %({
   }
 })
 
-cli = CLJ.new("myapp")
+cli = Jargon.new("myapp")
 
-cli.subcommand("clone", CLJ.merge(%({
+cli.subcommand("clone", Jargon.merge(%({
   "type": "object",
   "positional": ["repo"],
   "properties": {
@@ -289,7 +289,7 @@ cli.subcommand("clone", CLJ.merge(%({
   }
 }), global))
 
-cli.subcommand("push", CLJ.merge(%({
+cli.subcommand("push", Jargon.merge(%({
   "type": "object",
   "properties": {
     "force": {"type": "boolean", "short": "f"}
@@ -380,17 +380,17 @@ schema = %({
 
 ```crystal
 # From JSON string
-cli = CLJ.from_json(json_string, program_name)
+cli = Jargon.from_json(json_string, program_name)
 
 # From file
-cli = CLJ.from_file("schema.json", program_name)
+cli = Jargon.from_file("schema.json", program_name)
 
 # For subcommands (no root schema)
-cli = CLJ.new(program_name)
+cli = Jargon.new(program_name)
 cli.subcommand("name", json_schema_string)
 
 # Merge global options into subcommand schema
-merged = CLJ.merge(subcommand_schema, global_schema)
+merged = Jargon.merge(subcommand_schema, global_schema)
 
 # Parse arguments
 result = cli.parse(ARGV)

@@ -1,8 +1,8 @@
-require "./clj/schema"
-require "./clj/cli"
-require "./clj/result"
+require "./jargon/schema"
+require "./jargon/cli"
+require "./jargon/result"
 
-module CLJ
+module Jargon
   VERSION = "0.2.1"
 
   # Convenience method to create a CLI with just a program name (for subcommand mode)

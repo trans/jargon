@@ -1,4 +1,4 @@
-module CLJ
+module Jargon
   class Property
     enum Type
       String

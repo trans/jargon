@@ -1,2 +1,2 @@
 require "spec"
-require "../src/clj"
+require "../src/jargon"
