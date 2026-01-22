@@ -4,6 +4,18 @@
 
 A Crystal library that generates CLI interfaces from JSON Schema definitions. Define your data structure once in JSON Schema, get a CLI parser with validation for free.
 
+## Features
+
+- **Validation**: Required fields, enum values, type checking
+- **Defaults**: Schema default values are applied automatically
+- **Help text**: Generated from schema descriptions
+- **Positional args**: Non-flag arguments assigned by position
+- **Short flags**: Single-character flag aliases (`-v`, `-n 5`)
+- **Subcommands**: Named sub-parsers with independent schemas
+- **Default subcommand**: Fall back to a subcommand when none specified
+- **Stdin JSON**: Read arguments as JSON from stdin with `-`
+- **$ref support**: Reuse definitions with `$ref: "#/$defs/typename"`
+
 ## Installation
 
 Add the dependency to your `shard.yml`:
@@ -328,54 +340,6 @@ cli.subcommand_key("op")  # default is "subcommand"
 
 ```sh
 echo '{"op": "query", "query_text": "search"}' | xerp -
-```
-
-## Features
-
-- **Validation**: Required fields, enum values, type checking
-- **Defaults**: Schema default values are applied automatically
-- **Help text**: Generated from schema descriptions
-- **Positional args**: Non-flag arguments assigned by position
-- **Short flags**: Single-character flag aliases (`-v`, `-n 5`)
-- **Subcommands**: Named sub-parsers with independent schemas
-- **Default subcommand**: Fall back to a subcommand when none specified
-- **Stdin JSON**: Read arguments as JSON from stdin with `-`
-- **$ref support**: Reuse definitions with `$ref: "#/$defs/typename"`
-
-```crystal
-# Enum validation
-schema = %({
-  "type": "object",
-  "properties": {
-    "color": {"type": "string", "enum": ["red", "green", "blue"]}
-  }
-})
-
-# Default values
-schema = %({
-  "type": "object",
-  "properties": {
-    "format": {"type": "string", "default": "json"}
-  }
-})
-
-# $ref for reusable types
-schema = %({
-  "type": "object",
-  "properties": {
-    "billing": {"$ref": "#/$defs/address"},
-    "shipping": {"$ref": "#/$defs/address"}
-  },
-  "$defs": {
-    "address": {
-      "type": "object",
-      "properties": {
-        "street": {"type": "string"},
-        "city": {"type": "string"}
-      }
-    }
-  }
-})
 ```
 
 ## API
