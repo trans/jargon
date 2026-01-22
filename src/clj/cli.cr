@@ -5,19 +5,19 @@ module CLJ
   class CLI
     getter schema : Schema?
     getter program_name : String
-    getter subcommands : Hash(String, Schema)
+    getter subcommands : Hash(String, Schema | CLI)
     getter default_subcommand : String?
     getter subcommand_key : String
 
     def initialize(@schema : Schema, @program_name : String = "cli")
-      @subcommands = {} of String => Schema
+      @subcommands = {} of String => Schema | CLI
       @default_subcommand = nil
       @subcommand_key = "subcommand"
     end
 
     def initialize(@program_name : String)
       @schema = nil
-      @subcommands = {} of String => Schema
+      @subcommands = {} of String => Schema | CLI
       @default_subcommand = nil
       @subcommand_key = "subcommand"
     end
@@ -27,6 +27,10 @@ module CLJ
       when String then Schema.from_json(schema)
       else             schema
       end
+    end
+
+    def subcommand(name : String, cli : CLI)
+      @subcommands[name] = cli
     end
 
     def default_subcommand(name : String)
@@ -56,17 +60,32 @@ module CLJ
       end
 
       # Check if first arg matches a known subcommand
-      if args.any? && (subcmd_schema = @subcommands[args[0]]?)
+      if args.any? && (subcmd = @subcommands[args[0]]?)
         subcmd_name = args[0]
-        result = parse_flat(args[1..], subcmd_schema, input)
-        return Result.new(result.data, result.errors, subcmd_name)
+        case subcmd
+        when CLI
+          result = subcmd.parse(args[1..], input)
+          # Prepend parent subcommand name
+          full_subcmd = result.subcommand ? "#{subcmd_name} #{result.subcommand}" : subcmd_name
+          return Result.new(result.data, result.errors, full_subcmd)
+        when Schema
+          result = parse_flat(args[1..], subcmd, input)
+          return Result.new(result.data, result.errors, subcmd_name)
+        end
       end
 
       # Fall back to default subcommand if set
       if default = @default_subcommand
-        if subcmd_schema = @subcommands[default]?
-          result = parse_flat(args, subcmd_schema, input)
-          return Result.new(result.data, result.errors, default)
+        if subcmd = @subcommands[default]?
+          case subcmd
+          when CLI
+            result = subcmd.parse(args, input)
+            full_subcmd = result.subcommand ? "#{default} #{result.subcommand}" : default
+            return Result.new(result.data, result.errors, full_subcmd)
+          when Schema
+            result = parse_flat(args, subcmd, input)
+            return Result.new(result.data, result.errors, default)
+          end
         end
       end
 
@@ -93,15 +112,25 @@ module CLJ
         return Result.new({} of String => JSON::Any, ["No '#{@subcommand_key}' specified in JSON"])
       end
 
-      unless subcmd_schema = @subcommands[subcmd_name]?
+      unless subcmd = @subcommands[subcmd_name]?
         return Result.new({} of String => JSON::Any, ["Unknown subcommand: #{subcmd_name}"])
       end
 
-      errors = [] of String
-      apply_defaults(data, subcmd_schema)
-      validate_data(data, errors, subcmd_schema)
+      case subcmd
+      when CLI
+        # For nested CLI, pass remaining JSON to it via stdin simulation
+        nested_input = IO::Memory.new(data.to_json)
+        result = subcmd.parse(["-"], nested_input)
+        full_subcmd = result.subcommand ? "#{subcmd_name} #{result.subcommand}" : subcmd_name
+        return Result.new(result.data, result.errors, full_subcmd)
+      when Schema
+        errors = [] of String
+        apply_defaults(data, subcmd)
+        validate_data(data, errors, subcmd)
+        return Result.new(data, errors, subcmd_name)
+      end
 
-      Result.new(data, errors, subcmd_name)
+      Result.new({} of String => JSON::Any, ["Unknown subcommand: #{subcmd_name}"])
     rescue ex : JSON::ParseException
       Result.new({} of String => JSON::Any, ["Invalid JSON from stdin: #{ex.message}"])
     end
@@ -227,15 +256,23 @@ module CLJ
 
     # Validate data against a schema, returning any errors.
     # If no schema is provided, uses the CLI's root schema.
-    # For subcommand validation, pass the subcommand name.
+    # For subcommand validation, pass the subcommand name (space-separated for nested).
     def validate(data : Hash(String, JSON::Any), subcommand : String? = nil) : Array(String)
       errors = [] of String
-      schema = if cmd = subcommand
-        @subcommands[cmd]? || raise ArgumentError.new("Unknown subcommand: #{cmd}")
+      if cmd = subcommand
+        parts = cmd.split(" ", 2)
+        subcmd = @subcommands[parts[0]]? || raise ArgumentError.new("Unknown subcommand: #{parts[0]}")
+        case subcmd
+        when CLI
+          # Delegate to nested CLI with remaining subcommand path
+          return subcmd.validate(data, parts[1]?)
+        when Schema
+          validate_data(data, errors, subcmd)
+        end
       else
-        @schema || raise ArgumentError.new("No schema available")
+        schema = @schema || raise ArgumentError.new("No schema available")
+        validate_data(data, errors, schema)
       end
-      validate_data(data, errors, schema)
       errors
     end
 
@@ -245,8 +282,16 @@ module CLJ
 
     private def help_with_subcommands : String
       lines = ["Usage: #{program_name} <command> [options]", "", "Commands:"]
-      @subcommands.each do |name, _|
-        lines << "  #{name}"
+      @subcommands.each do |name, subcmd|
+        case subcmd
+        when CLI
+          lines << "  #{name}"
+          subcmd.subcommands.each_key do |sub_name|
+            lines << "    #{sub_name}"
+          end
+        else
+          lines << "  #{name}"
+        end
       end
       lines << ""
       lines << "Run '#{program_name} <command> --help' for command-specific options."

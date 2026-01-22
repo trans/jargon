@@ -815,6 +815,127 @@ describe CLJ do
     end
   end
 
+  describe "nested subcommands" do
+    it "parses nested subcommand" do
+      remote = CLJ.new("remote")
+      remote.subcommand("add", %({
+        "type": "object",
+        "positional": ["name", "url"],
+        "properties": {
+          "name": {"type": "string"},
+          "url": {"type": "string"}
+        },
+        "required": ["name", "url"]
+      }))
+      remote.subcommand("remove", %({
+        "type": "object",
+        "positional": ["name"],
+        "properties": {
+          "name": {"type": "string"}
+        },
+        "required": ["name"]
+      }))
+
+      cli = CLJ.new("git")
+      cli.subcommand("remote", remote)
+      cli.subcommand("status", %({"type": "object", "properties": {}}))
+
+      result = cli.parse(["remote", "add", "origin", "https://github.com/user/repo"])
+      result.valid?.should be_true
+      result.subcommand.should eq("remote add")
+      result["name"].as_s.should eq("origin")
+      result["url"].as_s.should eq("https://github.com/user/repo")
+    end
+
+    it "handles deeply nested subcommands" do
+      level2 = CLJ.new("level2")
+      level2.subcommand("action", %({
+        "type": "object",
+        "properties": {
+          "flag": {"type": "boolean"}
+        }
+      }))
+
+      level1 = CLJ.new("level1")
+      level1.subcommand("level2", level2)
+
+      cli = CLJ.new("app")
+      cli.subcommand("level1", level1)
+
+      result = cli.parse(["level1", "level2", "action", "--flag"])
+      result.valid?.should be_true
+      result.subcommand.should eq("level1 level2 action")
+      result["flag"].as_bool.should be_true
+    end
+
+    it "mixes nested CLI and schema subcommands" do
+      remote = CLJ.new("remote")
+      remote.subcommand("add", %({"type": "object", "properties": {"name": {"type": "string"}}}))
+
+      cli = CLJ.new("git")
+      cli.subcommand("remote", remote)
+      cli.subcommand("status", %({"type": "object", "properties": {"short": {"type": "boolean", "short": "s"}}}))
+
+      result1 = cli.parse(["remote", "add", "name=origin"])
+      result1.valid?.should be_true
+      result1.subcommand.should eq("remote add")
+
+      result2 = cli.parse(["status", "-s"])
+      result2.valid?.should be_true
+      result2.subcommand.should eq("status")
+      result2["short"].as_bool.should be_true
+    end
+
+    it "uses default subcommand in nested CLI" do
+      remote = CLJ.new("remote")
+      remote.subcommand("list", %({"type": "object", "properties": {"verbose": {"type": "boolean"}}}))
+      remote.subcommand("add", %({"type": "object", "properties": {"name": {"type": "string"}}}))
+      remote.default_subcommand("list")
+
+      cli = CLJ.new("git")
+      cli.subcommand("remote", remote)
+
+      result = cli.parse(["remote", "--verbose"])
+      result.valid?.should be_true
+      result.subcommand.should eq("remote list")
+      result["verbose"].as_bool.should be_true
+    end
+
+    it "validates nested subcommand data" do
+      remote = CLJ.new("remote")
+      remote.subcommand("add", %({
+        "type": "object",
+        "properties": {"name": {"type": "string"}},
+        "required": ["name"]
+      }))
+
+      cli = CLJ.new("git")
+      cli.subcommand("remote", remote)
+
+      errors = cli.validate({"name" => JSON::Any.new("origin")}, "remote add")
+      errors.should be_empty
+
+      errors = cli.validate({} of String => JSON::Any, "remote add")
+      errors.should contain("Missing required field: name")
+    end
+
+    it "shows nested commands in help" do
+      remote = CLJ.new("remote")
+      remote.subcommand("add", %({"type": "object", "properties": {}}))
+      remote.subcommand("remove", %({"type": "object", "properties": {}}))
+
+      cli = CLJ.new("git")
+      cli.subcommand("remote", remote)
+      cli.subcommand("status", %({"type": "object", "properties": {}}))
+
+      help = cli.help
+      help.should contain("remote")
+      help.should contain("add")
+      help.should contain("remove")
+      help.should contain("status")
+    end
+  end
+
   describe "schema merge" do
     it "merges global properties into subcommand schema" do
       global = %({

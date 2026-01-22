@@ -189,6 +189,54 @@ git clone https://github.com/user/repo -d 1
 git commit -m "Initial commit" -a
 ```
 
+### Nested Subcommands
+
+Create nested subcommands by passing a `CLI` instance as the subcommand:
+
+```crystal
+remote = CLJ.new("remote")
+remote.subcommand("add", %({
+  "type": "object",
+  "positional": ["name", "url"],
+  "properties": {
+    "name": {"type": "string"},
+    "url": {"type": "string"}
+  },
+  "required": ["name", "url"]
+}))
+remote.subcommand("remove", %({
+  "type": "object",
+  "positional": ["name"],
+  "properties": {
+    "name": {"type": "string"}
+  }
+}))
+
+cli = CLJ.new("git")
+cli.subcommand("remote", remote)
+cli.subcommand("status", %({"type": "object", "properties": {}}))
+
+result = cli.parse(ARGV)
+
+case result.subcommand
+when "remote add"
+  name = result["name"].as_s
+  url = result["url"].as_s
+when "remote remove"
+  name = result["name"].as_s
+when "status"
+  # ...
+end
+```
+
+```sh
+git remote add origin https://github.com/user/repo
+git remote remove origin
+git status
+```
+
+The `result.subcommand` returns the full path as a space-separated string (e.g., `"remote add"`).
+
 ### Default Subcommand
 
 Set a default subcommand to use when no subcommand name is given:
