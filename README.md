@@ -217,6 +217,20 @@ xerp "search term" -n 5
 
 Note: If the first argument matches a subcommand name, it's treated as a subcommand, not as input to the default. Use the explicit form if you need to search for a term that matches a subcommand name.
 
+### JSON from Stdin
+
+Use `-` to read JSON input from stdin:
+
+```sh
+# JSON with subcommand field
+echo '{"subcommand": "query", "query_text": "search term", "top": 5}' | xerp -
+
+# JSON args for explicit subcommand
+echo '{"result_id": "abc123", "useful": true}' | xerp mark -
+```
+
+If no `subcommand` field is present in `xerp -`, the default subcommand is used (if set).
+
 ## Features
 
 - **Validation**: Required fields, enum values, type checking
@@ -226,6 +240,7 @@ Note: If the first argument matches a subcommand name, it's treated as a subcomm
 - **Short flags**: Single-character flag aliases (`-v`, `-n 5`)
 - **Subcommands**: Named sub-parsers with independent schemas
 - **Default subcommand**: Fall back to a subcommand when none specified
+- **Stdin JSON**: Read arguments as JSON from stdin with `-`
 - **$ref support**: Reuse definitions with `$ref: "#/$defs/typename"`
 
 ```crystal

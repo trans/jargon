@@ -668,6 +668,123 @@ describe CLJ do
     end
   end
 
+  describe "stdin JSON input" do
+    it "parses JSON from stdin with subcommand in JSON" do
+      cli = CLJ.new("xerp")
+      cli.subcommand("query", %({
+        "type": "object",
+        "properties": {
+          "query_text": {"type": "string"},
+          "top": {"type": "integer", "default": 10}
+        },
+        "required": ["query_text"]
+      }))
+
+      input = IO::Memory.new(%({"subcommand": "query", "query_text": "search term", "top": 5}))
+      result = cli.parse(["-"], input)
+
+      result.valid?.should be_true
+      result.subcommand.should eq("query")
+      result["query_text"].as_s.should eq("search term")
+      result["top"].as_i64.should eq(5)
+    end
+
+    it "parses JSON from stdin for explicit subcommand" do
+      cli = CLJ.new("xerp")
+      cli.subcommand("mark", %({
+        "type": "object",
+        "properties": {
+          "result_id": {"type": "string"},
+          "useful": {"type": "boolean"}
+        },
+        "required": ["result_id"]
+      }))
+
+      input = IO::Memory.new(%({"result_id": "abc123", "useful": true}))
+      result = cli.parse(["mark", "-"], input)
+
+      result.valid?.should be_true
+      result.subcommand.should eq("mark")
+      result["result_id"].as_s.should eq("abc123")
+      result["useful"].as_bool.should be_true
+    end
+
+    it "uses default subcommand when not specified in JSON" do
+      cli = CLJ.new("xerp")
+      cli.subcommand("query", %({
+        "type": "object",
+        "properties": {
+          "query_text": {"type": "string"}
+        },
+        "required": ["query_text"]
+      }))
+      cli.default_subcommand("query")
+
+      input = IO::Memory.new(%({"query_text": "search term"}))
+      result = cli.parse(["-"], input)
+
+      result.valid?.should be_true
+      result.subcommand.should eq("query")
+      result["query_text"].as_s.should eq("search term")
+    end
+
+    it "applies defaults to JSON input" do
+      cli = CLJ.new("xerp")
+      cli.subcommand("query", %({
+        "type": "object",
+        "properties": {
+          "query_text": {"type": "string"},
+          "top": {"type": "integer", "default": 10}
+        }
+      }))
+
+      input = IO::Memory.new(%({"query_text": "test"}))
+      result = cli.parse(["query", "-"], input)
+
+      result.valid?.should be_true
+      result["top"].as_i64.should eq(10)
+    end
+
+    it "validates JSON input" do
+      cli = CLJ.new("xerp")
+      cli.subcommand("mark", %({
+        "type": "object",
+        "properties": {
+          "result_id": {"type": "string"}
+        },
+        "required": ["result_id"]
+      }))
+
+      input = IO::Memory.new(%({}))
+      result = cli.parse(["mark", "-"], input)
+
+      result.valid?.should be_false
+      result.errors.should contain("Missing required field: result_id")
+    end
+
+    it "errors on invalid JSON" do
+      cli = CLJ.new("xerp")
+      cli.subcommand("query", %({"type": "object", "properties": {}}))
+
+      input = IO::Memory.new("not valid json")
+      result = cli.parse(["query", "-"], input)
+
+      result.valid?.should be_false
+      result.errors.first.should contain("Invalid JSON")
+    end
+
+    it "errors when no subcommand in JSON and no default" do
+      cli = CLJ.new("xerp")
+      cli.subcommand("query", %({"type": "object", "properties": {}}))
+
+      input = IO::Memory.new(%({"foo": "bar"}))
+      result = cli.parse(["-"], input)
+
+      result.valid?.should be_false
+      result.errors.should contain("No subcommand specified in JSON")
+    end
+  end
+
   describe "public validate method" do
     it "validates data hash directly" do
       cli = CLJ.from_json(%({

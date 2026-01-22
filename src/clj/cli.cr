@@ -31,25 +31,34 @@ module CLJ
     end
 
     def parse(args : Array(String)) : Result
+      parse(args, STDIN)
+    end
+
+    def parse(args : Array(String), input : IO) : Result
       if @subcommands.any?
-        parse_with_subcommands(args)
+        parse_with_subcommands(args, input)
       else
-        parse_flat(args, @schema.not_nil!)
+        parse_flat(args, @schema.not_nil!, input)
       end
     end
 
-    private def parse_with_subcommands(args : Array(String)) : Result
+    private def parse_with_subcommands(args : Array(String), input : IO) : Result
+      # Handle "xerp -" - full JSON with subcommand field
+      if args == ["-"]
+        return parse_from_stdin_full(input)
+      end
+
       # Check if first arg matches a known subcommand
       if args.any? && (subcmd_schema = @subcommands[args[0]]?)
         subcmd_name = args[0]
-        result = parse_flat(args[1..], subcmd_schema)
+        result = parse_flat(args[1..], subcmd_schema, input)
         return Result.new(result.data, result.errors, subcmd_name)
       end
 
       # Fall back to default subcommand if set
       if default = @default_subcommand
         if subcmd_schema = @subcommands[default]?
-          result = parse_flat(args, subcmd_schema)
+          result = parse_flat(args, subcmd_schema, input)
           return Result.new(result.data, result.errors, default)
         end
       end
@@ -62,7 +71,54 @@ module CLJ
       end
     end
 
-    private def parse_flat(args : Array(String), schema : Schema) : Result
+    private def parse_from_stdin_full(input : IO) : Result
+      json_str = input.gets_to_end
+      json = JSON.parse(json_str)
+      data = json.as_h? || {} of String => JSON::Any
+
+      # Extract subcommand from JSON
+      subcmd_name = data.delete("subcommand").try(&.as_s?)
+
+      # Determine which subcommand to use
+      subcmd_name ||= @default_subcommand
+
+      unless subcmd_name
+        return Result.new({} of String => JSON::Any, ["No subcommand specified in JSON"])
+      end
+
+      unless subcmd_schema = @subcommands[subcmd_name]?
+        return Result.new({} of String => JSON::Any, ["Unknown subcommand: #{subcmd_name}"])
+      end
+
+      errors = [] of String
+      apply_defaults(data, subcmd_schema)
+      validate_data(data, errors, subcmd_schema)
+
+      Result.new(data, errors, subcmd_name)
+    rescue ex : JSON::ParseException
+      Result.new({} of String => JSON::Any, ["Invalid JSON from stdin: #{ex.message}"])
+    end
+
+    private def parse_from_stdin_args(input : IO, schema : Schema) : Result
+      json_str = input.gets_to_end
+      json = JSON.parse(json_str)
+      data = json.as_h? || {} of String => JSON::Any
+
+      errors = [] of String
+      apply_defaults(data, schema)
+      validate_data(data, errors, schema)
+
+      Result.new(data, errors)
+    rescue ex : JSON::ParseException
+      Result.new({} of String => JSON::Any, ["Invalid JSON from stdin: #{ex.message}"])
+    end
+
+    private def parse_flat(args : Array(String), schema : Schema, input : IO = STDIN) : Result
+      # Handle "xerp mark -" - JSON args for this schema
+      if args == ["-"]
+        return parse_from_stdin_args(input, schema)
+      end
+
       data = {} of String => JSON::Any
       errors = [] of String
       positional_names = schema.positional
