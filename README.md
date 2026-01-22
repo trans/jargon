@@ -1,5 +1,7 @@
 # Jargon
 
+*Define your CLI jargon with JSON Schema.*
+
 A Crystal library that generates CLI interfaces from JSON Schema definitions. Define your data structure once in JSON Schema, get a CLI parser with validation for free.
 
 ## Installation
@@ -151,19 +153,19 @@ myapp --verbose --count 5 --output out.txt  # equivalent
 Create CLIs with subcommands, each with their own schema:
 
 ```crystal
-cli = Jargon.new("git")
+cli = Jargon.new("myapp")
 
-cli.subcommand("clone", %({
+cli.subcommand("fetch", %({
   "type": "object",
-  "positional": ["repository"],
+  "positional": ["url"],
   "properties": {
-    "repository": {"type": "string", "description": "Repository URL"},
+    "url": {"type": "string", "description": "Resource URL"},
     "depth": {"type": "integer", "short": "d"}
   },
-  "required": ["repository"]
+  "required": ["url"]
 }))
 
-cli.subcommand("commit", %({
+cli.subcommand("save", %({
   "type": "object",
   "properties": {
     "message": {"type": "string", "short": "m"},
@@ -175,18 +177,18 @@ cli.subcommand("commit", %({
 result = cli.parse(ARGV)
 
 case result.subcommand
-when "clone"
-  repo = result["repository"].as_s
+when "fetch"
+  url = result["url"].as_s
   depth = result["depth"]?.try(&.as_i64)
-when "commit"
+when "save"
   message = result["message"].as_s
   all = result["all"]?.try(&.as_bool) || false
 end
 ```
 
 ```sh
-git clone https://github.com/user/repo -d 1
-git commit -m "Initial commit" -a
+myapp fetch https://example.com/resource -d 1
+myapp save -m "Updated config" -a
 ```
 
 ### Nested Subcommands
@@ -194,48 +196,48 @@ git commit -m "Initial commit" -a
 Create nested subcommands by passing a `CLI` instance as the subcommand:
 
 ```crystal
-remote = Jargon.new("remote")
-remote.subcommand("add", %({
+config = Jargon.new("config")
+config.subcommand("set", %({
   "type": "object",
-  "positional": ["name", "url"],
+  "positional": ["key", "value"],
   "properties": {
-    "name": {"type": "string"},
-    "url": {"type": "string"}
+    "key": {"type": "string"},
+    "value": {"type": "string"}
   },
-  "required": ["name", "url"]
+  "required": ["key", "value"]
 }))
-remote.subcommand("remove", %({
+config.subcommand("get", %({
   "type": "object",
-  "positional": ["name"],
+  "positional": ["key"],
   "properties": {
-    "name": {"type": "string"}
+    "key": {"type": "string"}
   }
 }))
 
-cli = Jargon.new("git")
-cli.subcommand("remote", remote)
+cli = Jargon.new("myapp")
+cli.subcommand("config", config)
 cli.subcommand("status", %({"type": "object", "properties": {}}))
 
 result = cli.parse(ARGV)
 
 case result.subcommand
-when "remote add"
-  name = result["name"].as_s
-  url = result["url"].as_s
-when "remote remove"
-  name = result["name"].as_s
+when "config set"
+  key = result["key"].as_s
+  value = result["value"].as_s
+when "config get"
+  key = result["key"].as_s
 when "status"
   # ...
 end
 ```
 
 ```sh
-git remote add origin https://github.com/user/repo
-git remote remove origin
-git status
+myapp config set api_url https://api.example.com
+myapp config get api_url
+myapp status
 ```
 
-The `result.subcommand` returns the full path as a space-separated string (e.g., `"remote add"`).
+The `result.subcommand` returns the full path as a space-separated string (e.g., `"config set"`).
 
 ### Default Subcommand
 
@@ -280,16 +282,16 @@ global = %({
 
 cli = Jargon.new("myapp")
 
-cli.subcommand("clone", Jargon.merge(%({
+cli.subcommand("fetch", Jargon.merge(%({
   "type": "object",
-  "positional": ["repo"],
+  "positional": ["url"],
   "properties": {
-    "repo": {"type": "string"},
+    "url": {"type": "string"},
     "depth": {"type": "integer", "short": "d"}
   }
 }), global))
 
-cli.subcommand("push", Jargon.merge(%({
+cli.subcommand("sync", Jargon.merge(%({
   "type": "object",
   "properties": {
     "force": {"type": "boolean", "short": "f"}
@@ -298,8 +300,8 @@ cli.subcommand("push", Jargon.merge(%({
 ```
 
 ```sh
-myapp clone https://github.com/user/repo -v
-myapp push --force --config myconfig.json
+myapp fetch https://example.com/data -v
+myapp sync --force --config myconfig.json
 ```
 
 Subcommand properties take precedence if there's a conflict with global properties.
