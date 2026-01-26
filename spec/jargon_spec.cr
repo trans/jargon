@@ -1205,6 +1205,72 @@ describe Jargon do
       result.valid?.should be_false
       result.errors.should contain("No 'op' specified in JSON")
     end
+
+    it "applies user defaults to stdin JSON input" do
+      cli = Jargon.new("xerp")
+      cli.subcommand("query", %({
+        "type": "object",
+        "properties": {
+          "query_text": {"type": "string"},
+          "top": {"type": "integer"}
+        }
+      }))
+
+      defaults = {"top" => JSON::Any.new(25_i64)}
+      input = IO::Memory.new(%({"query_text": "search"}))
+      result = cli.parse(["query", "-"], input, defaults: defaults)
+
+      result.valid?.should be_true
+      result["query_text"].as_s.should eq("search")
+      result["top"].as_i64.should eq(25)  # From defaults
+    end
+
+    it "applies env vars to stdin JSON input" do
+      ENV["TEST_STDIN_HOST"] = "env-host"
+      begin
+        cli = Jargon.new("myapp")
+        cli.subcommand("run", %({
+          "type": "object",
+          "properties": {
+            "host": {"type": "string", "env": "TEST_STDIN_HOST"},
+            "port": {"type": "integer"}
+          }
+        }))
+
+        input = IO::Memory.new(%({"port": 8080}))
+        result = cli.parse(["run", "-"], input)
+
+        result.valid?.should be_true
+        result["host"].as_s.should eq("env-host")  # From env var
+        result["port"].as_i64.should eq(8080)
+      ensure
+        ENV.delete("TEST_STDIN_HOST")
+      end
+    end
+
+    it "stdin JSON values override defaults and env vars" do
+      ENV["TEST_STDIN_PORT"] = "9000"
+      begin
+        cli = Jargon.new("myapp")
+        cli.subcommand("run", %({
+          "type": "object",
+          "properties": {
+            "host": {"type": "string"},
+            "port": {"type": "integer", "env": "TEST_STDIN_PORT"}
+          }
+        }))
+
+        defaults = {"host" => JSON::Any.new("default-host")}
+        input = IO::Memory.new(%({"host": "json-host", "port": 3000}))
+        result = cli.parse(["run", "-"], input, defaults: defaults)
+
+        result.valid?.should be_true
+        result["host"].as_s.should eq("json-host")  # JSON wins over defaults
+        result["port"].as_i64.should eq(3000)       # JSON wins over env var
+      ensure
+        ENV.delete("TEST_STDIN_PORT")
+      end
+    end
   end
 
   describe "nested subcommands" do

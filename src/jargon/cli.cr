@@ -70,7 +70,7 @@ module Jargon
     private def parse_with_subcommands(args : Array(String), input : IO, defaults : JSON::Any | Hash(String, JSON::Any) | Nil = nil) : Result
       # Handle "xerp -" - full JSON with subcommand field
       if args == ["-"]
-        return parse_from_stdin_full(input)
+        return parse_from_stdin_full(input, defaults)
       end
 
       # Check for top-level help (--help/-h before any subcommand)
@@ -134,7 +134,7 @@ module Jargon
       end
     end
 
-    private def parse_from_stdin_full(input : IO) : Result
+    private def parse_from_stdin_full(input : IO, defaults : JSON::Any | Hash(String, JSON::Any) | Nil) : Result
       json_str = input.gets_to_end
       json = JSON.parse(json_str)
       data = json.as_h? || {} of String => JSON::Any
@@ -160,11 +160,13 @@ module Jargon
       when CLI
         # For nested CLI, pass remaining JSON to it via stdin simulation
         nested_input = IO::Memory.new(data.to_json)
-        result = subcmd.parse(["-"], nested_input)
+        result = subcmd.parse(["-"], nested_input, defaults: defaults)
         full_subcmd = result.subcommand ? "#{subcmd_name} #{result.subcommand}" : subcmd_name
         return Result.new(result.data, result.errors, full_subcmd)
       when Schema
         errors = [] of String
+        apply_env_vars(data, errors, subcmd)
+        apply_user_defaults(data, defaults)
         apply_defaults(data, subcmd)
         validate_data(data, errors, subcmd)
         return Result.new(data, errors, subcmd_name)
@@ -175,12 +177,14 @@ module Jargon
       Result.new({} of String => JSON::Any, ["Invalid JSON from stdin: #{ex.message}"])
     end
 
-    private def parse_from_stdin_args(input : IO, schema : Schema) : Result
+    private def parse_from_stdin_args(input : IO, schema : Schema, defaults : JSON::Any | Hash(String, JSON::Any) | Nil) : Result
       json_str = input.gets_to_end
       json = JSON.parse(json_str)
       data = json.as_h? || {} of String => JSON::Any
 
       errors = [] of String
+      apply_env_vars(data, errors, schema)
+      apply_user_defaults(data, defaults)
       apply_defaults(data, schema)
       validate_data(data, errors, schema)
 
@@ -192,7 +196,7 @@ module Jargon
     private def parse_flat(args : Array(String), schema : Schema, input : IO = STDIN, subcommand_path : String? = nil, defaults : JSON::Any | Hash(String, JSON::Any) | Nil = nil) : Result
       # Handle "xerp mark -" - JSON args for this schema
       if args == ["-"]
-        return parse_from_stdin_args(input, schema)
+        return parse_from_stdin_args(input, schema, defaults)
       end
 
       # Check for help flags early
@@ -323,12 +327,7 @@ module Jargon
       apply_env_vars(data, errors, schema)
 
       # Apply user-provided defaults (e.g., from config file) - CLI and env vars take precedence
-      if defaults
-        default_hash = defaults.is_a?(JSON::Any) ? defaults.as_h : defaults
-        default_hash.each do |key, value|
-          data[key] = value unless data.has_key?(key)
-        end
-      end
+      apply_user_defaults(data, defaults)
 
       apply_defaults(data, schema)
       validate_data(data, errors, schema)
@@ -557,6 +556,14 @@ module Jargon
         coerced, coerce_error = coerce_value(name, env_value, schema)
         errors << coerce_error if coerce_error
         data[name] = coerced
+      end
+    end
+
+    private def apply_user_defaults(data : Hash(String, JSON::Any), defaults : JSON::Any | Hash(String, JSON::Any) | Nil)
+      return unless defaults
+      default_hash = defaults.is_a?(JSON::Any) ? defaults.as_h : defaults
+      default_hash.each do |key, value|
+        data[key] = value unless data.has_key?(key)
       end
     end
 
