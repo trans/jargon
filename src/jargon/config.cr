@@ -49,12 +49,8 @@ module Jargon
       merged = {} of String => JSON::Any
       config_paths.reverse.each do |path|
         if File.exists?(path)
-          begin
-            if data = parse_config_file(path).try(&.as_h?)
-              merged.merge!(data)
-            end
-          rescue
-            # Skip invalid files
+          if data = parse_config_file(path).try(&.as_h?)
+            merged.merge!(data)
           end
         end
       end
@@ -71,7 +67,8 @@ module Jargon
       else
         nil
       end
-    rescue
+    rescue ex
+      STDERR.puts "Warning: Failed to parse config file '#{path}': #{ex.message}"
       nil
     end
   end

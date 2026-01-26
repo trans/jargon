@@ -2259,8 +2259,9 @@ describe Jargon do
 
       begin
         cli = Jargon.from_json(%({"type": "object", "properties": {}}), "testbad")
+        # Returns nil and prints warning to STDERR
         config = cli.load_config
-        config.should be_nil  # Invalid file is skipped
+        config.should be_nil
       ensure
         File.delete("./.config/testbad.json")
       end
@@ -2272,8 +2273,9 @@ describe Jargon do
 
       begin
         cli = Jargon.from_json(%({"type": "object", "properties": {}}), "testbadyaml")
+        # Returns nil and prints warning to STDERR
         config = cli.load_config
-        config.should be_nil  # Invalid file is skipped
+        config.should be_nil
       ensure
         File.delete("./.config/testbadyaml.yaml")
       end
