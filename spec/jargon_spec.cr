@@ -1934,6 +1934,104 @@ describe Jargon do
     end
   end
 
+  describe "load_config" do
+    it "returns config_paths in correct order" do
+      cli = Jargon.from_json(%({"type": "object", "properties": {}}), "myapp")
+      paths = cli.config_paths
+
+      paths[0].should eq("./.config/myapp.json")
+      paths[1].should eq("./.config/myapp/config.json")
+      paths[2].should contain("myapp.json")
+      paths[3].should contain("myapp/config.json")
+    end
+
+    it "loads config from project .config directory" do
+      # Create temp config
+      Dir.mkdir_p("./.config")
+      File.write("./.config/testapp.json", %({"host": "from-config", "port": 9000}))
+
+      begin
+        cli = Jargon.from_json(%({
+          "type": "object",
+          "properties": {
+            "host": {"type": "string"},
+            "port": {"type": "integer"}
+          }
+        }), "testapp")
+
+        config = cli.load_config
+        config.should_not be_nil
+        config.not_nil!["host"].as_s.should eq("from-config")
+        config.not_nil!["port"].as_i.should eq(9000)
+      ensure
+        File.delete("./.config/testapp.json")
+      end
+    end
+
+    it "returns nil when no config found" do
+      cli = Jargon.from_json(%({"type": "object", "properties": {}}), "nonexistent-app-xyz")
+      cli.load_config.should be_nil
+    end
+
+    it "integrates with defaults parameter" do
+      Dir.mkdir_p("./.config")
+      File.write("./.config/testapp2.json", %({"verbose": true, "count": 5}))
+
+      begin
+        cli = Jargon.from_json(%({
+          "type": "object",
+          "properties": {
+            "verbose": {"type": "boolean"},
+            "count": {"type": "integer"}
+          }
+        }), "testapp2")
+
+        config = cli.load_config
+        result = cli.parse(["--count", "10"], defaults: config)
+
+        result["verbose"].as_bool.should be_true  # From config
+        result["count"].as_i64.should eq(10)      # CLI overrides
+      ensure
+        File.delete("./.config/testapp2.json")
+      end
+    end
+
+    it "merges configs with merge: true (project wins)" do
+      xdg_config = ENV["XDG_CONFIG_HOME"]? || Path.home.join(".config").to_s
+
+      # Create user config
+      Dir.mkdir_p("#{xdg_config}/testapp3")
+      File.write("#{xdg_config}/testapp3/config.json", %({"host": "user-host", "port": 8080, "user_only": "yes"}))
+
+      # Create project config (should override user for shared keys)
+      Dir.mkdir_p("./.config")
+      File.write("./.config/testapp3.json", %({"host": "project-host", "project_only": "yes"}))
+
+      begin
+        cli = Jargon.from_json(%({
+          "type": "object",
+          "properties": {
+            "host": {"type": "string"},
+            "port": {"type": "integer"},
+            "user_only": {"type": "string"},
+            "project_only": {"type": "string"}
+          }
+        }), "testapp3")
+
+        config = cli.load_config(merge: true)
+        config.should_not be_nil
+        config.not_nil!["host"].as_s.should eq("project-host")    # Project wins
+        config.not_nil!["port"].as_i.should eq(8080)              # From user
+        config.not_nil!["user_only"].as_s.should eq("yes")        # From user
+        config.not_nil!["project_only"].as_s.should eq("yes")     # From project
+      ensure
+        File.delete("./.config/testapp3.json")
+        File.delete("#{xdg_config}/testapp3/config.json")
+        Dir.delete("#{xdg_config}/testapp3") rescue nil
+      end
+    end
+  end
+
   describe "defaults parameter" do
     it "uses defaults when CLI arg not provided" do
       cli = Jargon.from_json(%({

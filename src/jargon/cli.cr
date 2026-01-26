@@ -53,6 +53,62 @@ module Jargon
       end
     end
 
+    # Load config from standard locations.
+    # Paths searched (in order):
+    # 1. ./.config/{program_name}.json (project local, flat)
+    # 2. ./.config/{program_name}/config.json (project local, directory)
+    # 3. $XDG_CONFIG_HOME/{program_name}.json (user global, flat)
+    # 4. $XDG_CONFIG_HOME/{program_name}/config.json (user global, directory)
+    #
+    # With merge: true (default), merges all configs found (project wins over user).
+    # With merge: false, returns first config found.
+    # Returns nil if no config file found.
+    def load_config(*, merge : Bool = true) : JSON::Any?
+      if merge
+        load_config_merged
+      else
+        load_config_first
+      end
+    end
+
+    private def load_config_first : JSON::Any?
+      config_paths.each do |path|
+        if File.exists?(path)
+          return JSON.parse(File.read(path))
+        end
+      end
+      nil
+    rescue ex : JSON::ParseException
+      nil
+    end
+
+    private def load_config_merged : JSON::Any?
+      # Load in reverse order (user first, project last) so project wins
+      merged = {} of String => JSON::Any
+      config_paths.reverse.each do |path|
+        if File.exists?(path)
+          begin
+            data = JSON.parse(File.read(path)).as_h
+            merged.merge!(data)
+          rescue ex : JSON::ParseException
+            # Skip invalid JSON files
+          end
+        end
+      end
+      merged.empty? ? nil : JSON::Any.new(merged)
+    end
+
+    # Returns the list of config paths that would be searched
+    def config_paths : Array(String)
+      xdg_config = ENV["XDG_CONFIG_HOME"]? || Path.home.join(".config").to_s
+      [
+        "./.config/#{@program_name}.json",
+        "./.config/#{@program_name}/config.json",
+        "#{xdg_config}/#{@program_name}.json",
+        "#{xdg_config}/#{@program_name}/config.json",
+      ]
+    end
+
     private def parse_with_subcommands(args : Array(String), input : IO, defaults : JSON::Any | Hash(String, JSON::Any) | Nil = nil) : Result
       # Handle "xerp -" - full JSON with subcommand field
       if args == ["-"]
