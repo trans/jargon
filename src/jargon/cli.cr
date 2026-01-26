@@ -212,19 +212,47 @@ module Jargon
         arg = args[i]
 
         if is_short_flag?(arg)
-          short_key = arg[1..]
-          if long_key = short_to_long[short_key]?
-            key, value, consumed = parse_long_flag("--#{long_key}", args, i, schema)
-            if key
-              set_nested_value(data, key, value, errors)
-            end
-            i += consumed
-          else
-            available_shorts = short_to_long.keys.map { |s| "-#{s}" }
-            if available_shorts.empty?
-              errors << "Unknown option '#{arg}': no short flags defined"
+          short_keys = arg[1..]
+          if short_keys.size == 1
+            # Single short flag: -v or -n 5
+            if long_key = short_to_long[short_keys]?
+              key, value, consumed = parse_long_flag("--#{long_key}", args, i, schema)
+              if key
+                set_nested_value(data, key, value, errors)
+              end
+              i += consumed
             else
-              errors << "Unknown option '#{arg}'. Available short flags: #{available_shorts.join(", ")}"
+              available_shorts = short_to_long.keys.map { |s| "-#{s}" }
+              if available_shorts.empty?
+                errors << "Unknown option '#{arg}': no short flags defined"
+              else
+                errors << "Unknown option '#{arg}'. Available short flags: #{available_shorts.join(", ")}"
+              end
+              i += 1
+            end
+          else
+            # Combined short flags: -av expands to -a -v (boolean only)
+            valid_combo = true
+            short_keys.each_char do |c|
+              char_str = c.to_s
+              unless short_to_long[char_str]? && boolean_property?(short_to_long[char_str], schema)
+                available_shorts = short_to_long.keys.map { |s| "-#{s}" }
+                if available_shorts.empty?
+                  errors << "Unknown option '-#{c}' in '#{arg}': no short flags defined"
+                elsif !short_to_long[char_str]?
+                  errors << "Unknown option '-#{c}' in '#{arg}'. Available short flags: #{available_shorts.join(", ")}"
+                else
+                  errors << "Cannot combine non-boolean flag '-#{c}' in '#{arg}'"
+                end
+                valid_combo = false
+                break
+              end
+            end
+            if valid_combo
+              short_keys.each_char do |c|
+                long_key = short_to_long[c.to_s]
+                set_nested_value(data, long_key, JSON::Any.new(true), errors)
+              end
             end
             i += 1
           end

@@ -451,6 +451,68 @@ describe Jargon do
       result["verbose"].as_bool.should be_true
     end
 
+    it "parses combined short boolean flags" do
+      cli = Jargon.from_json(%({
+        "type": "object",
+        "properties": {
+          "all": {"type": "boolean", "short": "a"},
+          "verbose": {"type": "boolean", "short": "v"},
+          "force": {"type": "boolean", "short": "f"}
+        }
+      }))
+
+      result = cli.parse(["-avf"])
+      result.valid?.should be_true
+      result["all"].as_bool.should be_true
+      result["verbose"].as_bool.should be_true
+      result["force"].as_bool.should be_true
+    end
+
+    it "parses combined short flags with other args" do
+      cli = Jargon.from_json(%({
+        "type": "object",
+        "properties": {
+          "all": {"type": "boolean", "short": "a"},
+          "verbose": {"type": "boolean", "short": "v"},
+          "output": {"type": "string", "short": "o"}
+        }
+      }))
+
+      result = cli.parse(["-av", "-o", "file.txt"])
+      result.valid?.should be_true
+      result["all"].as_bool.should be_true
+      result["verbose"].as_bool.should be_true
+      result["output"].as_s.should eq("file.txt")
+    end
+
+    it "errors on combined flags with non-boolean" do
+      cli = Jargon.from_json(%({
+        "type": "object",
+        "properties": {
+          "all": {"type": "boolean", "short": "a"},
+          "count": {"type": "integer", "short": "n"}
+        }
+      }))
+
+      result = cli.parse(["-an"])
+      result.valid?.should be_false
+      result.errors.first.should contain("Cannot combine non-boolean flag '-n'")
+    end
+
+    it "errors on combined flags with unknown flag" do
+      cli = Jargon.from_json(%({
+        "type": "object",
+        "properties": {
+          "all": {"type": "boolean", "short": "a"},
+          "verbose": {"type": "boolean", "short": "v"}
+        }
+      }))
+
+      result = cli.parse(["-avx"])
+      result.valid?.should be_false
+      result.errors.first.should contain("Unknown option '-x' in '-avx'")
+    end
+
     it "errors on unknown short flag" do
       cli = Jargon.from_json(%({
         "type": "object",
