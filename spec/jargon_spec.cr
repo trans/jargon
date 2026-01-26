@@ -1980,6 +1980,23 @@ describe Jargon do
       fish.should_not contain("-l file")
     end
 
+    it "escapes shell metacharacters in bash completions" do
+      cli = Jargon.from_json(%({
+        "type": "object",
+        "properties": {
+          "mode": {"type": "string", "enum": ["$HOME", "`whoami`", "test\\"quote"]}
+        }
+      }), "myapp")
+
+      bash = cli.bash_completion
+      # Should escape $ to prevent variable expansion
+      bash.should contain("\\$HOME")
+      # Should escape backticks to prevent command substitution
+      bash.should contain("\\`whoami\\`")
+      # Should escape quotes
+      bash.should contain("test\\\"quote")
+    end
+
     describe "--completions flag" do
       it "detects --completions bash in flat CLI" do
         cli = Jargon.from_json(%({

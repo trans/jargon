@@ -70,8 +70,8 @@ module Jargon
     private def bash_with_subcommands(program : String) : String
       lines = [] of String
 
-      # Collect top-level subcommands
-      subcmd_names = @cli.subcommands.keys
+      # Collect top-level subcommands (escaped for shell safety)
+      subcmd_names = @cli.subcommands.keys.map { |n| escape_bash(n) }
       top_level_words = subcmd_names.join(" ") + " --help -h"
 
       lines << "    # Top-level: subcommands"
@@ -102,25 +102,31 @@ module Jargon
       indent = "    " * depth
       flags = collect_flags(schema)
 
-      # Build flag words
+      # Build flag words (escaped for shell safety)
       flag_words = [] of String
       flags.each do |flag|
-        flag_words << "--#{flag.long}"
-        flag_words << "-#{flag.short}" if flag.short
+        flag_words << "--#{escape_bash(flag.long)}"
+        if short = flag.short
+          flag_words << "-#{escape_bash(short)}"
+        end
       end
       flag_words << "--help" << "-h"
 
       # Build enum cases
       enum_flags = flags.select { |f| f.enum_values }
 
-      lines << "#{indent}#{name})"
+      escaped_name = escape_bash(name)
+      lines << "#{indent}#{escaped_name})"
       if enum_flags.any?
         lines << "#{indent}    case \"$prev\" in"
         enum_flags.each do |flag|
-          flag_patterns = ["--#{flag.long}"]
-          flag_patterns << "-#{flag.short}" if flag.short
+          flag_patterns = ["--#{escape_bash(flag.long)}"]
+          if short = flag.short
+            flag_patterns << "-#{escape_bash(short)}"
+          end
+          enum_values_escaped = flag.enum_values.not_nil!.map { |v| escape_bash(v) }.join(" ")
           lines << "#{indent}        #{flag_patterns.join("|")})"
-          lines << "#{indent}            COMPREPLY=( $(compgen -W \"#{flag.enum_values.not_nil!.join(" ")}\" -- \"$cur\") )"
+          lines << "#{indent}            COMPREPLY=( $(compgen -W \"#{enum_values_escaped}\" -- \"$cur\") )"
           lines << "#{indent}            ;;"
         end
         lines << "#{indent}        *)"
@@ -139,10 +145,11 @@ module Jargon
       lines = [] of String
       indent = "    " * depth
 
-      # Get nested subcommand names
-      nested_names = cli.subcommands.keys
+      # Get nested subcommand names (escaped for shell safety)
+      nested_names = cli.subcommands.keys.map { |n| escape_bash(n) }
+      escaped_name = escape_bash(name)
 
-      lines << "#{indent}#{name})"
+      lines << "#{indent}#{escaped_name})"
       lines << "#{indent}    if [[ ${COMP_CWORD} -eq 2 ]]; then"
       lines << "#{indent}        COMPREPLY=( $(compgen -W \"#{nested_names.join(" ")} --help -h\" -- \"$cur\") )"
       lines << "#{indent}        return"
@@ -156,7 +163,7 @@ module Jargon
           lines << bash_subcommand_case(sub_name, sub, depth + 1)
         when CLI
           # For deeper nesting, simplify to just --help
-          lines << "#{indent}        #{sub_name})"
+          lines << "#{indent}        #{escape_bash(sub_name)})"
           lines << "#{indent}            COMPREPLY=( $(compgen -W \"--help -h\" -- \"$cur\") )"
           lines << "#{indent}            ;;"
         end
@@ -173,10 +180,13 @@ module Jargon
 
       if schema = @cli.schema
         flags = collect_flags(schema)
+        # Build flag words (escaped for shell safety)
         flag_words = [] of String
         flags.each do |flag|
-          flag_words << "--#{flag.long}"
-          flag_words << "-#{flag.short}" if flag.short
+          flag_words << "--#{escape_bash(flag.long)}"
+          if short = flag.short
+            flag_words << "-#{escape_bash(short)}"
+          end
         end
         flag_words << "--help" << "-h"
 
@@ -185,10 +195,13 @@ module Jargon
         if enum_flags.any?
           lines << "    case \"$prev\" in"
           enum_flags.each do |flag|
-            flag_patterns = ["--#{flag.long}"]
-            flag_patterns << "-#{flag.short}" if flag.short
+            flag_patterns = ["--#{escape_bash(flag.long)}"]
+            if short = flag.short
+              flag_patterns << "-#{escape_bash(short)}"
+            end
+            enum_values_escaped = flag.enum_values.not_nil!.map { |v| escape_bash(v) }.join(" ")
             lines << "        #{flag_patterns.join("|")})"
-            lines << "            COMPREPLY=( $(compgen -W \"#{flag.enum_values.not_nil!.join(" ")}\" -- \"$cur\") )"
+            lines << "            COMPREPLY=( $(compgen -W \"#{enum_values_escaped}\" -- \"$cur\") )"
             lines << "            ;;"
           end
           lines << "        *)"
@@ -478,6 +491,14 @@ module Jargon
       else
         prop
       end
+    end
+
+    # Escape for bash double-quoted strings
+    private def escape_bash(str : String) : String
+      str.gsub("\\", "\\\\")
+         .gsub("\"", "\\\"")
+         .gsub("$", "\\$")
+         .gsub("`", "\\`")
     end
 
     private def escape_zsh(str : String?) : String
