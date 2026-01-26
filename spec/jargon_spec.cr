@@ -2225,6 +2225,112 @@ describe Jargon do
     end
   end
 
+  describe "error handling edge cases" do
+    it "handles invalid integer coercion gracefully" do
+      cli = Jargon.from_json(%({
+        "type": "object",
+        "properties": {
+          "count": {"type": "integer"}
+        }
+      }))
+
+      # Invalid integer stays as string, type validation catches it
+      result = cli.parse(["--count", "abc"])
+      result.valid?.should be_false
+      result.errors.first.should contain("Invalid type for count")
+    end
+
+    it "handles invalid number coercion gracefully" do
+      cli = Jargon.from_json(%({
+        "type": "object",
+        "properties": {
+          "rate": {"type": "number"}
+        }
+      }))
+
+      result = cli.parse(["--rate", "not-a-number"])
+      result.valid?.should be_false
+      result.errors.first.should contain("Invalid type for rate")
+    end
+
+    it "handles malformed JSON config file gracefully" do
+      Dir.mkdir_p("./.config")
+      File.write("./.config/testbad.json", "{ invalid json }")
+
+      begin
+        cli = Jargon.from_json(%({"type": "object", "properties": {}}), "testbad")
+        config = cli.load_config
+        config.should be_nil  # Invalid file is skipped
+      ensure
+        File.delete("./.config/testbad.json")
+      end
+    end
+
+    it "handles malformed YAML config file gracefully" do
+      Dir.mkdir_p("./.config")
+      File.write("./.config/testbadyaml.yaml", "invalid: yaml: content: [")
+
+      begin
+        cli = Jargon.from_json(%({"type": "object", "properties": {}}), "testbadyaml")
+        config = cli.load_config
+        config.should be_nil  # Invalid file is skipped
+      ensure
+        File.delete("./.config/testbadyaml.yaml")
+      end
+    end
+  end
+
+  describe "nested object defaults" do
+    it "applies defaults to nested objects" do
+      cli = Jargon.from_json(%({
+        "type": "object",
+        "properties": {
+          "server": {
+            "type": "object",
+            "properties": {
+              "host": {"type": "string", "default": "localhost"},
+              "port": {"type": "integer", "default": 8080}
+            }
+          }
+        }
+      }))
+
+      result = cli.parse(["server.host=example.com"])
+      result.valid?.should be_true
+      result["server"]["host"].as_s.should eq("example.com")
+      result["server"]["port"].as_i64.should eq(8080)  # Default applied
+    end
+  end
+
+  describe "$ref edge cases" do
+    it "handles missing $ref target gracefully" do
+      cli = Jargon.from_json(%({
+        "type": "object",
+        "properties": {
+          "user": {"$ref": "#/$defs/nonexistent"}
+        },
+        "$defs": {}
+      }))
+
+      # Should not crash, just treat as unresolved
+      result = cli.parse(["user.name=test"])
+      result.valid?.should be_false
+    end
+
+    it "handles invalid $ref format gracefully" do
+      cli = Jargon.from_json(%({
+        "type": "object",
+        "properties": {
+          "user": {"$ref": "invalid-ref-format"}
+        }
+      }))
+
+      # Should not crash
+      result = cli.parse([] of String)
+      result.valid?.should be_true
+    end
+  end
+
   describe "environment variables" do
     it "uses env var when CLI arg not provided" do
       ENV["TEST_JARGON_HOST"] = "env-host"
