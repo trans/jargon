@@ -79,57 +79,19 @@ module Jargon
       end
 
       # Check for --completions
-      if args.size >= 2 && args[0] == "--completions"
-        shell = args[1]
-        if shell.in?("bash", "zsh", "fish")
-          return Result.new({} of String => JSON::Any, [] of String, nil, false, nil, shell)
-        else
-          return Result.new({} of String => JSON::Any, ["Unknown shell '#{shell}'. Supported: bash, zsh, fish"])
-        end
+      if result = check_completions_flag(args)
+        return result
       end
 
       # Check if first arg matches a known subcommand (supports abbreviations)
       if args.any? && (resolved_name = resolve_subcommand(args[0])) && (subcmd = @subcommands[resolved_name]?)
-        subcmd_name = resolved_name
-        case subcmd
-        when CLI
-          result = subcmd.parse(args[1..], input, defaults: defaults)
-          # Prepend parent subcommand name
-          full_subcmd = result.subcommand ? "#{subcmd_name} #{result.subcommand}" : subcmd_name
-          if result.help_requested?
-            # Propagate help with updated subcommand path
-            help_subcmd = result.help_subcommand ? "#{subcmd_name} #{result.help_subcommand}" : subcmd_name
-            return Result.new(result.data, result.errors, full_subcmd, true, help_subcmd)
-          end
-          return Result.new(result.data, result.errors, full_subcmd)
-        when Schema
-          result = parse_flat(args[1..], subcmd, input, subcmd_name, defaults)
-          if result.help_requested?
-            return Result.new(result.data, result.errors, subcmd_name, true, subcmd_name)
-          end
-          return Result.new(result.data, result.errors, subcmd_name)
-        end
+        return dispatch_subcommand(subcmd, resolved_name, args[1..], input, defaults)
       end
 
       # Fall back to default subcommand if set
       if default = @default_subcommand
         if subcmd = @subcommands[default]?
-          case subcmd
-          when CLI
-            result = subcmd.parse(args, input, defaults: defaults)
-            full_subcmd = result.subcommand ? "#{default} #{result.subcommand}" : default
-            if result.help_requested?
-              help_subcmd = result.help_subcommand ? "#{default} #{result.help_subcommand}" : default
-              return Result.new(result.data, result.errors, full_subcmd, true, help_subcmd)
-            end
-            return Result.new(result.data, result.errors, full_subcmd)
-          when Schema
-            result = parse_flat(args, subcmd, input, default, defaults)
-            if result.help_requested?
-              return Result.new(result.data, result.errors, default, true, default)
-            end
-            return Result.new(result.data, result.errors, default)
-          end
+          return dispatch_subcommand(subcmd, default, args, input, defaults)
         end
       end
 
@@ -138,6 +100,37 @@ module Jargon
         Result.new({} of String => JSON::Any, ["No subcommand specified"])
       else
         Result.new({} of String => JSON::Any, ["Unknown subcommand: #{args[0]}"])
+      end
+    end
+
+    private def dispatch_subcommand(subcmd : Schema | CLI, subcmd_name : String, args : Array(String), input : IO, defaults : JSON::Any | Hash(String, JSON::Any) | Nil) : Result
+      case subcmd
+      when CLI
+        result = subcmd.parse(args, input, defaults: defaults)
+        full_subcmd = result.subcommand ? "#{subcmd_name} #{result.subcommand}" : subcmd_name
+        if result.help_requested?
+          help_subcmd = result.help_subcommand ? "#{subcmd_name} #{result.help_subcommand}" : subcmd_name
+          return Result.new(result.data, result.errors, full_subcmd, true, help_subcmd)
+        end
+        Result.new(result.data, result.errors, full_subcmd)
+      when Schema
+        result = parse_flat(args, subcmd, input, subcmd_name, defaults)
+        if result.help_requested?
+          return Result.new(result.data, result.errors, subcmd_name, true, subcmd_name)
+        end
+        Result.new(result.data, result.errors, subcmd_name)
+      else
+        Result.new({} of String => JSON::Any, ["Unknown subcommand: #{subcmd_name}"])
+      end
+    end
+
+    private def check_completions_flag(args : Array(String)) : Result?
+      return nil unless args.size >= 2 && args[0] == "--completions"
+      shell = args[1]
+      if shell.in?("bash", "zsh", "fish")
+        Result.new({} of String => JSON::Any, [] of String, nil, false, nil, shell)
+      else
+        Result.new({} of String => JSON::Any, ["Unknown shell '#{shell}'. Supported: bash, zsh, fish"])
       end
     end
 
@@ -209,12 +202,9 @@ module Jargon
       end
 
       # Check for --completions (only at top level, not within subcommands)
-      if subcommand_path.nil? && args.size >= 2 && args[0] == "--completions"
-        shell = args[1]
-        if shell.in?("bash", "zsh", "fish")
-          return Result.new({} of String => JSON::Any, [] of String, nil, false, nil, shell)
-        else
-          return Result.new({} of String => JSON::Any, ["Unknown shell '#{shell}'. Supported: bash, zsh, fish"])
+      if subcommand_path.nil?
+        if result = check_completions_flag(args)
+          return result
         end
       end
 
@@ -240,14 +230,7 @@ module Jargon
               end
               i += consumed
             else
-              available_shorts = short_to_long.keys
-              if available_shorts.empty?
-                errors << "Unknown option '#{arg}': no short flags defined"
-              elsif suggestion = find_suggestion(short_keys, available_shorts)
-                errors << "Unknown option '#{arg}'. Did you mean '-#{suggestion}'?"
-              else
-                errors << "Unknown option '#{arg}'. Available short flags: #{available_shorts.map { |s| "-#{s}" }.join(", ")}"
-              end
+              errors << unknown_option_error(short_keys, short_to_long.keys, "-")
               i += 1
             end
           else
@@ -256,15 +239,8 @@ module Jargon
             short_keys.each_char do |c|
               char_str = c.to_s
               unless short_to_long[char_str]? && boolean_property?(short_to_long[char_str], schema)
-                available_shorts = short_to_long.keys
-                if available_shorts.empty?
-                  errors << "Unknown option '-#{c}' in '#{arg}': no short flags defined"
-                elsif !short_to_long[char_str]?
-                  if suggestion = find_suggestion(char_str, available_shorts)
-                    errors << "Unknown option '-#{c}' in '#{arg}'. Did you mean '-#{suggestion}'?"
-                  else
-                    errors << "Unknown option '-#{c}' in '#{arg}'. Available short flags: #{available_shorts.map { |s| "-#{s}" }.join(", ")}"
-                  end
+                if !short_to_long[char_str]?
+                  errors << unknown_option_error(char_str, short_to_long.keys, "-", "in '#{arg}'")
                 else
                   errors << "Cannot combine non-boolean flag '-#{c}' in '#{arg}'"
                 end
@@ -287,14 +263,7 @@ module Jargon
             set_nested_value(data, key, value, errors)
           else
             opt_name = arg.split("=", 2)[0][2..]  # Handle --foo=bar format
-            opts = available_options(schema)
-            if opts.empty?
-              errors << "Unknown option '--#{opt_name}': no options defined"
-            elsif suggestion = find_suggestion(opt_name, opts)
-              errors << "Unknown option '--#{opt_name}'. Did you mean '--#{suggestion}'?"
-            else
-              errors << "Unknown option '--#{opt_name}'. Available options: #{opts.map { |o| "--#{o}" }.join(", ")}"
-            end
+            errors << unknown_option_error(opt_name, available_options(schema))
           end
           i += consumed
         elsif positional_index < positional_names.size
@@ -332,14 +301,7 @@ module Jargon
             if arg.includes?("=") || arg.includes?(":")
               sep = arg.includes?("=") ? "=" : ":"
               unknown_key = arg.split(sep, 2)[0]
-              opts = available_options(schema)
-              if opts.empty?
-                errors << "Unknown option '#{unknown_key}': no options defined"
-              elsif suggestion = find_suggestion(unknown_key, opts)
-                errors << "Unknown option '#{unknown_key}'. Did you mean '#{suggestion}'?"
-              else
-                errors << "Unknown option '#{unknown_key}'. Available options: #{opts.join(", ")}"
-              end
+              errors << unknown_option_error(unknown_key, available_options(schema), "")
             else
               errors << "Unexpected argument '#{arg}'"
             end
@@ -700,6 +662,21 @@ module Jargon
       end
 
       best_match
+    end
+
+    # Generate error message for unknown option with suggestion support
+    private def unknown_option_error(input : String, candidates : Array(String), prefix : String = "--", context : String? = nil) : String
+      display = "#{prefix}#{input}"
+      ctx = context ? " #{context}" : ""
+
+      if candidates.empty?
+        "Unknown option '#{display}'#{ctx}: no #{prefix == "-" ? "short flags" : "options"} defined"
+      elsif suggestion = find_suggestion(input, candidates)
+        "Unknown option '#{display}'#{ctx}. Did you mean '#{prefix}#{suggestion}'?"
+      else
+        formatted = candidates.map { |c| "#{prefix}#{c}" }.join(", ")
+        "Unknown option '#{display}'#{ctx}. Available: #{formatted}"
+      end
     end
 
     # Levenshtein distance between two strings

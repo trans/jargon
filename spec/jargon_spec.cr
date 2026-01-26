@@ -701,7 +701,7 @@ describe Jargon do
 
       result = cli.parse(["-x"])
       result.valid?.should be_false
-      result.errors.should contain("Unknown option '-x'. Available short flags: -n")
+      result.errors.should contain("Unknown option '-x'. Available: -n")
     end
 
     it "errors on unknown long flag" do
@@ -715,7 +715,7 @@ describe Jargon do
 
       result = cli.parse(["--unknown", "value"])
       result.valid?.should be_false
-      result.errors.should contain("Unknown option '--unknown'. Available options: --name, --count")
+      result.errors.should contain("Unknown option '--unknown'. Available: --name, --count")
     end
 
     it "errors on unknown key=value style option" do
@@ -728,7 +728,7 @@ describe Jargon do
 
       result = cli.parse(["unknown=value"])
       result.valid?.should be_false
-      result.errors.should contain("Unknown option 'unknown'. Available options: name")
+      result.errors.should contain("Unknown option 'unknown'. Available: name")
     end
   end
 
@@ -771,7 +771,7 @@ describe Jargon do
 
       result = cli.parse(["--xyz"])
       result.valid?.should be_false
-      result.errors.should contain("Unknown option '--xyz'. Available options: --verbose")
+      result.errors.should contain("Unknown option '--xyz'. Available: --verbose")
     end
 
     it "does not suggest for single-character flags" do
@@ -784,7 +784,7 @@ describe Jargon do
 
       result = cli.parse(["-x"])
       result.valid?.should be_false
-      result.errors.should contain("Unknown option '-x'. Available short flags: -v")
+      result.errors.should contain("Unknown option '-x'. Available: -v")
     end
   end
 
