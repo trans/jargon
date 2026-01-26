@@ -675,6 +675,62 @@ describe Jargon do
     end
   end
 
+  describe "typo suggestions" do
+    it "suggests similar long flags" do
+      cli = Jargon.from_json(%({
+        "type": "object",
+        "properties": {
+          "verbose": {"type": "boolean"},
+          "version": {"type": "boolean"}
+        }
+      }))
+
+      result = cli.parse(["--verbos"])
+      result.valid?.should be_false
+      result.errors.should contain("Unknown option '--verbos'. Did you mean '--verbose'?")
+    end
+
+    it "suggests similar options for key=value style" do
+      cli = Jargon.from_json(%({
+        "type": "object",
+        "properties": {
+          "output": {"type": "string"},
+          "format": {"type": "string"}
+        }
+      }))
+
+      result = cli.parse(["outpt=file.txt"])
+      result.valid?.should be_false
+      result.errors.should contain("Unknown option 'outpt'. Did you mean 'output'?")
+    end
+
+    it "does not suggest when distance is too large" do
+      cli = Jargon.from_json(%({
+        "type": "object",
+        "properties": {
+          "verbose": {"type": "boolean"}
+        }
+      }))
+
+      result = cli.parse(["--xyz"])
+      result.valid?.should be_false
+      result.errors.should contain("Unknown option '--xyz'. Available options: --verbose")
+    end
+
+    it "does not suggest for single-character flags" do
+      cli = Jargon.from_json(%({
+        "type": "object",
+        "properties": {
+          "verbose": {"type": "boolean", "short": "v"}
+        }
+      }))
+
+      result = cli.parse(["-x"])
+      result.valid?.should be_false
+      result.errors.should contain("Unknown option '-x'. Available short flags: -v")
+    end
+  end
+
   describe "subcommands" do
     it "parses subcommand with its options" do
       cli = Jargon.new("myapp")

@@ -223,11 +223,13 @@ module Jargon
               end
               i += consumed
             else
-              available_shorts = short_to_long.keys.map { |s| "-#{s}" }
+              available_shorts = short_to_long.keys
               if available_shorts.empty?
                 errors << "Unknown option '#{arg}': no short flags defined"
+              elsif suggestion = find_suggestion(short_keys, available_shorts)
+                errors << "Unknown option '#{arg}'. Did you mean '-#{suggestion}'?"
               else
-                errors << "Unknown option '#{arg}'. Available short flags: #{available_shorts.join(", ")}"
+                errors << "Unknown option '#{arg}'. Available short flags: #{available_shorts.map { |s| "-#{s}" }.join(", ")}"
               end
               i += 1
             end
@@ -237,11 +239,15 @@ module Jargon
             short_keys.each_char do |c|
               char_str = c.to_s
               unless short_to_long[char_str]? && boolean_property?(short_to_long[char_str], schema)
-                available_shorts = short_to_long.keys.map { |s| "-#{s}" }
+                available_shorts = short_to_long.keys
                 if available_shorts.empty?
                   errors << "Unknown option '-#{c}' in '#{arg}': no short flags defined"
                 elsif !short_to_long[char_str]?
-                  errors << "Unknown option '-#{c}' in '#{arg}'. Available short flags: #{available_shorts.join(", ")}"
+                  if suggestion = find_suggestion(char_str, available_shorts)
+                    errors << "Unknown option '-#{c}' in '#{arg}'. Did you mean '-#{suggestion}'?"
+                  else
+                    errors << "Unknown option '-#{c}' in '#{arg}'. Available short flags: #{available_shorts.map { |s| "-#{s}" }.join(", ")}"
+                  end
                 else
                   errors << "Cannot combine non-boolean flag '-#{c}' in '#{arg}'"
                 end
@@ -263,12 +269,14 @@ module Jargon
             errors << coerce_error if coerce_error
             set_nested_value(data, key, value, errors)
           else
-            opt_name = arg[2..]
+            opt_name = arg.split("=", 2)[0][2..]  # Handle --foo=bar format
             opts = available_options(schema)
             if opts.empty?
-              errors << "Unknown option '#{arg}': no options defined"
+              errors << "Unknown option '--#{opt_name}': no options defined"
+            elsif suggestion = find_suggestion(opt_name, opts)
+              errors << "Unknown option '--#{opt_name}'. Did you mean '--#{suggestion}'?"
             else
-              errors << "Unknown option '#{arg}'. Available options: #{opts.map { |o| "--#{o}" }.join(", ")}"
+              errors << "Unknown option '--#{opt_name}'. Available options: #{opts.map { |o| "--#{o}" }.join(", ")}"
             end
           end
           i += consumed
@@ -310,6 +318,8 @@ module Jargon
               opts = available_options(schema)
               if opts.empty?
                 errors << "Unknown option '#{unknown_key}': no options defined"
+              elsif suggestion = find_suggestion(unknown_key, opts)
+                errors << "Unknown option '#{unknown_key}'. Did you mean '#{suggestion}'?"
               else
                 errors << "Unknown option '#{unknown_key}'. Available options: #{opts.join(", ")}"
               end
@@ -827,6 +837,58 @@ module Jargon
           build_help_lines(lines, nested_name, resolve_property(nested_prop, schema), full_name, schema)
         end
       end
+    end
+
+    # Find best suggestion for a typo using Levenshtein distance
+    # Returns nil if no good match found (distance > 2 or > 30% of length)
+    private def find_suggestion(input : String, candidates : Array(String)) : String?
+      return nil if candidates.empty?
+      return nil if input.size < 2  # Don't suggest for single-character inputs
+
+      best_match : String? = nil
+      best_distance = Int32::MAX
+
+      candidates.each do |candidate|
+        distance = levenshtein_distance(input, candidate)
+        max_len = Math.max(input.size, candidate.size)
+        max_allowed = (max_len * 0.3).to_i
+
+        if distance <= 2 && distance <= max_allowed && distance < best_distance
+          best_distance = distance
+          best_match = candidate
+        end
+      end
+
+      best_match
+    end
+
+    # Levenshtein distance between two strings
+    private def levenshtein_distance(s1 : String, s2 : String) : Int32
+      return s2.size if s1.empty?
+      return s1.size if s2.empty?
+
+      # Use two-row optimization for space efficiency
+      prev_row = Array.new(s2.size + 1) { |i| i }
+      curr_row = Array.new(s2.size + 1, 0)
+
+      s1.each_char.with_index do |c1, i|
+        curr_row[0] = i + 1
+
+        s2.each_char.with_index do |c2, j|
+          cost = c1 == c2 ? 0 : 1
+          curr_row[j + 1] = Math.min(
+            curr_row[j] + 1,           # insertion
+            Math.min(
+              prev_row[j + 1] + 1,     # deletion
+              prev_row[j] + cost       # substitution
+            )
+          )
+        end
+
+        prev_row, curr_row = curr_row, prev_row
+      end
+
+      prev_row[s2.size]
     end
   end
 end
