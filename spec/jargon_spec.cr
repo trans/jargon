@@ -1996,14 +1996,19 @@ describe Jargon do
       cli = Jargon.from_json(%({"type": "object", "properties": {}}), "myapp")
       paths = cli.config_paths
 
-      paths[0].should eq("./.config/myapp.json")
-      paths[1].should eq("./.config/myapp/config.json")
-      paths[2].should contain("myapp.json")
-      paths[3].should contain("myapp/config.json")
+      # Project local paths first (yaml, yml, json for each base)
+      paths[0].should eq("./.config/myapp.yaml")
+      paths[1].should eq("./.config/myapp.yml")
+      paths[2].should eq("./.config/myapp.json")
+      paths[3].should eq("./.config/myapp/config.yaml")
+      paths[4].should eq("./.config/myapp/config.yml")
+      paths[5].should eq("./.config/myapp/config.json")
+      # User global paths
+      paths[6].should contain("myapp.yaml")
+      paths[9].should contain("myapp/config.yaml")
     end
 
-    it "loads config from project .config directory" do
-      # Create temp config
+    it "loads JSON config from project .config directory" do
       Dir.mkdir_p("./.config")
       File.write("./.config/testapp.json", %({"host": "from-config", "port": 9000}))
 
@@ -2022,6 +2027,52 @@ describe Jargon do
         config.not_nil!["port"].as_i.should eq(9000)
       ensure
         File.delete("./.config/testapp.json")
+      end
+    end
+
+    it "loads YAML config from project .config directory" do
+      Dir.mkdir_p("./.config")
+      File.write("./.config/testyaml.yaml", "host: yaml-host\nport: 8080\ndebug: true")
+
+      begin
+        cli = Jargon.from_json(%({
+          "type": "object",
+          "properties": {
+            "host": {"type": "string"},
+            "port": {"type": "integer"},
+            "debug": {"type": "boolean"}
+          }
+        }), "testyaml")
+
+        config = cli.load_config
+        config.should_not be_nil
+        config.not_nil!["host"].as_s.should eq("yaml-host")
+        config.not_nil!["port"].as_i.should eq(8080)
+        config.not_nil!["debug"].as_bool.should be_true
+      ensure
+        File.delete("./.config/testyaml.yaml")
+      end
+    end
+
+    it "prefers YAML over JSON when both exist" do
+      Dir.mkdir_p("./.config")
+      File.write("./.config/testboth.yaml", "source: yaml")
+      File.write("./.config/testboth.json", %({"source": "json"}))
+
+      begin
+        cli = Jargon.from_json(%({
+          "type": "object",
+          "properties": {
+            "source": {"type": "string"}
+          }
+        }), "testboth")
+
+        config = cli.load_config(merge: false)
+        config.should_not be_nil
+        config.not_nil!["source"].as_s.should eq("yaml")
+      ensure
+        File.delete("./.config/testboth.yaml")
+        File.delete("./.config/testboth.json")
       end
     end
 

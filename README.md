@@ -517,7 +517,7 @@ Merge order (highest priority first):
 
 ## Config Files
 
-Load configuration from standard XDG locations with `load_config`:
+Load configuration from standard XDG locations with `load_config`. Supports YAML and JSON:
 
 ```crystal
 cli = Jargon.from_json(schema, "myapp")
@@ -526,10 +526,12 @@ result = cli.parse(ARGV, defaults: config)
 ```
 
 Paths searched (first found wins, or merged if `merge: true`):
-1. `./.config/myapp.json` (project local)
-2. `./.config/myapp/config.json` (project local, directory style)
-3. `$XDG_CONFIG_HOME/myapp.json` (user global, typically `~/.config`)
-4. `$XDG_CONFIG_HOME/myapp/config.json` (user global, directory style)
+1. `./.config/myapp.yaml` / `.yml` / `.json` (project local)
+2. `./.config/myapp/config.yaml` / `.yml` / `.json` (project local, directory style)
+3. `$XDG_CONFIG_HOME/myapp.yaml` / `.yml` / `.json` (user global, typically `~/.config`)
+4. `$XDG_CONFIG_HOME/myapp/config.yaml` / `.yml` / `.json` (user global, directory style)
+
+YAML is preferred over JSON when both exist at the same location.
 
 By default, configs are merged with project overriding user:
 
@@ -541,7 +543,14 @@ config = cli.load_config
 config = cli.load_config(merge: false)
 ```
 
-Example project config (`.config/myapp.json`):
+Example project config (`.config/myapp.yaml`):
+```yaml
+host: localhost
+port: 8080
+debug: true
+```
+
+Or JSON (`.config/myapp.json`):
 ```json
 {
   "host": "localhost",

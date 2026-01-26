@@ -1,3 +1,4 @@
+require "yaml"
 require "./schema"
 require "./result"
 
@@ -86,11 +87,9 @@ module Jargon
     private def load_config_first : JSON::Any?
       config_paths.each do |path|
         if File.exists?(path)
-          return JSON.parse(File.read(path))
+          return parse_config_file(path)
         end
       end
-      nil
-    rescue ex : JSON::ParseException
       nil
     end
 
@@ -100,25 +99,42 @@ module Jargon
       config_paths.reverse.each do |path|
         if File.exists?(path)
           begin
-            data = JSON.parse(File.read(path)).as_h
-            merged.merge!(data)
-          rescue ex : JSON::ParseException
-            # Skip invalid JSON files
+            if data = parse_config_file(path).try(&.as_h?)
+              merged.merge!(data)
+            end
+          rescue
+            # Skip invalid files
           end
         end
       end
       merged.empty? ? nil : JSON::Any.new(merged)
     end
 
+    private def parse_config_file(path : String) : JSON::Any?
+      content = File.read(path)
+      case File.extname(path).downcase
+      when ".yaml", ".yml"
+        JSON.parse(YAML.parse(content).to_json)
+      when ".json"
+        JSON.parse(content)
+      else
+        nil
+      end
+    rescue
+      nil
+    end
+
     # Returns the list of config paths that would be searched
     def config_paths : Array(String)
       xdg_config = ENV["XDG_CONFIG_HOME"]? || Path.home.join(".config").to_s
-      [
-        "./.config/#{@program_name}.json",
-        "./.config/#{@program_name}/config.json",
-        "#{xdg_config}/#{@program_name}.json",
-        "#{xdg_config}/#{@program_name}/config.json",
+      bases = [
+        "./.config/#{@program_name}",
+        "./.config/#{@program_name}/config",
+        "#{xdg_config}/#{@program_name}",
+        "#{xdg_config}/#{@program_name}/config",
       ]
+      # For each base, check .yaml, .yml, .json (in that order)
+      bases.flat_map { |base| ["#{base}.yaml", "#{base}.yml", "#{base}.json"] }
     end
 
     private def parse_with_subcommands(args : Array(String), input : IO, defaults : JSON::Any | Hash(String, JSON::Any) | Nil = nil) : Result
