@@ -41,19 +41,19 @@ module Jargon
       @subcommand_key = key
     end
 
-    def parse(args : Array(String)) : Result
-      parse(args, STDIN)
+    def parse(args : Array(String), *, defaults : JSON::Any | Hash(String, JSON::Any) | Nil = nil) : Result
+      parse(args, STDIN, defaults: defaults)
     end
 
-    def parse(args : Array(String), input : IO) : Result
+    def parse(args : Array(String), input : IO, *, defaults : JSON::Any | Hash(String, JSON::Any) | Nil = nil) : Result
       if @subcommands.any?
-        parse_with_subcommands(args, input)
+        parse_with_subcommands(args, input, defaults)
       else
-        parse_flat(args, @schema.not_nil!, input)
+        parse_flat(args, @schema.not_nil!, input, nil, defaults)
       end
     end
 
-    private def parse_with_subcommands(args : Array(String), input : IO) : Result
+    private def parse_with_subcommands(args : Array(String), input : IO, defaults : JSON::Any | Hash(String, JSON::Any) | Nil = nil) : Result
       # Handle "xerp -" - full JSON with subcommand field
       if args == ["-"]
         return parse_from_stdin_full(input)
@@ -79,7 +79,7 @@ module Jargon
         subcmd_name = resolved_name
         case subcmd
         when CLI
-          result = subcmd.parse(args[1..], input)
+          result = subcmd.parse(args[1..], input, defaults: defaults)
           # Prepend parent subcommand name
           full_subcmd = result.subcommand ? "#{subcmd_name} #{result.subcommand}" : subcmd_name
           if result.help_requested?
@@ -89,7 +89,7 @@ module Jargon
           end
           return Result.new(result.data, result.errors, full_subcmd)
         when Schema
-          result = parse_flat(args[1..], subcmd, input, subcmd_name)
+          result = parse_flat(args[1..], subcmd, input, subcmd_name, defaults)
           if result.help_requested?
             return Result.new(result.data, result.errors, subcmd_name, true, subcmd_name)
           end
@@ -102,7 +102,7 @@ module Jargon
         if subcmd = @subcommands[default]?
           case subcmd
           when CLI
-            result = subcmd.parse(args, input)
+            result = subcmd.parse(args, input, defaults: defaults)
             full_subcmd = result.subcommand ? "#{default} #{result.subcommand}" : default
             if result.help_requested?
               help_subcmd = result.help_subcommand ? "#{default} #{result.help_subcommand}" : default
@@ -110,7 +110,7 @@ module Jargon
             end
             return Result.new(result.data, result.errors, full_subcmd)
           when Schema
-            result = parse_flat(args, subcmd, input, default)
+            result = parse_flat(args, subcmd, input, default, defaults)
             if result.help_requested?
               return Result.new(result.data, result.errors, default, true, default)
             end
@@ -182,7 +182,7 @@ module Jargon
       Result.new({} of String => JSON::Any, ["Invalid JSON from stdin: #{ex.message}"])
     end
 
-    private def parse_flat(args : Array(String), schema : Schema, input : IO = STDIN, subcommand_path : String? = nil) : Result
+    private def parse_flat(args : Array(String), schema : Schema, input : IO = STDIN, subcommand_path : String? = nil, defaults : JSON::Any | Hash(String, JSON::Any) | Nil = nil) : Result
       # Handle "xerp mark -" - JSON args for this schema
       if args == ["-"]
         return parse_from_stdin_args(input, schema)
@@ -340,6 +340,14 @@ module Jargon
         prop = find_property(key, schema)
         if prop.try(&.type) == Property::Type::Array && !data.has_key?(key)
           set_nested_value(data, key, JSON::Any.new([] of JSON::Any), errors)
+        end
+      end
+
+      # Apply user-provided defaults (e.g., from config file) - CLI args take precedence
+      if defaults
+        default_hash = defaults.is_a?(JSON::Any) ? defaults.as_h : defaults
+        default_hash.each do |key, value|
+          data[key] = value unless data.has_key?(key)
         end
       end
 

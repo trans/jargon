@@ -1933,4 +1933,89 @@ describe Jargon do
       end
     end
   end
+
+  describe "defaults parameter" do
+    it "uses defaults when CLI arg not provided" do
+      cli = Jargon.from_json(%({
+        "type": "object",
+        "properties": {
+          "name": {"type": "string"},
+          "verbose": {"type": "boolean"}
+        }
+      }))
+
+      defaults = {"name" => JSON::Any.new("default-name"), "verbose" => JSON::Any.new(true)}
+      result = cli.parse([] of String, defaults: defaults)
+
+      result.valid?.should be_true
+      result["name"].as_s.should eq("default-name")
+      result["verbose"].as_bool.should be_true
+    end
+
+    it "CLI args override defaults" do
+      cli = Jargon.from_json(%({
+        "type": "object",
+        "properties": {
+          "name": {"type": "string"}
+        }
+      }))
+
+      defaults = {"name" => JSON::Any.new("from-config")}
+      result = cli.parse(["--name", "from-cli"], defaults: defaults)
+
+      result["name"].as_s.should eq("from-cli")
+    end
+
+    it "works with JSON::Any from parsed JSON" do
+      cli = Jargon.from_json(%({
+        "type": "object",
+        "properties": {
+          "output": {"type": "string"},
+          "count": {"type": "integer"}
+        }
+      }))
+
+      config_json = JSON.parse(%({"output": "default.txt", "count": 10}))
+      result = cli.parse(["--count", "5"], defaults: config_json)
+
+      result["output"].as_s.should eq("default.txt")
+      result["count"].as_i64.should eq(5)  # CLI overrides
+    end
+
+    it "schema defaults fill remaining gaps" do
+      cli = Jargon.from_json(%({
+        "type": "object",
+        "properties": {
+          "host": {"type": "string", "default": "localhost"},
+          "port": {"type": "integer", "default": 8080},
+          "debug": {"type": "boolean"}
+        }
+      }))
+
+      # User defaults override schema default for port
+      # Schema default for host fills remaining gap
+      defaults = {"port" => JSON::Any.new(3000_i64), "debug" => JSON::Any.new(true)}
+      result = cli.parse([] of String, defaults: defaults)
+
+      result["host"].as_s.should eq("localhost")  # Schema default
+      result["port"].as_i64.should eq(3000)       # User default
+      result["debug"].as_bool.should be_true      # User default
+    end
+
+    it "works with subcommands" do
+      cli = Jargon.new("myapp")
+      cli.subcommand("run", %({
+        "type": "object",
+        "properties": {
+          "env": {"type": "string"}
+        }
+      }))
+
+      defaults = {"env" => JSON::Any.new("production")}
+      result = cli.parse(["run"], defaults: defaults)
+
+      result.subcommand.should eq("run")
+      result["env"].as_s.should eq("production")
+    end
+  end
 end
