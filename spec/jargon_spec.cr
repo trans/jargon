@@ -2253,6 +2253,55 @@ describe Jargon do
       result.errors.first.should contain("Invalid type for rate")
     end
 
+    it "errors on missing value for non-boolean flag" do
+      cli = Jargon.from_json(%({
+        "type": "object",
+        "properties": {
+          "count": {"type": "integer"},
+          "name": {"type": "string"}
+        }
+      }))
+
+      result = cli.parse(["--count"])
+      result.valid?.should be_false
+      result.errors.should contain("Missing value for --count")
+
+      result = cli.parse(["--name"])
+      result.valid?.should be_false
+      result.errors.should contain("Missing value for --name")
+    end
+
+    it "errors on missing value for short non-boolean flag" do
+      cli = Jargon.from_json(%({
+        "type": "object",
+        "properties": {
+          "count": {"type": "integer", "short": "n"}
+        }
+      }))
+
+      result = cli.parse(["-n"])
+      result.valid?.should be_false
+      result.errors.should contain("Missing value for --count")
+    end
+
+    it "parses negative numbers as values" do
+      cli = Jargon.from_json(%({
+        "type": "object",
+        "properties": {
+          "count": {"type": "integer"},
+          "rate": {"type": "number"}
+        }
+      }))
+
+      result = cli.parse(["--count", "-5"])
+      result.valid?.should be_true
+      result["count"].as_i64.should eq(-5)
+
+      result = cli.parse(["--rate", "-3.14"])
+      result.valid?.should be_true
+      result["rate"].as_f.should eq(-3.14)
+    end
+
     it "handles malformed JSON config file gracefully" do
       Dir.mkdir_p("./.config")
       File.write("./.config/testbad.json", "{ invalid json }")

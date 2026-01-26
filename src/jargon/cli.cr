@@ -366,20 +366,30 @@ module Jargon
         return {nil, nil, 1, nil}
       end
 
+      is_boolean = boolean_property?(key, schema)
+
       if key.includes?("=")
         parts = key.split("=", 2)
         coerced, error = coerce_value(parts[0], parts[1], schema)
         {parts[0], coerced, 1, error}
-      elsif index + 1 < args.size && !args[index + 1].starts_with?("-")
-        if boolean_property?(key, schema)
-          {key, JSON::Any.new(true), 1, nil}
-        else
-          coerced, error = coerce_value(key, args[index + 1], schema)
-          {key, coerced, 2, error}
-        end
-      else
+      elsif is_boolean
+        # Boolean flags don't consume next arg
         {key, JSON::Any.new(true), 1, nil}
+      elsif index + 1 < args.size && !is_flag_like?(args[index + 1])
+        # Non-boolean with a value (allows negative numbers)
+        coerced, error = coerce_value(key, args[index + 1], schema)
+        {key, coerced, 2, error}
+      else
+        # Non-boolean without a value - error
+        {key, nil, 1, "Missing value for --#{key}"}
       end
+    end
+
+    # Check if arg looks like a flag (starts with - but not a negative number)
+    private def is_flag_like?(arg : String) : Bool
+      return false unless arg.starts_with?("-")
+      return false if arg.size > 1 && arg[1].ascii_number?  # -5, -3.14
+      true
     end
 
     # Validate data against a schema, returning any errors.
