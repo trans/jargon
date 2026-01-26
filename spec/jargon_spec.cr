@@ -444,6 +444,92 @@ describe Jargon do
     end
   end
 
+  describe "variadic positionals" do
+    it "collects multiple arguments into array positional" do
+      cli = Jargon.from_json(%q({
+        "type": "object",
+        "positional": ["files"],
+        "properties": {
+          "files": {"type": "array", "description": "Input files"}
+        }
+      }), "cat")
+
+      result = cli.parse(["a.txt", "b.txt", "c.txt"])
+      result.valid?.should be_true
+      result["files"].as_a.map(&.as_s).should eq(["a.txt", "b.txt", "c.txt"])
+    end
+
+    it "handles flags mixed with variadic positionals" do
+      cli = Jargon.from_json(%q({
+        "type": "object",
+        "positional": ["files"],
+        "properties": {
+          "files": {"type": "array"},
+          "number": {"type": "boolean", "short": "n"}
+        }
+      }), "cat")
+
+      result = cli.parse(["-n", "a.txt", "b.txt"])
+      result.valid?.should be_true
+      result["number"].as_bool.should be_true
+      result["files"].as_a.map(&.as_s).should eq(["a.txt", "b.txt"])
+    end
+
+    it "handles non-array positional followed by array positional" do
+      cli = Jargon.from_json(%q({
+        "type": "object",
+        "positional": ["dest", "sources"],
+        "properties": {
+          "dest": {"type": "string"},
+          "sources": {"type": "array"}
+        }
+      }), "cp")
+
+      result = cli.parse(["target/", "a.txt", "b.txt", "c.txt"])
+      result.valid?.should be_true
+      result["dest"].as_s.should eq("target/")
+      result["sources"].as_a.map(&.as_s).should eq(["a.txt", "b.txt", "c.txt"])
+    end
+
+    it "returns empty array when no arguments for variadic" do
+      cli = Jargon.from_json(%q({
+        "type": "object",
+        "positional": ["files"],
+        "properties": {
+          "files": {"type": "array"}
+        }
+      }), "cat")
+
+      result = cli.parse([] of String)
+      result.valid?.should be_true
+      result["files"].as_a.should be_empty
+    end
+
+    it "stops collecting at flags (flags should come first)" do
+      cli = Jargon.from_json(%q({
+        "type": "object",
+        "positional": ["files"],
+        "properties": {
+          "files": {"type": "array"},
+          "number": {"type": "boolean", "short": "n"}
+        }
+      }), "cat")
+
+      # Correct usage: flags first
+      result = cli.parse(["-n", "a.txt", "b.txt", "c.txt"])
+      result.valid?.should be_true
+      result["number"].as_bool.should be_true
+      result["files"].as_a.map(&.as_s).should eq(["a.txt", "b.txt", "c.txt"])
+
+      # Incorrect usage: flag after positionals stops collection
+      result2 = cli.parse(["a.txt", "-n", "b.txt"])
+      result2.valid?.should be_false
+      result2["files"].as_a.map(&.as_s).should eq(["a.txt"])
+      result2["number"].as_bool.should be_true
+      result2.errors.should contain("Unexpected argument 'b.txt'")
+    end
+  end
+
   describe "short flags" do
     it "parses short flags" do
       cli = Jargon.from_json(%({

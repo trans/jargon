@@ -274,11 +274,29 @@ module Jargon
           i += consumed
         elsif positional_index < positional_names.size
           key = positional_names[positional_index]
-          coerced, coerce_error = coerce_value(key, arg, schema)
-          errors << coerce_error if coerce_error
-          set_nested_value(data, key, coerced, errors)
-          positional_index += 1
-          i += 1
+          prop = find_property(key, schema)
+
+          # Check if this is a variadic positional (array type AND last positional)
+          if prop.try(&.type) == Property::Type::Array && positional_index == positional_names.size - 1
+            # Collect all remaining non-flag arguments into this array
+            items = [] of JSON::Any
+            while i < args.size
+              current_arg = args[i]
+              break if current_arg.starts_with?("-")
+              break if current_arg.includes?("=") || current_arg.includes?(":")
+              items << JSON::Any.new(current_arg)
+              i += 1
+            end
+            set_nested_value(data, key, JSON::Any.new(items), errors)
+            positional_index += 1
+          else
+            # Single-value positional (existing behavior)
+            coerced, coerce_error = coerce_value(key, arg, schema)
+            errors << coerce_error if coerce_error
+            set_nested_value(data, key, coerced, errors)
+            positional_index += 1
+            i += 1
+          end
         else
           key, value, consumed, coerce_error = parse_argument(arg, args, i, schema)
           if key
@@ -300,6 +318,15 @@ module Jargon
             end
           end
           i += consumed
+        end
+      end
+
+      # Initialize unfilled variadic positionals to empty arrays
+      if positional_index < positional_names.size
+        key = positional_names[positional_names.size - 1]  # Last positional
+        prop = find_property(key, schema)
+        if prop.try(&.type) == Property::Type::Array && !data.has_key?(key)
+          set_nested_value(data, key, JSON::Any.new([] of JSON::Any), errors)
         end
       end
 
