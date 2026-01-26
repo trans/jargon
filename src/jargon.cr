@@ -4,7 +4,7 @@ require "./jargon/result"
 require "./jargon/completion"
 
 module Jargon
-  VERSION = "0.4.0"
+  VERSION = "0.5.0"
 
   # Convenience method to create a CLI with just a program name (for subcommand mode)
   def self.new(program_name : String) : CLI
