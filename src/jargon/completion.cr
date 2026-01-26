@@ -468,7 +468,7 @@ module Jargon
           resolved = resolve_property(prop, schema)
 
           enum_values = if ev = resolved.enum_values
-                          ev.map(&.as_s)
+                          ev.map { |v| v.raw.to_s }
                         else
                           nil
                         end

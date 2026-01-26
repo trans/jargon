@@ -1997,6 +1997,28 @@ describe Jargon do
       bash.should contain("test\\\"quote")
     end
 
+    it "handles numeric and boolean enum values in completions" do
+      cli = Jargon.from_json(%({
+        "type": "object",
+        "properties": {
+          "level": {"type": "integer", "enum": [1, 2, 3]},
+          "enabled": {"type": "boolean", "enum": [true, false]}
+        }
+      }), "myapp")
+
+      bash = cli.bash_completion
+      bash.should contain("1 2 3")
+      bash.should contain("true false")
+
+      zsh = cli.zsh_completion
+      zsh.should contain("1 2 3")
+      zsh.should contain("true false")
+
+      fish = cli.fish_completion
+      fish.should contain("1 2 3")
+      fish.should contain("true false")
+    end
+
     describe "--completions flag" do
       it "detects --completions bash in flat CLI" do
         cli = Jargon.from_json(%({
