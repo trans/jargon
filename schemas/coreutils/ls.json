@@ -1,0 +1,290 @@
+{
+  "type": "object",
+  "positional": ["files"],
+  "properties": {
+    "files": {
+      "type": "array",
+      "description": "Files or directories to list"
+    },
+    "all": {
+      "type": "boolean",
+      "short": "a",
+      "description": "Do not ignore entries starting with ."
+    },
+    "almost-all": {
+      "type": "boolean",
+      "short": "A",
+      "description": "Do not list implied . and .."
+    },
+    "author": {
+      "type": "boolean",
+      "description": "With -l, print the author of each file"
+    },
+    "escape": {
+      "type": "boolean",
+      "short": "b",
+      "description": "Print C-style escapes for nongraphic characters"
+    },
+    "block-size": {
+      "type": "string",
+      "description": "Scale sizes by SIZE when printing (e.g., 'M' for megabytes)"
+    },
+    "ignore-backups": {
+      "type": "boolean",
+      "short": "B",
+      "description": "Do not list implied entries ending with ~"
+    },
+    "ctime": {
+      "type": "boolean",
+      "short": "c",
+      "description": "With -lt: sort by ctime; with -l: show ctime and sort by name"
+    },
+    "columns": {
+      "type": "boolean",
+      "short": "C",
+      "description": "List entries by columns"
+    },
+    "color": {
+      "type": "string",
+      "enum": ["always", "auto", "never"],
+      "description": "Colorize the output"
+    },
+    "directory": {
+      "type": "boolean",
+      "short": "d",
+      "description": "List directories themselves, not their contents"
+    },
+    "dired": {
+      "type": "boolean",
+      "short": "D",
+      "description": "Generate output designed for Emacs' dired mode"
+    },
+    "no-sort": {
+      "type": "boolean",
+      "short": "f",
+      "description": "Same as -a -U (do not sort)"
+    },
+    "classify": {
+      "type": "string",
+      "short": "F",
+      "enum": ["always", "auto", "never"],
+      "description": "Append indicator (one of */=>@|) to entries"
+    },
+    "file-type": {
+      "type": "boolean",
+      "description": "Like --classify, except do not append '*'"
+    },
+    "format": {
+      "type": "string",
+      "enum": ["across", "horizontal", "commas", "long", "single-column", "verbose", "vertical"],
+      "description": "Output format"
+    },
+    "full-time": {
+      "type": "boolean",
+      "description": "Like -l --time-style=full-iso"
+    },
+    "no-owner": {
+      "type": "boolean",
+      "short": "g",
+      "description": "Like -l, but do not list owner"
+    },
+    "group-directories-first": {
+      "type": "boolean",
+      "description": "Group directories before files"
+    },
+    "no-group": {
+      "type": "boolean",
+      "short": "G",
+      "description": "In a long listing, don't print group names"
+    },
+    "human-readable": {
+      "type": "boolean",
+      "short": "h",
+      "description": "Print sizes like 1K 234M 2G etc."
+    },
+    "si": {
+      "type": "boolean",
+      "description": "Like -h, but use powers of 1000 not 1024"
+    },
+    "dereference-command-line": {
+      "type": "boolean",
+      "short": "H",
+      "description": "Follow symbolic links listed on the command line"
+    },
+    "dereference-command-line-symlink-to-dir": {
+      "type": "boolean",
+      "description": "Follow each command line symbolic link that points to a directory"
+    },
+    "hide": {
+      "type": "string",
+      "description": "Do not list implied entries matching shell PATTERN"
+    },
+    "hyperlink": {
+      "type": "string",
+      "enum": ["always", "auto", "never"],
+      "description": "Hyperlink file names"
+    },
+    "indicator-style": {
+      "type": "string",
+      "enum": ["none", "slash", "file-type", "classify"],
+      "description": "Append indicator with style to entry names"
+    },
+    "inode": {
+      "type": "boolean",
+      "short": "i",
+      "description": "Print the index number of each file"
+    },
+    "ignore": {
+      "type": "string",
+      "short": "I",
+      "description": "Do not list implied entries matching shell PATTERN"
+    },
+    "kibibytes": {
+      "type": "boolean",
+      "short": "k",
+      "description": "Default to 1024-byte blocks for file system usage"
+    },
+    "long": {
+      "type": "boolean",
+      "short": "l",
+      "description": "Use a long listing format"
+    },
+    "dereference": {
+      "type": "boolean",
+      "short": "L",
+      "description": "Show information for the file a symbolic link references"
+    },
+    "comma-separated": {
+      "type": "boolean",
+      "short": "m",
+      "description": "Fill width with a comma separated list of entries"
+    },
+    "numeric-uid-gid": {
+      "type": "boolean",
+      "short": "n",
+      "description": "Like -l, but list numeric user and group IDs"
+    },
+    "literal": {
+      "type": "boolean",
+      "short": "N",
+      "description": "Print entry names without quoting"
+    },
+    "long-no-group": {
+      "type": "boolean",
+      "short": "o",
+      "description": "Like -l, but do not list group information"
+    },
+    "slash": {
+      "type": "boolean",
+      "short": "p",
+      "description": "Append / indicator to directories"
+    },
+    "hide-control-chars": {
+      "type": "boolean",
+      "short": "q",
+      "description": "Print ? instead of nongraphic characters"
+    },
+    "show-control-chars": {
+      "type": "boolean",
+      "description": "Show nongraphic characters as-is"
+    },
+    "quote-name": {
+      "type": "boolean",
+      "short": "Q",
+      "description": "Enclose entry names in double quotes"
+    },
+    "quoting-style": {
+      "type": "string",
+      "enum": ["literal", "locale", "shell", "shell-always", "shell-escape", "shell-escape-always", "c", "escape"],
+      "description": "Use quoting style for entry names"
+    },
+    "reverse": {
+      "type": "boolean",
+      "short": "r",
+      "description": "Reverse order while sorting"
+    },
+    "recursive": {
+      "type": "boolean",
+      "short": "R",
+      "description": "List subdirectories recursively"
+    },
+    "size": {
+      "type": "boolean",
+      "short": "s",
+      "description": "Print the allocated size of each file, in blocks"
+    },
+    "sort-size": {
+      "type": "boolean",
+      "short": "S",
+      "description": "Sort by file size, largest first"
+    },
+    "sort": {
+      "type": "string",
+      "enum": ["none", "size", "time", "version", "extension", "name", "width"],
+      "description": "Sort by specified field"
+    },
+    "time": {
+      "type": "string",
+      "enum": ["atime", "access", "use", "ctime", "status", "mtime", "modification", "birth", "creation"],
+      "description": "Select which timestamp to display or sort by"
+    },
+    "time-style": {
+      "type": "string",
+      "description": "Time/date format with -l"
+    },
+    "sort-time": {
+      "type": "boolean",
+      "short": "t",
+      "description": "Sort by time, newest first"
+    },
+    "tabsize": {
+      "type": "integer",
+      "short": "T",
+      "description": "Assume tab stops at each COLS instead of 8"
+    },
+    "access-time": {
+      "type": "boolean",
+      "short": "u",
+      "description": "With -lt: sort by access time; with -l: show access time"
+    },
+    "no-sort-dir": {
+      "type": "boolean",
+      "short": "U",
+      "description": "Do not sort directory entries"
+    },
+    "version-sort": {
+      "type": "boolean",
+      "short": "v",
+      "description": "Natural sort of (version) numbers within text"
+    },
+    "width": {
+      "type": "integer",
+      "short": "w",
+      "description": "Set output width to COLS (0 means no limit)"
+    },
+    "by-lines": {
+      "type": "boolean",
+      "short": "x",
+      "description": "List entries by lines instead of by columns"
+    },
+    "sort-extension": {
+      "type": "boolean",
+      "short": "X",
+      "description": "Sort alphabetically by entry extension"
+    },
+    "context": {
+      "type": "boolean",
+      "short": "Z",
+      "description": "Print any security context of each file"
+    },
+    "zero": {
+      "type": "boolean",
+      "description": "End each output line with NUL, not newline"
+    },
+    "one-per-line": {
+      "type": "boolean",
+      "short": "1",
+      "description": "List one file per line"
+    }
+  }
+}
