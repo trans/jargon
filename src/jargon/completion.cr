@@ -260,23 +260,7 @@ module Jargon
       lines << "                    _arguments \\"
 
       flags.each do |flag|
-        if flag.short
-          desc = escape_zsh(flag.description || flag.long)
-          if flag.enum_values
-            enum_str = flag.enum_values.not_nil!.join(" ")
-            lines << "                        {-#{flag.short},--#{flag.long}}'[#{desc}]:value:(#{enum_str})' \\"
-          else
-            lines << "                        {-#{flag.short},--#{flag.long}}'[#{desc}]' \\"
-          end
-        else
-          desc = escape_zsh(flag.description || flag.long)
-          if flag.enum_values
-            enum_str = flag.enum_values.not_nil!.join(" ")
-            lines << "                        '--#{flag.long}[#{desc}]:value:(#{enum_str})' \\"
-          else
-            lines << "                        '--#{flag.long}[#{desc}]' \\"
-          end
-        end
+        lines << "                        #{build_zsh_flag_arg(flag)} \\"
       end
 
       # Remove trailing backslash from last line if there are flags
@@ -324,23 +308,7 @@ module Jargon
         lines << "    _arguments \\"
 
         flags.each do |flag|
-          if flag.short
-            desc = escape_zsh(flag.description || flag.long)
-            if flag.enum_values
-              enum_str = flag.enum_values.not_nil!.join(" ")
-              lines << "        {-#{flag.short},--#{flag.long}}'[#{desc}]:value:(#{enum_str})' \\"
-            else
-              lines << "        {-#{flag.short},--#{flag.long}}'[#{desc}]' \\"
-            end
-          else
-            desc = escape_zsh(flag.description || flag.long)
-            if flag.enum_values
-              enum_str = flag.enum_values.not_nil!.join(" ")
-              lines << "        '--#{flag.long}[#{desc}]:value:(#{enum_str})' \\"
-            else
-              lines << "        '--#{flag.long}[#{desc}]' \\"
-            end
-          end
+          lines << "        #{build_zsh_flag_arg(flag)} \\"
         end
 
         lines << "        '--help[Show help]'"
@@ -390,23 +358,7 @@ module Jargon
 
       lines << "# #{name} subcommand options"
       flags.each do |flag|
-        parts = ["complete", "-c", program, "-n", "\"__fish_seen_subcommand_from #{name}\""]
-
-        if short = flag.short
-          parts << "-s" << short
-        end
-
-        parts << "-l" << flag.long
-
-        if flag.description
-          parts << "-d" << "\"#{escape_fish(flag.description)}\""
-        end
-
-        if flag.enum_values
-          parts << "-xa" << "\"#{flag.enum_values.not_nil!.join(" ")}\""
-        end
-
-        lines << parts.join(" ")
+        lines << build_fish_flag_line(program, flag, "\"__fish_seen_subcommand_from #{name}\"")
       end
 
       lines.join("\n")
@@ -436,25 +388,9 @@ module Jargon
       cli.subcommands.each do |sub_name, sub|
         case sub
         when Schema
-          flags = collect_flags(sub)
-          flags.each do |flag|
-            parts = ["complete", "-c", program, "-n", "\"__fish_seen_subcommand_from #{parent_name}; and __fish_seen_subcommand_from #{sub_name}\""]
-
-            if short = flag.short
-              parts << "-s" << short
-            end
-
-            parts << "-l" << flag.long
-
-            if flag.description
-              parts << "-d" << "\"#{escape_fish(flag.description)}\""
-            end
-
-            if flag.enum_values
-              parts << "-xa" << "\"#{flag.enum_values.not_nil!.join(" ")}\""
-            end
-
-            lines << parts.join(" ")
+          condition = "\"__fish_seen_subcommand_from #{parent_name}; and __fish_seen_subcommand_from #{sub_name}\""
+          collect_flags(sub).each do |flag|
+            lines << build_fish_flag_line(program, flag, condition)
           end
         end
       end
@@ -466,31 +402,46 @@ module Jargon
       lines = [] of String
 
       if schema = @cli.schema
-        flags = collect_flags(schema)
-
         lines << "# Options"
-        flags.each do |flag|
-          parts = ["complete", "-c", program]
-
-          if short = flag.short
-            parts << "-s" << short
-          end
-
-          parts << "-l" << flag.long
-
-          if flag.description
-            parts << "-d" << "\"#{escape_fish(flag.description)}\""
-          end
-
-          if flag.enum_values
-            parts << "-xa" << "\"#{flag.enum_values.not_nil!.join(" ")}\""
-          end
-
-          lines << parts.join(" ")
+        collect_flags(schema).each do |flag|
+          lines << build_fish_flag_line(program, flag, nil)
         end
       end
 
       lines.join("\n")
+    end
+
+    private def build_zsh_flag_arg(flag : FlagInfo) : String
+      desc = escape_zsh(flag.description || flag.long)
+      enum_suffix = if enum_values = flag.enum_values
+                      ":value:(#{enum_values.join(" ")})"
+                    else
+                      ""
+                    end
+
+      if short = flag.short
+        "{-#{short},--#{flag.long}}'[#{desc}]#{enum_suffix}'"
+      else
+        "'--#{flag.long}[#{desc}]#{enum_suffix}'"
+      end
+    end
+
+    private def build_fish_flag_line(program : String, flag : FlagInfo, condition : String?) : String
+      parts = ["complete", "-c", program]
+      if cond = condition
+        parts << "-n" << cond
+      end
+      if short = flag.short
+        parts << "-s" << short
+      end
+      parts << "-l" << flag.long
+      if desc = flag.description
+        parts << "-d" << "\"#{escape_fish(desc)}\""
+      end
+      if enum_values = flag.enum_values
+        parts << "-xa" << "\"#{enum_values.join(" ")}\""
+      end
+      parts.join(" ")
     end
 
     private def collect_flags(schema : Schema) : Array(FlagInfo)
