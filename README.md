@@ -10,6 +10,7 @@ A Crystal library that generates CLI interfaces from JSON Schema definitions. De
 - **Defaults**: Schema default values are applied automatically
 - **Help text**: Generated from schema descriptions
 - **Auto help flags**: `--help` and `-h` detected automatically
+- **Shell completions**: Generate completion scripts for bash, zsh, and fish
 - **Positional args**: Non-flag arguments assigned by position
 - **Short flags**: Single-character flag aliases (`-v`, `-n 5`)
 - **Subcommands**: Named sub-parsers with independent schemas
@@ -235,6 +236,46 @@ result = cli.parse(["-h", "localhost"])
 result["host"].as_s     # => "localhost"
 ```
 
+## Shell Completions
+
+Jargon can generate shell completion scripts for bash, zsh, and fish. The `--completions <shell>` flag is detected automatically:
+
+```crystal
+cli = Jargon.from_json(schema, "myapp")
+result = cli.parse(ARGV)
+
+if result.completion_requested?
+  case result.completion_shell
+  when "bash" then puts cli.bash_completion
+  when "zsh"  then puts cli.zsh_completion
+  when "fish" then puts cli.fish_completion
+  end
+  exit 0
+end
+```
+
+### Installing Completions
+
+Generate the completion script once and save it to your shell's completions directory:
+
+```sh
+# Bash
+myapp --completions bash > ~/.local/share/bash-completion/completions/myapp
+
+# Zsh (ensure ~/.zfunc is in your fpath)
+myapp --completions zsh > ~/.zfunc/_myapp
+
+# Fish
+myapp --completions fish > ~/.config/fish/completions/myapp.fish
+```
+
+The generated scripts provide completions for:
+- Subcommand names
+- Long flags (`--verbose`, `--output`)
+- Short flags (`-v`, `-o`)
+- Enum values (e.g., `--format json|yaml|xml`)
+- Nested subcommands
+
 ## Subcommands
 
 Create CLIs with subcommands, each with their own schema:
@@ -450,10 +491,19 @@ result.subcommand      # => String? (nil if no subcommands)
 result.help_requested?  # => true if --help/-h was passed
 result.help_subcommand  # => String? (which subcommand's help, nil for top-level)
 
+# Completion detection
+result.completion_requested?  # => true if --completions was passed
+result.completion_shell       # => String? ("bash", "zsh", or "fish")
+
 # Help text
 cli.help              # => usage string with all options
 cli.help("fetch")     # => help for specific subcommand
 cli.help("config set") # => help for nested subcommand
+
+# Completion scripts
+cli.bash_completion  # => bash completion script
+cli.zsh_completion   # => zsh completion script
+cli.fish_completion  # => fish completion script
 ```
 
 ## Development

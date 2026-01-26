@@ -64,6 +64,16 @@ module Jargon
         return Result.new({} of String => JSON::Any, [] of String, nil, true, nil)
       end
 
+      # Check for --completions
+      if args.size >= 2 && args[0] == "--completions"
+        shell = args[1]
+        if shell.in?("bash", "zsh", "fish")
+          return Result.new({} of String => JSON::Any, [] of String, nil, false, nil, shell)
+        else
+          return Result.new({} of String => JSON::Any, ["Unknown shell '#{shell}'. Supported: bash, zsh, fish"])
+        end
+      end
+
       # Check if first arg matches a known subcommand
       if args.any? && (subcmd = @subcommands[args[0]]?)
         subcmd_name = args[0]
@@ -179,6 +189,16 @@ module Jargon
       help_requested, _ = any_help_requested?(args, schema)
       if help_requested
         return Result.new({} of String => JSON::Any, [] of String, nil, true, subcommand_path)
+      end
+
+      # Check for --completions (only at top level, not within subcommands)
+      if subcommand_path.nil? && args.size >= 2 && args[0] == "--completions"
+        shell = args[1]
+        if shell.in?("bash", "zsh", "fish")
+          return Result.new({} of String => JSON::Any, [] of String, nil, false, nil, shell)
+        else
+          return Result.new({} of String => JSON::Any, ["Unknown shell '#{shell}'. Supported: bash, zsh, fish"])
+        end
       end
 
       data = {} of String => JSON::Any

@@ -1548,5 +1548,81 @@ describe Jargon do
       fish.should contain("-l verbose")
       fish.should_not contain("-l file")
     end
+
+    describe "--completions flag" do
+      it "detects --completions bash in flat CLI" do
+        cli = Jargon.from_json(%({
+          "type": "object",
+          "properties": {
+            "name": {"type": "string"}
+          }
+        }), "myapp")
+
+        result = cli.parse(["--completions", "bash"])
+        result.completion_requested?.should be_true
+        result.completion_shell.should eq("bash")
+      end
+
+      it "detects --completions zsh in flat CLI" do
+        cli = Jargon.from_json(%({
+          "type": "object",
+          "properties": {
+            "name": {"type": "string"}
+          }
+        }), "myapp")
+
+        result = cli.parse(["--completions", "zsh"])
+        result.completion_requested?.should be_true
+        result.completion_shell.should eq("zsh")
+      end
+
+      it "detects --completions fish in flat CLI" do
+        cli = Jargon.from_json(%({
+          "type": "object",
+          "properties": {
+            "name": {"type": "string"}
+          }
+        }), "myapp")
+
+        result = cli.parse(["--completions", "fish"])
+        result.completion_requested?.should be_true
+        result.completion_shell.should eq("fish")
+      end
+
+      it "detects --completions in CLI with subcommands" do
+        cli = Jargon.new("myapp")
+        cli.subcommand("query", %({"type": "object", "properties": {}}))
+
+        result = cli.parse(["--completions", "bash"])
+        result.completion_requested?.should be_true
+        result.completion_shell.should eq("bash")
+      end
+
+      it "errors on unknown shell" do
+        cli = Jargon.from_json(%({
+          "type": "object",
+          "properties": {}
+        }), "myapp")
+
+        result = cli.parse(["--completions", "powershell"])
+        result.completion_requested?.should be_false
+        result.valid?.should be_false
+        result.errors.first.should contain("Unknown shell")
+        result.errors.first.should contain("powershell")
+      end
+
+      it "completion_requested? is false when not requested" do
+        cli = Jargon.from_json(%({
+          "type": "object",
+          "properties": {
+            "name": {"type": "string"}
+          }
+        }), "myapp")
+
+        result = cli.parse(["name=test"])
+        result.completion_requested?.should be_false
+        result.completion_shell.should be_nil
+      end
+    end
   end
 end
