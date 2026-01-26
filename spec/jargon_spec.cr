@@ -390,7 +390,7 @@ describe Jargon do
 
       result = cli.parse(["John", "extra"])
       result.valid?.should be_false
-      result.errors.should contain("Unexpected argument: extra")
+      result.errors.should contain("Unexpected argument 'extra'")
     end
 
     it "validates required positional args" do
@@ -461,7 +461,34 @@ describe Jargon do
 
       result = cli.parse(["-x"])
       result.valid?.should be_false
-      result.errors.should contain("Unknown short flag: -x")
+      result.errors.should contain("Unknown option '-x'. Available short flags: -n")
+    end
+
+    it "errors on unknown long flag" do
+      cli = Jargon.from_json(%({
+        "type": "object",
+        "properties": {
+          "name": {"type": "string"},
+          "count": {"type": "integer", "short": "n"}
+        }
+      }))
+
+      result = cli.parse(["--unknown", "value"])
+      result.valid?.should be_false
+      result.errors.should contain("Unknown option '--unknown'. Available options: --name, --count")
+    end
+
+    it "errors on unknown key=value style option" do
+      cli = Jargon.from_json(%({
+        "type": "object",
+        "properties": {
+          "name": {"type": "string"}
+        }
+      }))
+
+      result = cli.parse(["unknown=value"])
+      result.valid?.should be_false
+      result.errors.should contain("Unknown option 'unknown'. Available options: name")
     end
   end
 

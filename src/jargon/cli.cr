@@ -174,7 +174,12 @@ module Jargon
             end
             i += consumed
           else
-            errors << "Unknown short flag: #{arg}"
+            available_shorts = short_to_long.keys.map { |s| "-#{s}" }
+            if available_shorts.empty?
+              errors << "Unknown option '#{arg}': no short flags defined"
+            else
+              errors << "Unknown option '#{arg}'. Available short flags: #{available_shorts.join(", ")}"
+            end
             i += 1
           end
         elsif is_flag?(arg)
@@ -182,7 +187,13 @@ module Jargon
           if key
             set_nested_value(data, key, value, errors)
           else
-            errors << "Unknown argument: #{arg}"
+            opt_name = arg[2..]
+            opts = available_options(schema)
+            if opts.empty?
+              errors << "Unknown option '#{arg}': no options defined"
+            else
+              errors << "Unknown option '#{arg}'. Available options: #{opts.map { |o| "--#{o}" }.join(", ")}"
+            end
           end
           i += consumed
         elsif positional_index < positional_names.size
@@ -195,7 +206,19 @@ module Jargon
           if key
             set_nested_value(data, key, value, errors)
           else
-            errors << "Unexpected argument: #{arg}"
+            # Determine if this looks like a key=value or key:value with unknown key
+            if arg.includes?("=") || arg.includes?(":")
+              sep = arg.includes?("=") ? "=" : ":"
+              unknown_key = arg.split(sep, 2)[0]
+              opts = available_options(schema)
+              if opts.empty?
+                errors << "Unknown option '#{unknown_key}': no options defined"
+              else
+                errors << "Unknown option '#{unknown_key}'. Available options: #{opts.join(", ")}"
+              end
+            else
+              errors << "Unexpected argument '#{arg}'"
+            end
           end
           i += consumed
         end
@@ -230,6 +253,13 @@ module Jargon
 
     private def parse_long_flag(arg : String, args : Array(String), index : Int32, schema : Schema) : {String?, JSON::Any?, Int32}
       key = arg[2..]
+      base_key = key.includes?("=") ? key.split("=", 2)[0] : key
+
+      # Validate that the option exists in the schema
+      unless property_exists?(base_key, schema)
+        return {nil, nil, 1}
+      end
+
       if key.includes?("=")
         parts = key.split("=", 2)
         {parts[0], coerce_value(parts[0], parts[1], schema), 1}
@@ -348,11 +378,19 @@ module Jargon
       # Style 1: key=value
       if arg.includes?("=")
         parts = arg.split("=", 2)
-        {parts[0], coerce_value(parts[0], parts[1], schema), 1}
+        key = parts[0]
+        unless property_exists?(key, schema)
+          return {nil, nil, 1}
+        end
+        {key, coerce_value(key, parts[1], schema), 1}
       # Style 2: key:value
       elsif arg.includes?(":")
         parts = arg.split(":", 2)
-        {parts[0], coerce_value(parts[0], parts[1], schema), 1}
+        key = parts[0]
+        unless property_exists?(key, schema)
+          return {nil, nil, 1}
+        end
+        {key, coerce_value(key, parts[1], schema), 1}
       else
         {nil, nil, 1}
       end
@@ -361,6 +399,19 @@ module Jargon
     private def boolean_property?(key : String, schema : Schema) : Bool
       prop = find_property(key, schema)
       prop.try(&.type.boolean?) || false
+    end
+
+    private def property_exists?(key : String, schema : Schema) : Bool
+      !find_property(key, schema).nil?
+    end
+
+    private def available_options(schema : Schema) : Array(String)
+      root = resolve_property(schema.root, schema)
+      if props = root.properties
+        props.keys
+      else
+        [] of String
+      end
     end
 
     private def find_property(key : String, schema : Schema) : Property?
