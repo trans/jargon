@@ -216,8 +216,9 @@ module Jargon
           if short_keys.size == 1
             # Single short flag: -v or -n 5
             if long_key = short_to_long[short_keys]?
-              key, value, consumed = parse_long_flag("--#{long_key}", args, i, schema)
+              key, value, consumed, coerce_error = parse_long_flag("--#{long_key}", args, i, schema)
               if key
+                errors << coerce_error if coerce_error
                 set_nested_value(data, key, value, errors)
               end
               i += consumed
@@ -257,8 +258,9 @@ module Jargon
             i += 1
           end
         elsif is_flag?(arg)
-          key, value, consumed = parse_long_flag(arg, args, i, schema)
+          key, value, consumed, coerce_error = parse_long_flag(arg, args, i, schema)
           if key
+            errors << coerce_error if coerce_error
             set_nested_value(data, key, value, errors)
           else
             opt_name = arg[2..]
@@ -272,12 +274,15 @@ module Jargon
           i += consumed
         elsif positional_index < positional_names.size
           key = positional_names[positional_index]
-          set_nested_value(data, key, coerce_value(key, arg, schema), errors)
+          coerced, coerce_error = coerce_value(key, arg, schema)
+          errors << coerce_error if coerce_error
+          set_nested_value(data, key, coerced, errors)
           positional_index += 1
           i += 1
         else
-          key, value, consumed = parse_argument(arg, args, i, schema)
+          key, value, consumed, coerce_error = parse_argument(arg, args, i, schema)
           if key
+            errors << coerce_error if coerce_error
             set_nested_value(data, key, value, errors)
           else
             # Determine if this looks like a key=value or key:value with unknown key
@@ -325,26 +330,28 @@ module Jargon
       map
     end
 
-    private def parse_long_flag(arg : String, args : Array(String), index : Int32, schema : Schema) : {String?, JSON::Any?, Int32}
+    private def parse_long_flag(arg : String, args : Array(String), index : Int32, schema : Schema) : {String?, JSON::Any?, Int32, String?}
       key = arg[2..]
       base_key = key.includes?("=") ? key.split("=", 2)[0] : key
 
       # Validate that the option exists in the schema
       unless property_exists?(base_key, schema)
-        return {nil, nil, 1}
+        return {nil, nil, 1, nil}
       end
 
       if key.includes?("=")
         parts = key.split("=", 2)
-        {parts[0], coerce_value(parts[0], parts[1], schema), 1}
+        coerced, error = coerce_value(parts[0], parts[1], schema)
+        {parts[0], coerced, 1, error}
       elsif index + 1 < args.size && !args[index + 1].starts_with?("-")
         if boolean_property?(key, schema)
-          {key, JSON::Any.new(true), 1}
+          {key, JSON::Any.new(true), 1, nil}
         else
-          {key, coerce_value(key, args[index + 1], schema), 2}
+          coerced, error = coerce_value(key, args[index + 1], schema)
+          {key, coerced, 2, error}
         end
       else
-        {key, JSON::Any.new(true), 1}
+        {key, JSON::Any.new(true), 1, nil}
       end
     end
 
@@ -563,25 +570,27 @@ module Jargon
       lines.join("\n")
     end
 
-    private def parse_argument(arg : String, args : Array(String), index : Int32, schema : Schema) : {String?, JSON::Any?, Int32}
+    private def parse_argument(arg : String, args : Array(String), index : Int32, schema : Schema) : {String?, JSON::Any?, Int32, String?}
       # Style 1: key=value
       if arg.includes?("=")
         parts = arg.split("=", 2)
         key = parts[0]
         unless property_exists?(key, schema)
-          return {nil, nil, 1}
+          return {nil, nil, 1, nil}
         end
-        {key, coerce_value(key, parts[1], schema), 1}
+        coerced, error = coerce_value(key, parts[1], schema)
+        {key, coerced, 1, error}
       # Style 2: key:value
       elsif arg.includes?(":")
         parts = arg.split(":", 2)
         key = parts[0]
         unless property_exists?(key, schema)
-          return {nil, nil, 1}
+          return {nil, nil, 1, nil}
         end
-        {key, coerce_value(key, parts[1], schema), 1}
+        coerced, error = coerce_value(key, parts[1], schema)
+        {key, coerced, 1, error}
       else
-        {nil, nil, 1}
+        {nil, nil, 1, nil}
       end
     end
 
@@ -637,24 +646,29 @@ module Jargon
       end
     end
 
-    private def coerce_value(key : String, value : String, schema : Schema) : JSON::Any
+    private def coerce_value(key : String, value : String, schema : Schema) : {JSON::Any, String?}
       prop = find_property(key, schema)
 
-      case prop.try(&.type)
+      result = case prop.try(&.type)
       when Property::Type::Integer
         JSON::Any.new(value.to_i64)
       when Property::Type::Number
         JSON::Any.new(value.to_f64)
       when Property::Type::Boolean
-        JSON::Any.new(value.downcase.in?("true", "1", "yes", "on"))
+        case value.downcase
+        when "true", "1", "yes", "on"   then JSON::Any.new(true)
+        when "false", "0", "no", "off"  then JSON::Any.new(false)
+        else return {JSON::Any.new(value), "Invalid boolean value '#{value}' for #{key}. Use: true/false, yes/no, on/off, 1/0"}
+        end
       when Property::Type::Array
         items = value.split(",").map { |v| JSON::Any.new(v.strip) }
         JSON::Any.new(items)
       else
         JSON::Any.new(value)
       end
+      {result, nil}
     rescue
-      JSON::Any.new(value)
+      {JSON::Any.new(value), nil}
     end
 
     private def set_nested_value(data : Hash(String, JSON::Any), key : String, value : JSON::Any?, errors : Array(String))

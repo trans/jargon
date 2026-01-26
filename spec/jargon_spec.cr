@@ -111,6 +111,41 @@ describe Jargon do
       result["verbose"].as_bool.should be_true
     end
 
+    it "accepts various boolean value formats" do
+      cli = Jargon.from_json(%({
+        "type": "object",
+        "properties": {
+          "flag": {"type": "boolean"}
+        }
+      }))
+
+      %w[true yes on 1 TRUE Yes ON].each do |val|
+        result = cli.parse(["flag=#{val}"])
+        result.valid?.should be_true
+        result["flag"].as_bool.should be_true
+      end
+
+      %w[false no off 0 FALSE No OFF].each do |val|
+        result = cli.parse(["flag=#{val}"])
+        result.valid?.should be_true
+        result["flag"].as_bool.should be_false
+      end
+    end
+
+    it "errors on invalid boolean values" do
+      cli = Jargon.from_json(%({
+        "type": "object",
+        "properties": {
+          "verbose": {"type": "boolean"}
+        }
+      }))
+
+      result = cli.parse(["verbose=treu"])
+      result.valid?.should be_false
+      result.errors.first.should contain("Invalid boolean value 'treu'")
+      result.errors.first.should contain("true/false")
+    end
+
     it "coerces array values" do
       cli = Jargon.from_json(%({
         "type": "object",
