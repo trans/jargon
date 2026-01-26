@@ -61,6 +61,31 @@ else
 end
 ```
 
+## YAML Schemas
+
+Prefer YAML? Convert it to JSON:
+
+```yaml
+# schema.yaml
+type: object
+properties:
+  name:
+    type: string
+    description: User name
+  verbose:
+    type: boolean
+    short: v
+required:
+  - name
+```
+
+```crystal
+require "yaml"
+schema = File.read("schema.yaml")
+json = YAML.parse(schema).to_json
+cli = Jargon.from_json(json, "myapp")
+```
+
 ## Argument Styles
 
 Three styles are supported interchangeably:
