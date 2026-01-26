@@ -4,7 +4,7 @@ require "./jargon/result"
 require "./jargon/completion"
 
 module Jargon
-  VERSION = "0.7.0"
+  VERSION = "0.8.0"
 
   # Convenience method to create a CLI with just a program name (for subcommand mode)
   def self.new(program_name : String) : CLI
@@ -21,6 +21,15 @@ module Jargon
   def self.from_file(path : String, program_name : String = "cli") : CLI
     schema = Schema.from_file(path)
     CLI.new(schema, program_name)
+  end
+
+  # Convenience shortcut with program name first
+  def self.cli(program_name : String, *, json : String) : CLI
+    CLI.from_json(json, program_name)
+  end
+
+  def self.cli(program_name : String, *, file : String) : CLI
+    CLI.from_file(file, program_name)
   end
 
   # Merge global schema properties into a subcommand schema.

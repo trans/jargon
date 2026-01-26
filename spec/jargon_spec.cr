@@ -1,6 +1,63 @@
 require "./spec_helper"
 
 describe Jargon do
+  describe "API" do
+    it "Jargon::CLI.from_json creates CLI from JSON schema" do
+      cli = Jargon::CLI.from_json(%({
+        "type": "object",
+        "properties": {
+          "name": {"type": "string"}
+        }
+      }), "myapp")
+
+      cli.should be_a(Jargon::CLI)
+      cli.program_name.should eq("myapp")
+      result = cli.parse(["--name", "test"])
+      result["name"].as_s.should eq("test")
+    end
+
+    it "Jargon.cli with json: creates CLI from JSON string" do
+      cli = Jargon.cli("myapp", json: %({
+        "type": "object",
+        "properties": {
+          "verbose": {"type": "boolean"}
+        }
+      }))
+
+      cli.should be_a(Jargon::CLI)
+      cli.program_name.should eq("myapp")
+      result = cli.parse(["--verbose"])
+      result["verbose"].as_bool.should be_true
+    end
+
+    it "Jargon.cli with file: creates CLI from file" do
+      # Use existing schema file if available, or create temp one
+      File.write("/tmp/test_schema.json", %({"type": "object", "properties": {"name": {"type": "string"}}}))
+      begin
+        cli = Jargon.cli("myapp", file: "/tmp/test_schema.json")
+        cli.should be_a(Jargon::CLI)
+        cli.program_name.should eq("myapp")
+        result = cli.parse(["--name", "test"])
+        result["name"].as_s.should eq("test")
+      ensure
+        File.delete("/tmp/test_schema.json")
+      end
+    end
+
+    it "Jargon.from_json remains for backwards compatibility" do
+      cli = Jargon.from_json(%({
+        "type": "object",
+        "properties": {
+          "name": {"type": "string"}
+        }
+      }), "myapp")
+
+      cli.should be_a(Jargon::CLI)
+      result = cli.parse(["--name", "test"])
+      result["name"].as_s.should eq("test")
+    end
+  end
+
   describe "basic parsing" do
     it "parses string values with equals style" do
       cli = Jargon.from_json(%({

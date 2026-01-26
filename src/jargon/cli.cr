@@ -9,6 +9,18 @@ module Jargon
     getter default_subcommand : String?
     getter subcommand_key : String
 
+    # Create a CLI from a JSON schema string
+    def self.from_json(json : String, program_name : String = "cli") : CLI
+      schema = Schema.from_json(json)
+      CLI.new(schema, program_name)
+    end
+
+    # Create a CLI from a JSON schema file
+    def self.from_file(path : String, program_name : String = "cli") : CLI
+      schema = Schema.from_file(path)
+      CLI.new(schema, program_name)
+    end
+
     def initialize(@schema : Schema, @program_name : String = "cli")
       @subcommands = {} of String => Schema | CLI
       @default_subcommand = nil

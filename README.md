@@ -565,10 +565,16 @@ result = cli.parse(ARGV, defaults: config)
 ## API
 
 ```crystal
-# From JSON string
-cli = Jargon.from_json(json_string, program_name)
+# Create CLI - explicit form (returns Jargon::CLI)
+cli = Jargon::CLI.from_json(json_string, program_name)
+cli = Jargon::CLI.from_file("schema.json", program_name)
 
-# From file
+# Create CLI - convenience shortcut (program name first)
+cli = Jargon.cli(program_name, json: json_string)
+cli = Jargon.cli(program_name, file: "schema.json")
+
+# Create CLI - backwards compatible
+cli = Jargon.from_json(json_string, program_name)
 cli = Jargon.from_file("schema.json", program_name)
 
 # For subcommands (no root schema)
