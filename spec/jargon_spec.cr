@@ -2116,4 +2116,91 @@ describe Jargon do
       result["env"].as_s.should eq("production")
     end
   end
+
+  describe "environment variables" do
+    it "uses env var when CLI arg not provided" do
+      ENV["TEST_JARGON_HOST"] = "env-host"
+      begin
+        cli = Jargon.from_json(%({
+          "type": "object",
+          "properties": {
+            "host": {"type": "string", "env": "TEST_JARGON_HOST"}
+          }
+        }))
+
+        result = cli.parse([] of String)
+        result["host"].as_s.should eq("env-host")
+      ensure
+        ENV.delete("TEST_JARGON_HOST")
+      end
+    end
+
+    it "CLI args override env vars" do
+      ENV["TEST_JARGON_PORT"] = "8080"
+      begin
+        cli = Jargon.from_json(%({
+          "type": "object",
+          "properties": {
+            "port": {"type": "integer", "env": "TEST_JARGON_PORT"}
+          }
+        }))
+
+        result = cli.parse(["--port", "3000"])
+        result["port"].as_i64.should eq(3000)
+      ensure
+        ENV.delete("TEST_JARGON_PORT")
+      end
+    end
+
+    it "env vars override config defaults" do
+      ENV["TEST_JARGON_DEBUG"] = "true"
+      begin
+        cli = Jargon.from_json(%({
+          "type": "object",
+          "properties": {
+            "debug": {"type": "boolean", "env": "TEST_JARGON_DEBUG"}
+          }
+        }))
+
+        config = {"debug" => JSON::Any.new(false)}
+        result = cli.parse([] of String, defaults: config)
+        result["debug"].as_bool.should be_true
+      ensure
+        ENV.delete("TEST_JARGON_DEBUG")
+      end
+    end
+
+    it "coerces env var values to correct types" do
+      ENV["TEST_JARGON_COUNT"] = "42"
+      ENV["TEST_JARGON_ENABLED"] = "true"
+      begin
+        cli = Jargon.from_json(%({
+          "type": "object",
+          "properties": {
+            "count": {"type": "integer", "env": "TEST_JARGON_COUNT"},
+            "enabled": {"type": "boolean", "env": "TEST_JARGON_ENABLED"}
+          }
+        }))
+
+        result = cli.parse([] of String)
+        result["count"].as_i64.should eq(42)
+        result["enabled"].as_bool.should be_true
+      ensure
+        ENV.delete("TEST_JARGON_COUNT")
+        ENV.delete("TEST_JARGON_ENABLED")
+      end
+    end
+
+    it "ignores unset env vars" do
+      cli = Jargon.from_json(%({
+        "type": "object",
+        "properties": {
+          "missing": {"type": "string", "env": "TEST_JARGON_NONEXISTENT_VAR"}
+        }
+      }))
+
+      result = cli.parse([] of String)
+      result["missing"]?.should be_nil
+    end
+  end
 end

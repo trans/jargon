@@ -399,7 +399,10 @@ module Jargon
         end
       end
 
-      # Apply user-provided defaults (e.g., from config file) - CLI args take precedence
+      # Apply environment variables - CLI args take precedence
+      apply_env_vars(data, errors, schema)
+
+      # Apply user-provided defaults (e.g., from config file) - CLI and env vars take precedence
       if defaults
         default_hash = defaults.is_a?(JSON::Any) ? defaults.as_h : defaults
         default_hash.each do |key, value|
@@ -796,6 +799,22 @@ module Jargon
           end
         end
         current[parts.last] = value
+      end
+    end
+
+    private def apply_env_vars(data : Hash(String, JSON::Any), errors : Array(String), schema : Schema)
+      root = resolve_property(schema.root, schema)
+      return unless props = root.properties
+
+      props.each do |name, prop|
+        resolved_prop = resolve_property(prop, schema)
+        next if data.has_key?(name)  # CLI arg takes precedence
+        next unless env_var = resolved_prop.env
+        next unless env_value = ENV[env_var]?
+
+        coerced, coerce_error = coerce_value(name, env_value, schema)
+        errors << coerce_error if coerce_error
+        data[name] = coerced
       end
     end
 

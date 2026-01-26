@@ -20,6 +20,7 @@ module Jargon
     getter items : Property?
     getter ref : String?
     getter short : String?
+    getter env : String?
 
     def initialize(
       @name : String,
@@ -31,7 +32,8 @@ module Jargon
       @properties : Hash(String, Property)? = nil,
       @items : Property? = nil,
       @ref : String? = nil,
-      @short : String? = nil
+      @short : String? = nil,
+      @env : String? = nil
     )
     end
 
@@ -42,6 +44,7 @@ module Jargon
       enum_values = json["enum"]?.try(&.as_a?)
       ref = json["$ref"]?.try(&.as_s?)
       short = json["short"]?.try(&.as_s?)
+      env = json["env"]?.try(&.as_s?)
       is_required = required_fields.includes?(name)
 
       properties = if type.object? && (props = json["properties"]?)
@@ -65,7 +68,8 @@ module Jargon
         properties: properties,
         items: items,
         ref: ref,
-        short: short
+        short: short,
+        env: env
       )
     end
 
