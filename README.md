@@ -6,14 +6,15 @@ A Crystal library that generates CLI interfaces from JSON Schema definitions. De
 
 ## Features
 
-- **Validation**: Required fields, enum values, type checking
-- **Defaults**: Schema default values are applied automatically
-- **Config files**: Load from `.config/` (XDG spec) with merge support
+- **Validation**: Required fields, enum values, strict type checking
+- **Defaults**: Schema defaults, config file defaults, environment variables
+- **Config files**: Load from `.config/` (XDG spec) with deep merge support
 - **Help text**: Generated from schema descriptions
 - **Auto help flags**: `--help` and `-h` detected automatically
 - **Shell completions**: Generate completion scripts for bash, zsh, and fish
 - **Positional args**: Non-flag arguments assigned by position (variadic supported)
 - **Short flags**: Single-character flag aliases (`-v`, `-n 5`)
+- **Boolean flags**: Support both `--verbose` and `--verbose false` styles
 - **Subcommands**: Named sub-parsers with independent schemas (abbreviations supported)
 - **Default subcommand**: Fall back to a subcommand when none specified
 - **Stdin JSON**: Read arguments as JSON from stdin with `-`
@@ -137,11 +138,50 @@ result = cli.parse(["user.name=John", "user.email=john@example.com"])
 | JSON Schema Type | CLI Example | Notes |
 |------------------|-------------|-------|
 | `string` | `name=John` | Default type |
-| `integer` | `count=42` | Parsed as Int64 |
-| `number` | `rate=3.14` | Parsed as Float64 |
+| `integer` | `count=42` | Parsed as Int64, strict validation |
+| `number` | `rate=3.14` | Parsed as Float64, strict validation |
 | `boolean` | `verbose=true` or `--verbose` | Flag style supported |
 | `array` | `tags=a,b,c` | Comma-separated |
 | `object` | `user.name=John` | Dot notation |
+
+### Boolean Flags
+
+Boolean flags support multiple styles:
+
+```sh
+# Flag style (sets to true)
+myapp --verbose
+
+# Explicit value
+myapp --verbose true
+myapp --verbose false
+myapp --enabled no
+
+# Equals style
+myapp verbose=true
+myapp --verbose=false
+```
+
+Recognized boolean values: `true`/`false`, `yes`/`no`, `on`/`off`, `1`/`0` (case-insensitive).
+
+When a boolean flag is followed by a non-boolean value, the value is not consumed:
+
+```sh
+# --verbose is true, output.txt is a positional arg
+myapp --verbose output.txt
+```
+
+### Strict Numeric Validation
+
+Invalid numeric values produce clear error messages:
+
+```sh
+$ myapp --count abc
+Error: Invalid integer value 'abc' for count
+
+$ myapp --count 10x
+Error: Invalid integer value '10x' for count
+```
 
 ## Positional Arguments
 
@@ -533,7 +573,7 @@ Paths searched (first found wins, or merged if `merge: true`):
 
 YAML is preferred over JSON when both exist at the same location.
 
-By default, configs are merged with project overriding user:
+By default, configs are deep-merged with project overriding user:
 
 ```crystal
 # Merge all found configs (default) - project wins over user
@@ -541,6 +581,38 @@ config = cli.load_config
 
 # Or first-found wins
 config = cli.load_config(merge: false)
+```
+
+### Deep Merge
+
+Nested objects are recursively merged, not overwritten:
+
+```yaml
+# User config (~/.config/myapp.yaml)
+database:
+  host: localhost
+  port: 5432
+  user: default_user
+
+# Project config (.config/myapp.yaml)
+database:
+  host: production.example.com
+
+# Result after merge:
+database:
+  host: production.example.com  # from project
+  port: 5432                    # preserved from user
+  user: default_user            # preserved from user
+```
+
+### Config Warnings
+
+Invalid config files emit warnings to STDERR by default. To suppress:
+
+```crystal
+Jargon.config_warnings = false
+config = cli.load_config
+Jargon.config_warnings = true
 ```
 
 Example project config (`.config/myapp.yaml`):
