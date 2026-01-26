@@ -358,6 +358,18 @@ module Jargon
       validate(result.data.as_h, result.subcommand)
     end
 
+    def bash_completion : String
+      Completion.new(self).bash
+    end
+
+    def zsh_completion : String
+      Completion.new(self).zsh
+    end
+
+    def fish_completion : String
+      Completion.new(self).fish
+    end
+
     private def help_with_subcommands : String
       lines = ["Usage: #{program_name} <command> [options]", "", "Commands:"]
       @subcommands.each do |name, subcmd|

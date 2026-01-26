@@ -1,6 +1,7 @@
 require "./jargon/schema"
 require "./jargon/cli"
 require "./jargon/result"
+require "./jargon/completion"
 
 module Jargon
   VERSION = "0.4.0"

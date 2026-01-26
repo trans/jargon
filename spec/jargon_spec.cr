@@ -1282,4 +1282,271 @@ describe Jargon do
       errors.should be_empty
     end
   end
+
+  describe "shell completion" do
+    describe "bash completion" do
+      it "generates completion for flat CLI with flags" do
+        cli = Jargon.from_json(%({
+          "type": "object",
+          "properties": {
+            "name": {"type": "string", "description": "User name"},
+            "verbose": {"type": "boolean", "short": "v"}
+          }
+        }), "myapp")
+
+        bash = cli.bash_completion
+        bash.should contain("_myapp_completions")
+        bash.should contain("--name")
+        bash.should contain("--verbose")
+        bash.should contain("-v")
+        bash.should contain("--help")
+        bash.should contain("complete -F _myapp_completions myapp")
+      end
+
+      it "generates completion for CLI with subcommands" do
+        cli = Jargon.new("myapp")
+        cli.subcommand("fetch", %({
+          "type": "object",
+          "properties": {
+            "url": {"type": "string"},
+            "depth": {"type": "integer", "short": "d"}
+          }
+        }))
+        cli.subcommand("save", %({
+          "type": "object",
+          "properties": {
+            "file": {"type": "string"}
+          }
+        }))
+
+        bash = cli.bash_completion
+        bash.should contain("fetch")
+        bash.should contain("save")
+        bash.should contain("--url")
+        bash.should contain("--depth")
+        bash.should contain("-d")
+        bash.should contain("--file")
+      end
+
+      it "generates enum completions" do
+        cli = Jargon.from_json(%({
+          "type": "object",
+          "properties": {
+            "format": {"type": "string", "enum": ["json", "yaml", "xml"]}
+          }
+        }), "myapp")
+
+        bash = cli.bash_completion
+        bash.should contain("--format")
+        bash.should contain("json yaml xml")
+      end
+
+      it "generates completion for nested subcommands" do
+        remote = Jargon.new("remote")
+        remote.subcommand("add", %({
+          "type": "object",
+          "properties": {
+            "name": {"type": "string"},
+            "url": {"type": "string"}
+          }
+        }))
+        remote.subcommand("remove", %({
+          "type": "object",
+          "properties": {
+            "name": {"type": "string"}
+          }
+        }))
+
+        cli = Jargon.new("git")
+        cli.subcommand("remote", remote)
+
+        bash = cli.bash_completion
+        bash.should contain("remote")
+        bash.should contain("add")
+        bash.should contain("remove")
+        bash.should contain("--name")
+        bash.should contain("--url")
+      end
+    end
+
+    describe "zsh completion" do
+      it "generates completion for flat CLI with flags" do
+        cli = Jargon.from_json(%({
+          "type": "object",
+          "properties": {
+            "name": {"type": "string", "description": "User name"},
+            "verbose": {"type": "boolean", "short": "v"}
+          }
+        }), "myapp")
+
+        zsh = cli.zsh_completion
+        zsh.should contain("#compdef myapp")
+        zsh.should contain("_myapp")
+        zsh.should contain("--name")
+        zsh.should contain("--verbose")
+        zsh.should contain("-v")
+        zsh.should contain("User name")
+      end
+
+      it "generates completion for CLI with subcommands" do
+        cli = Jargon.new("myapp")
+        cli.subcommand("fetch", %({
+          "type": "object",
+          "properties": {
+            "url": {"type": "string", "description": "Resource URL"},
+            "depth": {"type": "integer", "short": "d", "description": "Crawl depth"}
+          }
+        }))
+
+        zsh = cli.zsh_completion
+        zsh.should contain("'fetch:")
+        zsh.should contain("--url")
+        zsh.should contain("Resource URL")
+        zsh.should contain("{-d,--depth}")
+        zsh.should contain("Crawl depth")
+      end
+
+      it "generates enum completions" do
+        cli = Jargon.from_json(%({
+          "type": "object",
+          "properties": {
+            "format": {"type": "string", "enum": ["json", "yaml", "xml"]}
+          }
+        }), "myapp")
+
+        zsh = cli.zsh_completion
+        zsh.should contain("--format")
+        zsh.should contain("json yaml xml")
+      end
+
+      it "generates completion for nested subcommands" do
+        remote = Jargon.new("remote")
+        remote.subcommand("add", %({
+          "type": "object",
+          "properties": {
+            "name": {"type": "string"}
+          }
+        }))
+
+        cli = Jargon.new("git")
+        cli.subcommand("remote", remote)
+
+        zsh = cli.zsh_completion
+        zsh.should contain("'remote:")
+        zsh.should contain("remote_commands")
+        zsh.should contain("'add:")
+      end
+    end
+
+    describe "fish completion" do
+      it "generates completion for flat CLI with flags" do
+        cli = Jargon.from_json(%({
+          "type": "object",
+          "properties": {
+            "name": {"type": "string", "description": "User name"},
+            "verbose": {"type": "boolean", "short": "v", "description": "Verbose mode"}
+          }
+        }), "myapp")
+
+        fish = cli.fish_completion
+        fish.should contain("complete -c myapp -f")
+        fish.should contain("-l name")
+        fish.should contain("-l verbose")
+        fish.should contain("-s v")
+        fish.should contain("User name")
+        fish.should contain("Verbose mode")
+      end
+
+      it "generates completion for CLI with subcommands" do
+        cli = Jargon.new("myapp")
+        cli.subcommand("fetch", %({
+          "type": "object",
+          "properties": {
+            "url": {"type": "string", "description": "Resource URL"},
+            "depth": {"type": "integer", "short": "d"}
+          }
+        }))
+        cli.subcommand("save", %({
+          "type": "object",
+          "properties": {
+            "file": {"type": "string"}
+          }
+        }))
+
+        fish = cli.fish_completion
+        fish.should contain("__fish_use_subcommand")
+        fish.should contain("-a \"fetch\"")
+        fish.should contain("-a \"save\"")
+        fish.should contain("__fish_seen_subcommand_from fetch")
+        fish.should contain("-l url")
+        fish.should contain("-l depth")
+        fish.should contain("-s d")
+        fish.should contain("-l file")
+      end
+
+      it "generates enum completions" do
+        cli = Jargon.from_json(%({
+          "type": "object",
+          "properties": {
+            "format": {"type": "string", "enum": ["json", "yaml", "xml"]}
+          }
+        }), "myapp")
+
+        fish = cli.fish_completion
+        fish.should contain("-l format")
+        fish.should contain("-xa \"json yaml xml\"")
+      end
+
+      it "generates completion for nested subcommands" do
+        remote = Jargon.new("remote")
+        remote.subcommand("add", %({
+          "type": "object",
+          "properties": {
+            "name": {"type": "string", "description": "Remote name"}
+          }
+        }))
+        remote.subcommand("remove", %({
+          "type": "object",
+          "properties": {
+            "force": {"type": "boolean", "short": "f"}
+          }
+        }))
+
+        cli = Jargon.new("git")
+        cli.subcommand("remote", remote)
+
+        fish = cli.fish_completion
+        fish.should contain("__fish_seen_subcommand_from remote")
+        fish.should contain("-a \"add\"")
+        fish.should contain("-a \"remove\"")
+        fish.should contain("-l name")
+        fish.should contain("Remote name")
+        fish.should contain("-l force")
+        fish.should contain("-s f")
+      end
+    end
+
+    it "excludes positional arguments from flag completions" do
+      cli = Jargon.from_json(%({
+        "type": "object",
+        "positional": ["file"],
+        "properties": {
+          "file": {"type": "string"},
+          "verbose": {"type": "boolean", "short": "v"}
+        }
+      }), "myapp")
+
+      bash = cli.bash_completion
+      bash.should contain("--verbose")
+      bash.should_not contain("--file")
+
+      zsh = cli.zsh_completion
+      zsh.should contain("--verbose")
+      zsh.should_not contain("--file")
+
+      fish = cli.fish_completion
+      fish.should contain("-l verbose")
+      fish.should_not contain("-l file")
+    end
+  end
 end
