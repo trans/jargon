@@ -1,0 +1,45 @@
+{
+  "type": "object",
+  "positional": ["files"],
+  "properties": {
+    "files": {
+      "type": "array",
+      "description": "Files to concatenate (use - for stdin)"
+    },
+    "show-all": {
+      "type": "boolean",
+      "short": "A",
+      "description": "Equivalent to -vET"
+    },
+    "number-nonblank": {
+      "type": "boolean",
+      "short": "b",
+      "description": "Number nonempty output lines, overrides -n"
+    },
+    "show-ends": {
+      "type": "boolean",
+      "short": "E",
+      "description": "Display $ at end of each line"
+    },
+    "number": {
+      "type": "boolean",
+      "short": "n",
+      "description": "Number all output lines"
+    },
+    "squeeze-blank": {
+      "type": "boolean",
+      "short": "s",
+      "description": "Suppress repeated empty output lines"
+    },
+    "show-tabs": {
+      "type": "boolean",
+      "short": "T",
+      "description": "Display TAB characters as ^I"
+    },
+    "show-nonprinting": {
+      "type": "boolean",
+      "short": "v",
+      "description": "Use ^ and M- notation, except for LFD and TAB"
+    }
+  }
+}
