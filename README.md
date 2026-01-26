@@ -9,6 +9,7 @@ A Crystal library that generates CLI interfaces from JSON Schema definitions. De
 - **Validation**: Required fields, enum values, type checking
 - **Defaults**: Schema default values are applied automatically
 - **Help text**: Generated from schema descriptions
+- **Auto help flags**: `--help` and `-h` detected automatically
 - **Positional args**: Non-flag arguments assigned by position
 - **Short flags**: Single-character flag aliases (`-v`, `-n 5`)
 - **Subcommands**: Named sub-parsers with independent schemas
@@ -48,7 +49,10 @@ schema = %({
 cli = Jargon.from_json(schema, "myapp")
 result = cli.parse(ARGV)
 
-if result.valid?
+if result.help_requested?
+  puts cli.help
+  exit 0
+elsif result.valid?
   puts result.to_pretty_json
 else
   STDERR.puts result.errors.join("\n")
@@ -158,6 +162,52 @@ result = cli.parse(["-v", "-n", "5", "-o", "out.txt"])
 ```sh
 myapp -v -n 5 -o out.txt
 myapp --verbose --count 5 --output out.txt  # equivalent
+```
+
+## Help Flags
+
+Jargon automatically detects `--help` and `-h` flags:
+
+```crystal
+cli = Jargon.from_json(schema, "myapp")
+result = cli.parse(ARGV)
+
+if result.help_requested?
+  if subcmd = result.help_subcommand
+    puts cli.help(subcmd)
+  else
+    puts cli.help
+  end
+  exit 0
+end
+```
+
+```sh
+myapp --help           # top-level help
+myapp -h               # same
+myapp fetch --help     # subcommand help
+myapp config set -h    # nested subcommand help
+```
+
+If you define a `help` property or use `-h` as a short flag for something else, Jargon won't intercept those flags:
+
+```crystal
+# User-defined help property takes precedence
+schema = %({
+  "type": "object",
+  "properties": {
+    "help": {"type": "string", "description": "Help topic"},
+    "host": {"type": "string", "short": "h"}
+  }
+})
+
+cli = Jargon.from_json(schema)
+result = cli.parse(["--help", "topic"])
+result.help_requested?  # => false
+result["help"].as_s     # => "topic"
+
+result = cli.parse(["-h", "localhost"])
+result["host"].as_s     # => "localhost"
 ```
 
 ## Subcommands
@@ -371,8 +421,14 @@ result.to_pretty_json  # => formatted JSON string
 result["key"]          # => access values
 result.subcommand      # => String? (nil if no subcommands)
 
+# Help detection
+result.help_requested?  # => true if --help/-h was passed
+result.help_subcommand  # => String? (which subcommand's help, nil for top-level)
+
 # Help text
-cli.help  # => usage string with all options
+cli.help              # => usage string with all options
+cli.help("fetch")     # => help for specific subcommand
+cli.help("config set") # => help for nested subcommand
 ```
 
 ## Development
