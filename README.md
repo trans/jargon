@@ -8,14 +8,16 @@ A Crystal library that generates CLI interfaces from JSON Schema definitions. De
 
 - **Validation**: Required fields, enum values, type checking
 - **Defaults**: Schema default values are applied automatically
+- **Config files**: Load from `.config/` (XDG spec) with merge support
 - **Help text**: Generated from schema descriptions
 - **Auto help flags**: `--help` and `-h` detected automatically
 - **Shell completions**: Generate completion scripts for bash, zsh, and fish
 - **Positional args**: Non-flag arguments assigned by position (variadic supported)
 - **Short flags**: Single-character flag aliases (`-v`, `-n 5`)
-- **Subcommands**: Named sub-parsers with independent schemas
+- **Subcommands**: Named sub-parsers with independent schemas (abbreviations supported)
 - **Default subcommand**: Fall back to a subcommand when none specified
 - **Stdin JSON**: Read arguments as JSON from stdin with `-`
+- **Typo suggestions**: "Did you mean?" for mistyped options
 - **$ref support**: Reuse definitions with `$ref: "#/$defs/typename"`
 
 ## Installation
