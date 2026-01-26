@@ -50,7 +50,7 @@ schema = %({
 })
 
 # Create CLI and parse arguments
-cli = Jargon.from_json(schema, "myapp")
+cli = Jargon.cli("myapp", json: schema)
 result = cli.parse(ARGV)
 
 if result.help_requested?
@@ -67,7 +67,7 @@ end
 
 ## YAML Schemas
 
-Prefer YAML? Convert it to JSON:
+YAML schemas are supported directly:
 
 ```yaml
 # schema.yaml
@@ -84,10 +84,8 @@ required:
 ```
 
 ```crystal
-require "yaml"
 schema = File.read("schema.yaml")
-json = YAML.parse(schema).to_json
-cli = Jargon.from_json(json, "myapp")
+cli = Jargon.cli("myapp", yaml: schema)
 ```
 
 ## Argument Styles
@@ -128,7 +126,7 @@ schema = %({
   }
 })
 
-cli = Jargon.from_json(schema)
+cli = Jargon.cli("myapp", json: schema)
 result = cli.parse(["user.name=John", "user.email=john@example.com"])
 # => {"user": {"name": "John", "email": "john@example.com"}}
 ```
@@ -199,7 +197,7 @@ schema = %({
   "required": ["file"]
 })
 
-cli = Jargon.from_json(schema, "myapp")
+cli = Jargon.cli("myapp", json: schema)
 result = cli.parse(["input.txt", "output.txt", "--verbose"])
 # => {"file": "input.txt", "output": "output.txt", "verbose": true}
 ```
@@ -222,7 +220,7 @@ schema = %({
   }
 })
 
-cli = Jargon.from_json(schema, "cat")
+cli = Jargon.cli("cat", json: schema)
 result = cli.parse(["-n", "a.txt", "b.txt", "c.txt"])
 # => {"number": true, "files": ["a.txt", "b.txt", "c.txt"]}
 ```
@@ -247,7 +245,7 @@ schema = %({
   }
 })
 
-cli = Jargon.from_json(schema, "myapp")
+cli = Jargon.cli("myapp", json: schema)
 result = cli.parse(["-v", "-n", "5", "-o", "out.txt"])
 # => {"verbose": true, "count": 5, "output": "out.txt"}
 ```
@@ -262,7 +260,7 @@ myapp --verbose --count 5 --output out.txt  # equivalent
 Jargon automatically detects `--help` and `-h` flags:
 
 ```crystal
-cli = Jargon.from_json(schema, "myapp")
+cli = Jargon.cli("myapp", json: schema)
 result = cli.parse(ARGV)
 
 if result.help_requested?
@@ -294,7 +292,7 @@ schema = %({
   }
 })
 
-cli = Jargon.from_json(schema)
+cli = Jargon.cli("myapp", json: schema)
 result = cli.parse(["--help", "topic"])
 result.help_requested?  # => false
 result["help"].as_s     # => "topic"
@@ -308,7 +306,7 @@ result["host"].as_s     # => "localhost"
 Jargon can generate shell completion scripts for bash, zsh, and fish. The `--completions <shell>` flag is detected automatically:
 
 ```crystal
-cli = Jargon.from_json(schema, "myapp")
+cli = Jargon.cli("myapp", json: schema)
 result = cli.parse(ARGV)
 
 if result.completion_requested?
@@ -539,7 +537,7 @@ schema = %({
   }
 })
 
-cli = Jargon.from_json(schema, "myapp")
+cli = Jargon.cli("myapp", json: schema)
 result = cli.parse(ARGV)
 ```
 
@@ -560,7 +558,7 @@ Merge order (highest priority first):
 Load configuration from standard XDG locations with `load_config`. Supports YAML and JSON:
 
 ```crystal
-cli = Jargon.from_json(schema, "myapp")
+cli = Jargon.cli("myapp", json: schema)
 config = cli.load_config  # Returns JSON::Any or nil
 result = cli.parse(ARGV, defaults: config)
 ```
@@ -646,15 +644,17 @@ result = cli.parse(ARGV, defaults: config)
 ## API
 
 ```crystal
-# Create CLI - explicit form (returns Jargon::CLI)
-cli = Jargon::CLI.from_json(json_string, program_name)
-cli = Jargon::CLI.from_file("schema.json", program_name)
-
-# Create CLI - convenience shortcut (program name first)
+# Create CLI (program name first, named schema parameter)
 cli = Jargon.cli(program_name, json: json_string)
+cli = Jargon.cli(program_name, yaml: yaml_string)
 cli = Jargon.cli(program_name, file: "schema.json")
 
-# Create CLI - backwards compatible
+# Create CLI - explicit form
+cli = Jargon::CLI.from_json(json_string, program_name)
+cli = Jargon::CLI.from_yaml(yaml_string, program_name)
+cli = Jargon::CLI.from_file("schema.json", program_name)
+
+# Create CLI - deprecated (use Jargon.cli instead)
 cli = Jargon.from_json(json_string, program_name)
 cli = Jargon.from_file("schema.json", program_name)
 

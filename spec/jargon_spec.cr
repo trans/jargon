@@ -60,7 +60,7 @@ describe Jargon do
 
   describe "basic parsing" do
     it "parses string values with equals style" do
-      cli = Jargon.from_json(%({
+      cli = Jargon.cli("myapp", json: %({
         "type": "object",
         "properties": {
           "name": {"type": "string"}
@@ -73,7 +73,7 @@ describe Jargon do
     end
 
     it "parses string values with colon style" do
-      cli = Jargon.from_json(%({
+      cli = Jargon.cli("cli", json: %({
         "type": "object",
         "properties": {
           "name": {"type": "string"}
@@ -86,7 +86,7 @@ describe Jargon do
     end
 
     it "parses string values with traditional style" do
-      cli = Jargon.from_json(%({
+      cli = Jargon.cli("cli", json: %({
         "type": "object",
         "properties": {
           "name": {"type": "string"}
@@ -99,7 +99,7 @@ describe Jargon do
     end
 
     it "parses --key=value style" do
-      cli = Jargon.from_json(%({
+      cli = Jargon.cli("cli", json: %({
         "type": "object",
         "properties": {
           "name": {"type": "string"}
@@ -114,7 +114,7 @@ describe Jargon do
 
   describe "type coercion" do
     it "coerces integer values" do
-      cli = Jargon.from_json(%({
+      cli = Jargon.cli("cli", json: %({
         "type": "object",
         "properties": {
           "count": {"type": "integer"}
@@ -127,7 +127,7 @@ describe Jargon do
     end
 
     it "coerces number values" do
-      cli = Jargon.from_json(%({
+      cli = Jargon.cli("cli", json: %({
         "type": "object",
         "properties": {
           "rate": {"type": "number"}
@@ -140,7 +140,7 @@ describe Jargon do
     end
 
     it "coerces boolean values" do
-      cli = Jargon.from_json(%({
+      cli = Jargon.cli("cli", json: %({
         "type": "object",
         "properties": {
           "verbose": {"type": "boolean"}
@@ -156,7 +156,7 @@ describe Jargon do
     end
 
     it "handles boolean flags without value" do
-      cli = Jargon.from_json(%({
+      cli = Jargon.cli("cli", json: %({
         "type": "object",
         "properties": {
           "verbose": {"type": "boolean"}
@@ -169,7 +169,7 @@ describe Jargon do
     end
 
     it "handles boolean flags with explicit true/false value" do
-      cli = Jargon.from_json(%({
+      cli = Jargon.cli("cli", json: %({
         "type": "object",
         "properties": {
           "enabled": {"type": "boolean"}
@@ -190,7 +190,7 @@ describe Jargon do
     end
 
     it "does not consume non-boolean value after boolean flag" do
-      cli = Jargon.from_json(%({
+      cli = Jargon.cli("cli", json: %({
         "type": "object",
         "positional": ["file"],
         "properties": {
@@ -206,7 +206,7 @@ describe Jargon do
     end
 
     it "accepts various boolean value formats" do
-      cli = Jargon.from_json(%({
+      cli = Jargon.cli("cli", json: %({
         "type": "object",
         "properties": {
           "flag": {"type": "boolean"}
@@ -227,7 +227,7 @@ describe Jargon do
     end
 
     it "errors on invalid boolean values" do
-      cli = Jargon.from_json(%({
+      cli = Jargon.cli("cli", json: %({
         "type": "object",
         "properties": {
           "verbose": {"type": "boolean"}
@@ -241,7 +241,7 @@ describe Jargon do
     end
 
     it "coerces array values" do
-      cli = Jargon.from_json(%({
+      cli = Jargon.cli("cli", json: %({
         "type": "object",
         "properties": {
           "tags": {"type": "array", "items": {"type": "string"}}
@@ -256,7 +256,7 @@ describe Jargon do
 
   describe "nested objects" do
     it "parses nested properties with dot notation" do
-      cli = Jargon.from_json(%({
+      cli = Jargon.cli("cli", json: %({
         "type": "object",
         "properties": {
           "user": {
@@ -276,7 +276,7 @@ describe Jargon do
     end
 
     it "handles deeply nested properties" do
-      cli = Jargon.from_json(%({
+      cli = Jargon.cli("cli", json: %({
         "type": "object",
         "properties": {
           "config": {
@@ -301,7 +301,7 @@ describe Jargon do
 
   describe "validation" do
     it "validates required fields" do
-      cli = Jargon.from_json(%({
+      cli = Jargon.cli("cli", json: %({
         "type": "object",
         "properties": {
           "name": {"type": "string"}
@@ -315,7 +315,7 @@ describe Jargon do
     end
 
     it "validates enum values" do
-      cli = Jargon.from_json(%({
+      cli = Jargon.cli("cli", json: %({
         "type": "object",
         "properties": {
           "color": {"type": "string", "enum": ["red", "green", "blue"]}
@@ -330,7 +330,7 @@ describe Jargon do
     end
 
     it "validates types" do
-      cli = Jargon.from_json(%({
+      cli = Jargon.cli("cli", json: %({
         "type": "object",
         "properties": {
           "count": {"type": "integer"}
@@ -344,7 +344,7 @@ describe Jargon do
 
   describe "defaults" do
     it "applies default values" do
-      cli = Jargon.from_json(%({
+      cli = Jargon.cli("cli", json: %({
         "type": "object",
         "properties": {
           "name": {"type": "string", "default": "anonymous"}
@@ -356,7 +356,7 @@ describe Jargon do
     end
 
     it "does not override provided values with defaults" do
-      cli = Jargon.from_json(%({
+      cli = Jargon.cli("cli", json: %({
         "type": "object",
         "properties": {
           "name": {"type": "string", "default": "anonymous"}
@@ -370,13 +370,13 @@ describe Jargon do
 
   describe "help" do
     it "generates help text" do
-      cli = Jargon.from_json(%({
+      cli = Jargon.cli("myapp", json: %({
         "type": "object",
         "properties": {
           "name": {"type": "string", "description": "The user name"}
         },
         "required": ["name"]
-      }), "myapp")
+      }))
 
       help = cli.help
       help.should contain("myapp")
@@ -388,7 +388,7 @@ describe Jargon do
 
   describe "mixed styles" do
     it "accepts mixed argument styles" do
-      cli = Jargon.from_json(%({
+      cli = Jargon.cli("cat", json: %({
         "type": "object",
         "properties": {
           "name": {"type": "string"},
@@ -407,7 +407,7 @@ describe Jargon do
 
   describe "JSON output" do
     it "outputs valid JSON" do
-      cli = Jargon.from_json(%({
+      cli = Jargon.cli("cli", json: %({
         "type": "object",
         "properties": {
           "name": {"type": "string"},
@@ -425,7 +425,7 @@ describe Jargon do
 
   describe "$ref resolution" do
     it "resolves local $ref to $defs" do
-      cli = Jargon.from_json(%({
+      cli = Jargon.cli("cli", json: %({
         "type": "object",
         "properties": {
           "billing": {"$ref": "#/$defs/address"},
@@ -450,7 +450,7 @@ describe Jargon do
     end
 
     it "resolves local $ref to definitions" do
-      cli = Jargon.from_json(%({
+      cli = Jargon.cli("cli", json: %({
         "type": "object",
         "properties": {
           "user": {"$ref": "#/definitions/person"}
@@ -475,7 +475,7 @@ describe Jargon do
 
   describe "positional arguments" do
     it "parses positional args in order" do
-      cli = Jargon.from_json(%({
+      cli = Jargon.cli("cli", json: %({
         "type": "object",
         "positional": ["name", "count"],
         "properties": {
@@ -491,7 +491,7 @@ describe Jargon do
     end
 
     it "mixes positional and flags" do
-      cli = Jargon.from_json(%({
+      cli = Jargon.cli("cli", json: %({
         "type": "object",
         "positional": ["name", "count"],
         "properties": {
@@ -509,7 +509,7 @@ describe Jargon do
     end
 
     it "errors on unexpected positional args" do
-      cli = Jargon.from_json(%({
+      cli = Jargon.cli("cli", json: %({
         "type": "object",
         "positional": ["name"],
         "properties": {
@@ -523,7 +523,7 @@ describe Jargon do
     end
 
     it "validates required positional args" do
-      cli = Jargon.from_json(%({
+      cli = Jargon.cli("cli", json: %({
         "type": "object",
         "positional": ["name"],
         "properties": {
@@ -540,13 +540,13 @@ describe Jargon do
 
   describe "variadic positionals" do
     it "collects multiple arguments into array positional" do
-      cli = Jargon.from_json(%q({
+      cli = Jargon.cli("cli", json: %q({
         "type": "object",
         "positional": ["files"],
         "properties": {
           "files": {"type": "array", "description": "Input files"}
         }
-      }), "cat")
+      }))
 
       result = cli.parse(["a.txt", "b.txt", "c.txt"])
       result.valid?.should be_true
@@ -554,14 +554,14 @@ describe Jargon do
     end
 
     it "handles flags mixed with variadic positionals" do
-      cli = Jargon.from_json(%q({
+      cli = Jargon.cli("cat", json: %q({
         "type": "object",
         "positional": ["files"],
         "properties": {
           "files": {"type": "array"},
           "number": {"type": "boolean", "short": "n"}
         }
-      }), "cat")
+      }))
 
       result = cli.parse(["-n", "a.txt", "b.txt"])
       result.valid?.should be_true
@@ -570,14 +570,14 @@ describe Jargon do
     end
 
     it "handles non-array positional followed by array positional" do
-      cli = Jargon.from_json(%q({
+      cli = Jargon.cli("cp", json: %q({
         "type": "object",
         "positional": ["dest", "sources"],
         "properties": {
           "dest": {"type": "string"},
           "sources": {"type": "array"}
         }
-      }), "cp")
+      }))
 
       result = cli.parse(["target/", "a.txt", "b.txt", "c.txt"])
       result.valid?.should be_true
@@ -586,13 +586,13 @@ describe Jargon do
     end
 
     it "returns empty array when no arguments for variadic" do
-      cli = Jargon.from_json(%q({
+      cli = Jargon.cli("cat", json: %q({
         "type": "object",
         "positional": ["files"],
         "properties": {
           "files": {"type": "array"}
         }
-      }), "cat")
+      }))
 
       result = cli.parse([] of String)
       result.valid?.should be_true
@@ -600,14 +600,14 @@ describe Jargon do
     end
 
     it "stops collecting at flags (flags should come first)" do
-      cli = Jargon.from_json(%q({
+      cli = Jargon.cli("cat", json: %q({
         "type": "object",
         "positional": ["files"],
         "properties": {
           "files": {"type": "array"},
           "number": {"type": "boolean", "short": "n"}
         }
-      }), "cat")
+      }))
 
       # Correct usage: flags first
       result = cli.parse(["-n", "a.txt", "b.txt", "c.txt"])
@@ -626,7 +626,7 @@ describe Jargon do
 
   describe "short flags" do
     it "parses short flags" do
-      cli = Jargon.from_json(%({
+      cli = Jargon.cli("myapp", json: %({
         "type": "object",
         "properties": {
           "count": {"type": "integer", "short": "n"}
@@ -639,7 +639,7 @@ describe Jargon do
     end
 
     it "parses short boolean flags" do
-      cli = Jargon.from_json(%({
+      cli = Jargon.cli("cli", json: %({
         "type": "object",
         "properties": {
           "verbose": {"type": "boolean", "short": "v"}
@@ -652,7 +652,7 @@ describe Jargon do
     end
 
     it "mixes short and long flags" do
-      cli = Jargon.from_json(%({
+      cli = Jargon.cli("cli", json: %({
         "type": "object",
         "properties": {
           "count": {"type": "integer", "short": "n"},
@@ -667,7 +667,7 @@ describe Jargon do
     end
 
     it "parses combined short boolean flags" do
-      cli = Jargon.from_json(%({
+      cli = Jargon.cli("cli", json: %({
         "type": "object",
         "properties": {
           "all": {"type": "boolean", "short": "a"},
@@ -684,7 +684,7 @@ describe Jargon do
     end
 
     it "parses combined short flags with other args" do
-      cli = Jargon.from_json(%({
+      cli = Jargon.cli("cli", json: %({
         "type": "object",
         "properties": {
           "all": {"type": "boolean", "short": "a"},
@@ -701,7 +701,7 @@ describe Jargon do
     end
 
     it "errors on combined flags with non-boolean" do
-      cli = Jargon.from_json(%({
+      cli = Jargon.cli("cli", json: %({
         "type": "object",
         "properties": {
           "all": {"type": "boolean", "short": "a"},
@@ -715,7 +715,7 @@ describe Jargon do
     end
 
     it "errors on combined flags with unknown flag" do
-      cli = Jargon.from_json(%({
+      cli = Jargon.cli("cli", json: %({
         "type": "object",
         "properties": {
           "all": {"type": "boolean", "short": "a"},
@@ -729,7 +729,7 @@ describe Jargon do
     end
 
     it "errors on unknown short flag" do
-      cli = Jargon.from_json(%({
+      cli = Jargon.cli("cli", json: %({
         "type": "object",
         "properties": {
           "count": {"type": "integer", "short": "n"}
@@ -742,7 +742,7 @@ describe Jargon do
     end
 
     it "errors on unknown long flag" do
-      cli = Jargon.from_json(%({
+      cli = Jargon.cli("cli", json: %({
         "type": "object",
         "properties": {
           "name": {"type": "string"},
@@ -756,7 +756,7 @@ describe Jargon do
     end
 
     it "errors on unknown key=value style option" do
-      cli = Jargon.from_json(%({
+      cli = Jargon.cli("cli", json: %({
         "type": "object",
         "properties": {
           "name": {"type": "string"}
@@ -771,7 +771,7 @@ describe Jargon do
 
   describe "typo suggestions" do
     it "suggests similar long flags" do
-      cli = Jargon.from_json(%({
+      cli = Jargon.cli("cli", json: %({
         "type": "object",
         "properties": {
           "verbose": {"type": "boolean"},
@@ -785,7 +785,7 @@ describe Jargon do
     end
 
     it "suggests similar options for key=value style" do
-      cli = Jargon.from_json(%({
+      cli = Jargon.cli("cli", json: %({
         "type": "object",
         "properties": {
           "output": {"type": "string"},
@@ -799,7 +799,7 @@ describe Jargon do
     end
 
     it "does not suggest when distance is too large" do
-      cli = Jargon.from_json(%({
+      cli = Jargon.cli("cli", json: %({
         "type": "object",
         "properties": {
           "verbose": {"type": "boolean"}
@@ -812,7 +812,7 @@ describe Jargon do
     end
 
     it "does not suggest for single-character flags" do
-      cli = Jargon.from_json(%({
+      cli = Jargon.cli("cli", json: %({
         "type": "object",
         "properties": {
           "verbose": {"type": "boolean", "short": "v"}
@@ -1057,12 +1057,12 @@ describe Jargon do
 
   describe "help with new features" do
     it "generates help with short flags" do
-      cli = Jargon.from_json(%({
+      cli = Jargon.cli("cli", json: %({
         "type": "object",
         "properties": {
           "count": {"type": "integer", "short": "n", "description": "Number of items"}
         }
-      }), "myapp")
+      }))
 
       help = cli.help
       help.should contain("-n, --count")
@@ -1070,14 +1070,14 @@ describe Jargon do
     end
 
     it "generates help with positional args" do
-      cli = Jargon.from_json(%({
+      cli = Jargon.cli("myapp", json: %({
         "type": "object",
         "positional": ["file"],
         "properties": {
           "file": {"type": "string", "description": "Input file"},
           "verbose": {"type": "boolean"}
         }
-      }), "myapp")
+      }))
 
       help = cli.help
       help.should contain("Arguments:")
@@ -1513,7 +1513,7 @@ describe Jargon do
 
   describe "automatic help detection" do
     it "detects --help in flat schema" do
-      cli = Jargon.from_json(%({
+      cli = Jargon.cli("myapp", json: %({
         "type": "object",
         "properties": {
           "name": {"type": "string"}
@@ -1526,7 +1526,7 @@ describe Jargon do
     end
 
     it "detects -h in flat schema" do
-      cli = Jargon.from_json(%({
+      cli = Jargon.cli("cli", json: %({
         "type": "object",
         "properties": {
           "name": {"type": "string"}
@@ -1539,7 +1539,7 @@ describe Jargon do
     end
 
     it "user-defined help property takes precedence" do
-      cli = Jargon.from_json(%({
+      cli = Jargon.cli("cli", json: %({
         "type": "object",
         "properties": {
           "help": {"type": "string"}
@@ -1552,7 +1552,7 @@ describe Jargon do
     end
 
     it "user-defined -h short flag takes precedence" do
-      cli = Jargon.from_json(%({
+      cli = Jargon.cli("cli", json: %({
         "type": "object",
         "properties": {
           "host": {"type": "string", "short": "h"}
@@ -1667,7 +1667,7 @@ describe Jargon do
     end
 
     it "help_requested is false when not requested" do
-      cli = Jargon.from_json(%({
+      cli = Jargon.cli("cli", json: %({
         "type": "object",
         "properties": {
           "name": {"type": "string"}
@@ -1681,7 +1681,7 @@ describe Jargon do
 
   describe "public validate method" do
     it "validates data hash directly" do
-      cli = Jargon.from_json(%({
+      cli = Jargon.cli("cli", json: %({
         "type": "object",
         "properties": {
           "name": {"type": "string"},
@@ -1695,7 +1695,7 @@ describe Jargon do
     end
 
     it "returns empty array for valid data" do
-      cli = Jargon.from_json(%({
+      cli = Jargon.cli("cli", json: %({
         "type": "object",
         "properties": {
           "name": {"type": "string"}
@@ -1708,7 +1708,7 @@ describe Jargon do
     end
 
     it "validates result object" do
-      cli = Jargon.from_json(%({
+      cli = Jargon.cli("cli", json: %({
         "type": "object",
         "properties": {
           "name": {"type": "string"}
@@ -1754,13 +1754,13 @@ describe Jargon do
   describe "shell completion" do
     describe "bash completion" do
       it "generates completion for flat CLI with flags" do
-        cli = Jargon.from_json(%({
+        cli = Jargon.cli("myapp", json: %({
           "type": "object",
           "properties": {
             "name": {"type": "string", "description": "User name"},
             "verbose": {"type": "boolean", "short": "v"}
           }
-        }), "myapp")
+        }))
 
         bash = cli.bash_completion
         bash.should contain("_myapp_completions")
@@ -1797,12 +1797,12 @@ describe Jargon do
       end
 
       it "generates enum completions" do
-        cli = Jargon.from_json(%({
+        cli = Jargon.cli("myapp", json: %({
           "type": "object",
           "properties": {
             "format": {"type": "string", "enum": ["json", "yaml", "xml"]}
           }
-        }), "myapp")
+        }))
 
         bash = cli.bash_completion
         bash.should contain("--format")
@@ -1839,13 +1839,13 @@ describe Jargon do
 
     describe "zsh completion" do
       it "generates completion for flat CLI with flags" do
-        cli = Jargon.from_json(%({
+        cli = Jargon.cli("myapp", json: %({
           "type": "object",
           "properties": {
             "name": {"type": "string", "description": "User name"},
             "verbose": {"type": "boolean", "short": "v"}
           }
-        }), "myapp")
+        }))
 
         zsh = cli.zsh_completion
         zsh.should contain("#compdef myapp")
@@ -1875,12 +1875,12 @@ describe Jargon do
       end
 
       it "generates enum completions" do
-        cli = Jargon.from_json(%({
+        cli = Jargon.cli("myapp", json: %({
           "type": "object",
           "properties": {
             "format": {"type": "string", "enum": ["json", "yaml", "xml"]}
           }
-        }), "myapp")
+        }))
 
         zsh = cli.zsh_completion
         zsh.should contain("--format")
@@ -1908,13 +1908,13 @@ describe Jargon do
 
     describe "fish completion" do
       it "generates completion for flat CLI with flags" do
-        cli = Jargon.from_json(%({
+        cli = Jargon.cli("myapp", json: %({
           "type": "object",
           "properties": {
             "name": {"type": "string", "description": "User name"},
             "verbose": {"type": "boolean", "short": "v", "description": "Verbose mode"}
           }
-        }), "myapp")
+        }))
 
         fish = cli.fish_completion
         fish.should contain("complete -c myapp -f")
@@ -1953,12 +1953,12 @@ describe Jargon do
       end
 
       it "generates enum completions" do
-        cli = Jargon.from_json(%({
+        cli = Jargon.cli("myapp", json: %({
           "type": "object",
           "properties": {
             "format": {"type": "string", "enum": ["json", "yaml", "xml"]}
           }
-        }), "myapp")
+        }))
 
         fish = cli.fish_completion
         fish.should contain("-l format")
@@ -1995,14 +1995,14 @@ describe Jargon do
     end
 
     it "excludes positional arguments from flag completions" do
-      cli = Jargon.from_json(%({
+      cli = Jargon.cli("myapp", json: %({
         "type": "object",
         "positional": ["file"],
         "properties": {
           "file": {"type": "string"},
           "verbose": {"type": "boolean", "short": "v"}
         }
-      }), "myapp")
+      }))
 
       bash = cli.bash_completion
       bash.should contain("--verbose")
@@ -2018,12 +2018,12 @@ describe Jargon do
     end
 
     it "escapes shell metacharacters in bash completions" do
-      cli = Jargon.from_json(%({
+      cli = Jargon.cli("myapp", json: %({
         "type": "object",
         "properties": {
           "mode": {"type": "string", "enum": ["$HOME", "`whoami`", "test\\"quote"]}
         }
-      }), "myapp")
+      }))
 
       bash = cli.bash_completion
       # Should escape $ to prevent variable expansion
@@ -2035,13 +2035,13 @@ describe Jargon do
     end
 
     it "handles numeric and boolean enum values in completions" do
-      cli = Jargon.from_json(%({
+      cli = Jargon.cli("myapp", json: %({
         "type": "object",
         "properties": {
           "level": {"type": "integer", "enum": [1, 2, 3]},
           "enabled": {"type": "boolean", "enum": [true, false]}
         }
-      }), "myapp")
+      }))
 
       bash = cli.bash_completion
       bash.should contain("1 2 3")
@@ -2058,12 +2058,12 @@ describe Jargon do
 
     describe "--completions flag" do
       it "detects --completions bash in flat CLI" do
-        cli = Jargon.from_json(%({
+        cli = Jargon.cli("myapp", json: %({
           "type": "object",
           "properties": {
             "name": {"type": "string"}
           }
-        }), "myapp")
+        }))
 
         result = cli.parse(["--completions", "bash"])
         result.completion_requested?.should be_true
@@ -2071,12 +2071,12 @@ describe Jargon do
       end
 
       it "detects --completions zsh in flat CLI" do
-        cli = Jargon.from_json(%({
+        cli = Jargon.cli("myapp", json: %({
           "type": "object",
           "properties": {
             "name": {"type": "string"}
           }
-        }), "myapp")
+        }))
 
         result = cli.parse(["--completions", "zsh"])
         result.completion_requested?.should be_true
@@ -2084,12 +2084,12 @@ describe Jargon do
       end
 
       it "detects --completions fish in flat CLI" do
-        cli = Jargon.from_json(%({
+        cli = Jargon.cli("myapp", json: %({
           "type": "object",
           "properties": {
             "name": {"type": "string"}
           }
-        }), "myapp")
+        }))
 
         result = cli.parse(["--completions", "fish"])
         result.completion_requested?.should be_true
@@ -2106,10 +2106,10 @@ describe Jargon do
       end
 
       it "errors on unknown shell" do
-        cli = Jargon.from_json(%({
+        cli = Jargon.cli("myapp", json: %({
           "type": "object",
           "properties": {}
-        }), "myapp")
+        }))
 
         result = cli.parse(["--completions", "powershell"])
         result.completion_requested?.should be_false
@@ -2119,12 +2119,12 @@ describe Jargon do
       end
 
       it "completion_requested? is false when not requested" do
-        cli = Jargon.from_json(%({
+        cli = Jargon.cli("myapp", json: %({
           "type": "object",
           "properties": {
             "name": {"type": "string"}
           }
-        }), "myapp")
+        }))
 
         result = cli.parse(["name=test"])
         result.completion_requested?.should be_false
@@ -2135,7 +2135,7 @@ describe Jargon do
 
   describe "load_config" do
     it "returns config_paths in correct order" do
-      cli = Jargon.from_json(%({"type": "object", "properties": {}}), "myapp")
+      cli = Jargon.cli("myapp", json: %({"type": "object", "properties": {}}))
       paths = cli.config_paths
 
       # Project local paths first (yaml, yml, json for each base)
@@ -2155,13 +2155,13 @@ describe Jargon do
       File.write("./.config/testapp.json", %({"host": "from-config", "port": 9000}))
 
       begin
-        cli = Jargon.from_json(%({
+        cli = Jargon.cli("testapp", json: %({
           "type": "object",
           "properties": {
             "host": {"type": "string"},
             "port": {"type": "integer"}
           }
-        }), "testapp")
+        }))
 
         config = cli.load_config
         config.should_not be_nil
@@ -2177,14 +2177,14 @@ describe Jargon do
       File.write("./.config/testyaml.yaml", "host: yaml-host\nport: 8080\ndebug: true")
 
       begin
-        cli = Jargon.from_json(%({
+        cli = Jargon.cli("testyaml", json: %({
           "type": "object",
           "properties": {
             "host": {"type": "string"},
             "port": {"type": "integer"},
             "debug": {"type": "boolean"}
           }
-        }), "testyaml")
+        }))
 
         config = cli.load_config
         config.should_not be_nil
@@ -2202,12 +2202,12 @@ describe Jargon do
       File.write("./.config/testboth.json", %({"source": "json"}))
 
       begin
-        cli = Jargon.from_json(%({
+        cli = Jargon.cli("testboth", json: %({
           "type": "object",
           "properties": {
             "source": {"type": "string"}
           }
-        }), "testboth")
+        }))
 
         config = cli.load_config(merge: false)
         config.should_not be_nil
@@ -2219,7 +2219,7 @@ describe Jargon do
     end
 
     it "returns nil when no config found" do
-      cli = Jargon.from_json(%({"type": "object", "properties": {}}), "nonexistent-app-xyz")
+      cli = Jargon.cli("nonexistent-app-xyz", json: %({"type": "object", "properties": {}}))
       cli.load_config.should be_nil
     end
 
@@ -2228,13 +2228,13 @@ describe Jargon do
       File.write("./.config/testapp2.json", %({"verbose": true, "count": 5}))
 
       begin
-        cli = Jargon.from_json(%({
+        cli = Jargon.cli("testapp2", json: %({
           "type": "object",
           "properties": {
             "verbose": {"type": "boolean"},
             "count": {"type": "integer"}
           }
-        }), "testapp2")
+        }))
 
         config = cli.load_config
         result = cli.parse(["--count", "10"], defaults: config)
@@ -2258,7 +2258,7 @@ describe Jargon do
       File.write("./.config/testapp3.json", %({"host": "project-host", "project_only": "yes"}))
 
       begin
-        cli = Jargon.from_json(%({
+        cli = Jargon.cli("testapp3", json: %({
           "type": "object",
           "properties": {
             "host": {"type": "string"},
@@ -2266,7 +2266,7 @@ describe Jargon do
             "user_only": {"type": "string"},
             "project_only": {"type": "string"}
           }
-        }), "testapp3")
+        }))
 
         config = cli.load_config(merge: true)
         config.should_not be_nil
@@ -2297,7 +2297,7 @@ describe Jargon do
       }))
 
       begin
-        cli = Jargon.from_json(%({"type": "object", "properties": {}}), "testapp4")
+        cli = Jargon.cli("testapp4", json: %({"type": "object", "properties": {}}))
 
         config = cli.load_config(merge: true)
         config.should_not be_nil
@@ -2315,7 +2315,7 @@ describe Jargon do
 
   describe "defaults parameter" do
     it "uses defaults when CLI arg not provided" do
-      cli = Jargon.from_json(%({
+      cli = Jargon.cli("testbad", json: %({
         "type": "object",
         "properties": {
           "name": {"type": "string"},
@@ -2332,7 +2332,7 @@ describe Jargon do
     end
 
     it "CLI args override defaults" do
-      cli = Jargon.from_json(%({
+      cli = Jargon.cli("cli", json: %({
         "type": "object",
         "properties": {
           "name": {"type": "string"}
@@ -2346,7 +2346,7 @@ describe Jargon do
     end
 
     it "works with JSON::Any from parsed JSON" do
-      cli = Jargon.from_json(%({
+      cli = Jargon.cli("cli", json: %({
         "type": "object",
         "properties": {
           "output": {"type": "string"},
@@ -2362,7 +2362,7 @@ describe Jargon do
     end
 
     it "schema defaults fill remaining gaps" do
-      cli = Jargon.from_json(%({
+      cli = Jargon.cli("cli", json: %({
         "type": "object",
         "properties": {
           "host": {"type": "string", "default": "localhost"},
@@ -2400,7 +2400,7 @@ describe Jargon do
 
   describe "error handling edge cases" do
     it "handles invalid integer coercion with clear error" do
-      cli = Jargon.from_json(%({
+      cli = Jargon.cli("cli", json: %({
         "type": "object",
         "properties": {
           "count": {"type": "integer"}
@@ -2413,7 +2413,7 @@ describe Jargon do
     end
 
     it "handles invalid number coercion with clear error" do
-      cli = Jargon.from_json(%({
+      cli = Jargon.cli("cli", json: %({
         "type": "object",
         "properties": {
           "rate": {"type": "number"}
@@ -2426,7 +2426,7 @@ describe Jargon do
     end
 
     it "rejects partial numeric values like '10x'" do
-      cli = Jargon.from_json(%({
+      cli = Jargon.cli("cli", json: %({
         "type": "object",
         "properties": {
           "count": {"type": "integer"},
@@ -2444,7 +2444,7 @@ describe Jargon do
     end
 
     it "errors on missing value for non-boolean flag" do
-      cli = Jargon.from_json(%({
+      cli = Jargon.cli("cli", json: %({
         "type": "object",
         "properties": {
           "count": {"type": "integer"},
@@ -2462,7 +2462,7 @@ describe Jargon do
     end
 
     it "errors on missing value for short non-boolean flag" do
-      cli = Jargon.from_json(%({
+      cli = Jargon.cli("cli", json: %({
         "type": "object",
         "properties": {
           "count": {"type": "integer", "short": "n"}
@@ -2475,7 +2475,7 @@ describe Jargon do
     end
 
     it "parses negative numbers as values" do
-      cli = Jargon.from_json(%({
+      cli = Jargon.cli("cli", json: %({
         "type": "object",
         "properties": {
           "count": {"type": "integer"},
@@ -2498,7 +2498,7 @@ describe Jargon do
 
       begin
         Jargon.config_warnings = false  # Suppress warning during test
-        cli = Jargon.from_json(%({"type": "object", "properties": {}}), "testbad")
+        cli = Jargon.cli("cli", json: %({"type": "object", "properties": {}}))
         # Returns nil and prints warning to STDERR (suppressed here)
         config = cli.load_config
         config.should be_nil
@@ -2514,7 +2514,7 @@ describe Jargon do
 
       begin
         Jargon.config_warnings = false  # Suppress warning during test
-        cli = Jargon.from_json(%({"type": "object", "properties": {}}), "testbadyaml")
+        cli = Jargon.cli("testbadyaml", json: %({"type": "object", "properties": {}}))
         # Returns nil and prints warning to STDERR (suppressed here)
         config = cli.load_config
         config.should be_nil
@@ -2527,7 +2527,7 @@ describe Jargon do
 
   describe "nested object defaults" do
     it "applies defaults to nested objects" do
-      cli = Jargon.from_json(%({
+      cli = Jargon.cli("cli", json: %({
         "type": "object",
         "properties": {
           "server": {
@@ -2549,7 +2549,7 @@ describe Jargon do
 
   describe "$ref edge cases" do
     it "handles missing $ref target gracefully" do
-      cli = Jargon.from_json(%({
+      cli = Jargon.cli("cli", json: %({
         "type": "object",
         "properties": {
           "user": {"$ref": "#/$defs/nonexistent"}
@@ -2563,7 +2563,7 @@ describe Jargon do
     end
 
     it "handles invalid $ref format gracefully" do
-      cli = Jargon.from_json(%({
+      cli = Jargon.cli("cli", json: %({
         "type": "object",
         "properties": {
           "user": {"$ref": "invalid-ref-format"}
@@ -2580,7 +2580,7 @@ describe Jargon do
     it "uses env var when CLI arg not provided" do
       ENV["TEST_JARGON_HOST"] = "env-host"
       begin
-        cli = Jargon.from_json(%({
+        cli = Jargon.cli("cli", json: %({
           "type": "object",
           "properties": {
             "host": {"type": "string", "env": "TEST_JARGON_HOST"}
@@ -2597,7 +2597,7 @@ describe Jargon do
     it "CLI args override env vars" do
       ENV["TEST_JARGON_PORT"] = "8080"
       begin
-        cli = Jargon.from_json(%({
+        cli = Jargon.cli("cli", json: %({
           "type": "object",
           "properties": {
             "port": {"type": "integer", "env": "TEST_JARGON_PORT"}
@@ -2614,7 +2614,7 @@ describe Jargon do
     it "env vars override config defaults" do
       ENV["TEST_JARGON_DEBUG"] = "true"
       begin
-        cli = Jargon.from_json(%({
+        cli = Jargon.cli("cli", json: %({
           "type": "object",
           "properties": {
             "debug": {"type": "boolean", "env": "TEST_JARGON_DEBUG"}
@@ -2633,7 +2633,7 @@ describe Jargon do
       ENV["TEST_JARGON_COUNT"] = "42"
       ENV["TEST_JARGON_ENABLED"] = "true"
       begin
-        cli = Jargon.from_json(%({
+        cli = Jargon.cli("cli", json: %({
           "type": "object",
           "properties": {
             "count": {"type": "integer", "env": "TEST_JARGON_COUNT"},
@@ -2651,7 +2651,7 @@ describe Jargon do
     end
 
     it "ignores unset env vars" do
-      cli = Jargon.from_json(%({
+      cli = Jargon.cli("cli", json: %({
         "type": "object",
         "properties": {
           "missing": {"type": "string", "env": "TEST_JARGON_NONEXISTENT_VAR"}

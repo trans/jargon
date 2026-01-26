@@ -11,16 +11,14 @@ module Jargon
     CLI.new(program_name)
   end
 
-  # Convenience method to create a CLI from a JSON schema string
+  @[Deprecated("Use Jargon.cli(program_name, json: schema) instead")]
   def self.from_json(json : String, program_name : String = "cli") : CLI
-    schema = Schema.from_json(json)
-    CLI.new(schema, program_name)
+    CLI.from_json(json, program_name)
   end
 
-  # Convenience method to create a CLI from a JSON schema file
+  @[Deprecated("Use Jargon.cli(program_name, file: path) instead")]
   def self.from_file(path : String, program_name : String = "cli") : CLI
-    schema = Schema.from_file(path)
-    CLI.new(schema, program_name)
+    CLI.from_file(path, program_name)
   end
 
   # Convenience shortcut with program name first
@@ -30,6 +28,10 @@ module Jargon
 
   def self.cli(program_name : String, *, file : String) : CLI
     CLI.from_file(file, program_name)
+  end
+
+  def self.cli(program_name : String, *, yaml : String) : CLI
+    CLI.from_yaml(yaml, program_name)
   end
 
   # Merge global schema properties into a subcommand schema.

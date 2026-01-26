@@ -1,3 +1,4 @@
+require "yaml"
 require "./schema"
 require "./result"
 require "./config"
@@ -21,6 +22,12 @@ module Jargon
     def self.from_file(path : String, program_name : String = "cli") : CLI
       schema = Schema.from_file(path)
       CLI.new(schema, program_name)
+    end
+
+    # Create a CLI from a YAML schema string
+    def self.from_yaml(yaml : String, program_name : String = "cli") : CLI
+      json = YAML.parse(yaml).to_json
+      from_json(json, program_name)
     end
 
     def initialize(@schema : Schema, @program_name : String = "cli")
