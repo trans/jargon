@@ -1043,6 +1043,174 @@ describe Jargon do
     end
   end
 
+  describe "automatic help detection" do
+    it "detects --help in flat schema" do
+      cli = Jargon.from_json(%({
+        "type": "object",
+        "properties": {
+          "name": {"type": "string"}
+        }
+      }))
+
+      result = cli.parse(["--help"])
+      result.help_requested?.should be_true
+      result.help_subcommand.should be_nil
+    end
+
+    it "detects -h in flat schema" do
+      cli = Jargon.from_json(%({
+        "type": "object",
+        "properties": {
+          "name": {"type": "string"}
+        }
+      }))
+
+      result = cli.parse(["-h"])
+      result.help_requested?.should be_true
+      result.help_subcommand.should be_nil
+    end
+
+    it "user-defined help property takes precedence" do
+      cli = Jargon.from_json(%({
+        "type": "object",
+        "properties": {
+          "help": {"type": "string"}
+        }
+      }))
+
+      result = cli.parse(["--help", "topic"])
+      result.help_requested?.should be_false
+      result["help"].as_s.should eq("topic")
+    end
+
+    it "user-defined -h short flag takes precedence" do
+      cli = Jargon.from_json(%({
+        "type": "object",
+        "properties": {
+          "host": {"type": "string", "short": "h"}
+        }
+      }))
+
+      result = cli.parse(["-h", "localhost"])
+      result.help_requested?.should be_false
+      result["host"].as_s.should eq("localhost")
+    end
+
+    it "detects top-level --help with subcommands" do
+      cli = Jargon.new("myapp")
+      cli.subcommand("query", %({"type": "object", "properties": {"text": {"type": "string"}}}))
+
+      result = cli.parse(["--help"])
+      result.help_requested?.should be_true
+      result.help_subcommand.should be_nil
+    end
+
+    it "detects top-level -h with subcommands" do
+      cli = Jargon.new("myapp")
+      cli.subcommand("query", %({"type": "object", "properties": {"text": {"type": "string"}}}))
+
+      result = cli.parse(["-h"])
+      result.help_requested?.should be_true
+      result.help_subcommand.should be_nil
+    end
+
+    it "detects subcommand help (query --help)" do
+      cli = Jargon.new("myapp")
+      cli.subcommand("query", %({"type": "object", "properties": {"text": {"type": "string"}}}))
+
+      result = cli.parse(["query", "--help"])
+      result.help_requested?.should be_true
+      result.help_subcommand.should eq("query")
+    end
+
+    it "detects subcommand help (query -h)" do
+      cli = Jargon.new("myapp")
+      cli.subcommand("query", %({"type": "object", "properties": {"text": {"type": "string"}}}))
+
+      result = cli.parse(["query", "-h"])
+      result.help_requested?.should be_true
+      result.help_subcommand.should eq("query")
+    end
+
+    it "detects nested subcommand help (remote add --help)" do
+      remote = Jargon.new("remote")
+      remote.subcommand("add", %({
+        "type": "object",
+        "properties": {
+          "name": {"type": "string"},
+          "url": {"type": "string"}
+        }
+      }))
+
+      cli = Jargon.new("git")
+      cli.subcommand("remote", remote)
+
+      result = cli.parse(["remote", "add", "--help"])
+      result.help_requested?.should be_true
+      result.help_subcommand.should eq("remote add")
+    end
+
+    it "cli.help(subcommand) generates correct output" do
+      cli = Jargon.new("myapp")
+      cli.subcommand("query", %({
+        "type": "object",
+        "positional": ["text"],
+        "properties": {
+          "text": {"type": "string", "description": "Search text"},
+          "limit": {"type": "integer", "short": "n", "description": "Result limit"}
+        },
+        "required": ["text"]
+      }))
+
+      help = cli.help("query")
+      help.should contain("Usage: myapp query")
+      help.should contain("<text>")
+      help.should contain("Search text")
+      help.should contain("-n, --limit")
+      help.should contain("Result limit")
+    end
+
+    it "cli.help(subcommand) works for nested subcommands" do
+      remote = Jargon.new("remote")
+      remote.subcommand("add", %({
+        "type": "object",
+        "positional": ["name"],
+        "properties": {
+          "name": {"type": "string", "description": "Remote name"}
+        },
+        "required": ["name"]
+      }))
+
+      cli = Jargon.new("git")
+      cli.subcommand("remote", remote)
+
+      help = cli.help("remote add")
+      help.should contain("Usage: remote add")
+      help.should contain("<name>")
+      help.should contain("Remote name")
+    end
+
+    it "cli.help(subcommand) returns error for unknown subcommand" do
+      cli = Jargon.new("myapp")
+      cli.subcommand("query", %({"type": "object", "properties": {}}))
+
+      help = cli.help("unknown")
+      help.should contain("Unknown subcommand: unknown")
+    end
+
+    it "help_requested is false when not requested" do
+      cli = Jargon.from_json(%({
+        "type": "object",
+        "properties": {
+          "name": {"type": "string"}
+        }
+      }))
+
+      result = cli.parse(["name=test"])
+      result.help_requested?.should be_false
+    end
+  end
+
   describe "public validate method" do
     it "validates data hash directly" do
       cli = Jargon.from_json(%({

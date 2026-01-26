@@ -59,6 +59,11 @@ module Jargon
         return parse_from_stdin_full(input)
       end
 
+      # Check for top-level help (--help/-h before any subcommand)
+      if args.any? && (args[0] == "--help" || args[0] == "-h")
+        return Result.new({} of String => JSON::Any, [] of String, nil, true, nil)
+      end
+
       # Check if first arg matches a known subcommand
       if args.any? && (subcmd = @subcommands[args[0]]?)
         subcmd_name = args[0]
@@ -67,9 +72,17 @@ module Jargon
           result = subcmd.parse(args[1..], input)
           # Prepend parent subcommand name
           full_subcmd = result.subcommand ? "#{subcmd_name} #{result.subcommand}" : subcmd_name
+          if result.help_requested?
+            # Propagate help with updated subcommand path
+            help_subcmd = result.help_subcommand ? "#{subcmd_name} #{result.help_subcommand}" : subcmd_name
+            return Result.new(result.data, result.errors, full_subcmd, true, help_subcmd)
+          end
           return Result.new(result.data, result.errors, full_subcmd)
         when Schema
-          result = parse_flat(args[1..], subcmd, input)
+          result = parse_flat(args[1..], subcmd, input, subcmd_name)
+          if result.help_requested?
+            return Result.new(result.data, result.errors, subcmd_name, true, subcmd_name)
+          end
           return Result.new(result.data, result.errors, subcmd_name)
         end
       end
@@ -81,9 +94,16 @@ module Jargon
           when CLI
             result = subcmd.parse(args, input)
             full_subcmd = result.subcommand ? "#{default} #{result.subcommand}" : default
+            if result.help_requested?
+              help_subcmd = result.help_subcommand ? "#{default} #{result.help_subcommand}" : default
+              return Result.new(result.data, result.errors, full_subcmd, true, help_subcmd)
+            end
             return Result.new(result.data, result.errors, full_subcmd)
           when Schema
-            result = parse_flat(args, subcmd, input)
+            result = parse_flat(args, subcmd, input, default)
+            if result.help_requested?
+              return Result.new(result.data, result.errors, default, true, default)
+            end
             return Result.new(result.data, result.errors, default)
           end
         end
@@ -149,10 +169,16 @@ module Jargon
       Result.new({} of String => JSON::Any, ["Invalid JSON from stdin: #{ex.message}"])
     end
 
-    private def parse_flat(args : Array(String), schema : Schema, input : IO = STDIN) : Result
+    private def parse_flat(args : Array(String), schema : Schema, input : IO = STDIN, subcommand_path : String? = nil) : Result
       # Handle "xerp mark -" - JSON args for this schema
       if args == ["-"]
         return parse_from_stdin_args(input, schema)
+      end
+
+      # Check for help flags early
+      help_requested, _ = any_help_requested?(args, schema)
+      if help_requested
+        return Result.new({} of String => JSON::Any, [] of String, nil, true, subcommand_path)
       end
 
       data = {} of String => JSON::Any
@@ -284,6 +310,28 @@ module Jargon
       end
     end
 
+    def help(subcommand : String) : String
+      parts = subcommand.split(" ", 2)
+      subcmd_name = parts[0]
+
+      unless subcmd = @subcommands[subcmd_name]?
+        return "Unknown subcommand: #{subcmd_name}"
+      end
+
+      case subcmd
+      when CLI
+        if parts.size > 1
+          subcmd.help(parts[1])
+        else
+          subcmd.help
+        end
+      when Schema
+        help_flat_for_subcommand(subcmd, subcmd_name)
+      else
+        "Unknown subcommand: #{subcmd_name}"
+      end
+    end
+
     # Validate data against a schema, returning any errors.
     # If no schema is provided, uses the CLI's root schema.
     # For subcommand validation, pass the subcommand name (space-separated for nested).
@@ -325,6 +373,87 @@ module Jargon
       end
       lines << ""
       lines << "Run '#{program_name} <command> --help' for command-specific options."
+      lines.join("\n")
+    end
+
+    private def user_defined_help?(schema : Schema) : Bool
+      root = resolve_property(schema.root, schema)
+      if props = root.properties
+        props.has_key?("help")
+      else
+        false
+      end
+    end
+
+    private def user_defined_h_short?(schema : Schema) : Bool
+      root = resolve_property(schema.root, schema)
+      if props = root.properties
+        props.values.any? { |prop| prop.short == "h" }
+      else
+        false
+      end
+    end
+
+    private def any_help_requested?(args : Array(String), schema : Schema?) : {Bool, Int32}
+      args.each_with_index do |arg, i|
+        if arg == "--help"
+          if schema && user_defined_help?(schema)
+            return {false, -1}
+          end
+          return {true, i}
+        elsif arg == "-h"
+          if schema && user_defined_h_short?(schema)
+            return {false, -1}
+          end
+          return {true, i}
+        end
+      end
+      {false, -1}
+    end
+
+    private def help_flat_for_subcommand(schema : Schema, subcmd_name : String) : String
+      lines = [] of String
+      positional_names = schema.positional
+      root = resolve_property(schema.root, schema)
+
+      # Build usage line with subcommand name
+      usage_parts = ["Usage: #{program_name} #{subcmd_name}"]
+      positional_names.each do |name|
+        if prop = root.properties.try(&.[name]?)
+          if prop.required
+            usage_parts << "<#{name}>"
+          else
+            usage_parts << "[#{name}]"
+          end
+        else
+          usage_parts << "<#{name}>"
+        end
+      end
+      usage_parts << "[options]"
+      lines << usage_parts.join(" ")
+      lines << ""
+
+      # Arguments section
+      unless positional_names.empty?
+        lines << "Arguments:"
+        positional_names.each do |name|
+          if prop = root.properties.try(&.[name]?)
+            desc = prop.description || ""
+            lines << "  #{name}    #{desc}"
+          end
+        end
+        lines << ""
+      end
+
+      # Options section
+      lines << "Options:"
+      if props = root.properties
+        props.each do |name, prop|
+          next if positional_names.includes?(name)
+          build_help_lines(lines, name, resolve_property(prop, schema), "", schema)
+        end
+      end
+
       lines.join("\n")
     end
 
