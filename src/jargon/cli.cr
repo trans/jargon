@@ -74,7 +74,7 @@ module Jargon
       end
 
       # Check for top-level help (--help/-h before any subcommand)
-      if args.any? && (args[0] == "--help" || args[0] == "-h")
+      if (first = args.first?) && (first == "--help" || first == "-h")
         return Result.new({} of String => JSON::Any, [] of String, nil, true, nil)
       end
 
@@ -84,7 +84,7 @@ module Jargon
       end
 
       # Check if first arg matches a known subcommand (supports abbreviations)
-      if args.any? && (resolved_name = resolve_subcommand(args[0])) && (subcmd = @subcommands[resolved_name]?)
+      if (first = args.first?) && (resolved_name = resolve_subcommand(first)) && (subcmd = @subcommands[resolved_name]?)
         return dispatch_subcommand(subcmd, resolved_name, args[1..], input, defaults)
       end
 
@@ -421,27 +421,16 @@ module Jargon
     end
 
     private def parse_argument(arg : String, args : Array(String), index : Int32, schema : Schema) : {String?, JSON::Any?, Int32, String?}
-      # Style 1: key=value
-      if arg.includes?("=")
-        parts = arg.split("=", 2)
-        key = parts[0]
-        unless property_exists?(key, schema)
-          return {nil, nil, 1, nil}
-        end
-        coerced, error = coerce_value(key, parts[1], schema)
-        {key, coerced, 1, error}
-      # Style 2: key:value
-      elsif arg.includes?(":")
-        parts = arg.split(":", 2)
-        key = parts[0]
-        unless property_exists?(key, schema)
-          return {nil, nil, 1, nil}
-        end
-        coerced, error = coerce_value(key, parts[1], schema)
-        {key, coerced, 1, error}
-      else
-        {nil, nil, 1, nil}
-      end
+      # Support key=value and key:value styles
+      sep = arg.includes?("=") ? "=" : (arg.includes?(":") ? ":" : nil)
+      return {nil, nil, 1, nil} unless sep
+
+      parts = arg.split(sep, 2)
+      key = parts[0]
+      return {nil, nil, 1, nil} unless property_exists?(key, schema)
+
+      coerced, error = coerce_value(key, parts[1], schema)
+      {key, coerced, 1, error}
     end
 
     private def boolean_property?(key : String, schema : Schema) : Bool

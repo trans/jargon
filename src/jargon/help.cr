@@ -86,65 +86,23 @@ module Jargon
     end
 
     private def help_flat_for_subcommand(schema : Schema, subcmd_name : String) : String
-      lines = [] of String
-      positional_names = schema.positional
-      root = resolve_property(schema.root, schema)
-
-      # Build usage line with subcommand name
-      usage_parts = ["Usage: #{program_name} #{subcmd_name}"]
-      positional_names.each do |name|
-        if prop = root.properties.try(&.[name]?)
-          if prop.required
-            usage_parts << "<#{name}>"
-          else
-            usage_parts << "[#{name}]"
-          end
-        else
-          usage_parts << "<#{name}>"
-        end
-      end
-      usage_parts << "[options]"
-      lines << usage_parts.join(" ")
-      lines << ""
-
-      # Arguments section
-      unless positional_names.empty?
-        lines << "Arguments:"
-        positional_names.each do |name|
-          if prop = root.properties.try(&.[name]?)
-            desc = prop.description || ""
-            lines << "  #{name}    #{desc}"
-          end
-        end
-        lines << ""
-      end
-
-      # Options section
-      lines << "Options:"
-      if props = root.properties
-        props.each do |name, prop|
-          next if positional_names.includes?(name)
-          build_help_lines(lines, name, resolve_property(prop, schema), "", schema)
-        end
-      end
-
-      lines.join("\n")
+      build_help_text(schema, subcmd_name)
     end
 
     private def help_flat(schema : Schema) : String
+      build_help_text(schema, nil)
+    end
+
+    private def build_help_text(schema : Schema, subcmd_name : String?) : String
       lines = [] of String
       positional_names = schema.positional
       root = resolve_property(schema.root, schema)
 
       # Build usage line
-      usage_parts = ["Usage: #{program_name}"]
+      usage_parts = subcmd_name ? ["Usage: #{program_name} #{subcmd_name}"] : ["Usage: #{program_name}"]
       positional_names.each do |name|
         if prop = root.properties.try(&.[name]?)
-          if prop.required
-            usage_parts << "<#{name}>"
-          else
-            usage_parts << "[#{name}]"
-          end
+          usage_parts << (prop.required ? "<#{name}>" : "[#{name}]")
         else
           usage_parts << "<#{name}>"
         end
