@@ -2280,6 +2280,37 @@ describe Jargon do
         Dir.delete("#{xdg_config}/testapp3") rescue nil
       end
     end
+
+    it "deep merges nested objects in configs" do
+      xdg_config = ENV["XDG_CONFIG_HOME"]? || Path.home.join(".config").to_s
+
+      # Create user config with nested object
+      Dir.mkdir_p("#{xdg_config}/testapp4")
+      File.write("#{xdg_config}/testapp4/config.json", %({
+        "database": {"host": "localhost", "port": 5432, "user": "default_user"}
+      }))
+
+      # Create project config that overrides only some nested keys
+      Dir.mkdir_p("./.config")
+      File.write("./.config/testapp4.json", %({
+        "database": {"host": "production.example.com"}
+      }))
+
+      begin
+        cli = Jargon.from_json(%({"type": "object", "properties": {}}), "testapp4")
+
+        config = cli.load_config(merge: true)
+        config.should_not be_nil
+        db = config.not_nil!["database"]
+        db["host"].as_s.should eq("production.example.com")  # Project wins
+        db["port"].as_i.should eq(5432)                       # Preserved from user
+        db["user"].as_s.should eq("default_user")             # Preserved from user
+      ensure
+        File.delete("./.config/testapp4.json")
+        File.delete("#{xdg_config}/testapp4/config.json")
+        Dir.delete("#{xdg_config}/testapp4") rescue nil
+      end
+    end
   end
 
   describe "defaults parameter" do

@@ -53,11 +53,29 @@ module Jargon
       config_paths.reverse.each do |path|
         if File.exists?(path)
           if data = parse_config_file(path).try(&.as_h?)
-            merged.merge!(data)
+            deep_merge!(merged, data)
           end
         end
       end
       merged.empty? ? nil : JSON::Any.new(merged)
+    end
+
+    # Deep merge source into target, recursively merging nested objects
+    private def deep_merge!(target : Hash(String, JSON::Any), source : Hash(String, JSON::Any))
+      source.each do |key, source_value|
+        if target_value = target[key]?
+          # Both have this key - check if both are objects for deep merge
+          if (target_hash = target_value.as_h?) && (source_hash = source_value.as_h?)
+            deep_merge!(target_hash, source_hash)
+          else
+            # Source wins for non-object values or mismatched types
+            target[key] = source_value
+          end
+        else
+          # Key only in source
+          target[key] = source_value
+        end
+      end
     end
 
     private def parse_config_file(path : String) : JSON::Any?
