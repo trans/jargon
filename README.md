@@ -12,10 +12,10 @@ A Crystal library that generates CLI interfaces from JSON Schema definitions. De
 - **Help text**: Generated from schema descriptions
 - **Auto help flags**: `--help` and `-h` detected automatically
 - **Shell completions**: Generate completion scripts for bash, zsh, and fish
-- **Positional args**: Non-flag arguments assigned by position (variadic supported)
+- **Positional args**: Non-flag arguments assigned by position and variadic support.
 - **Short flags**: Single-character flag aliases (`-v`, `-n 5`)
 - **Boolean flags**: Support both `--verbose` and `--verbose false` styles
-- **Subcommands**: Named sub-parsers with independent schemas (abbreviations supported)
+- **Subcommands**: Named sub-parsers with independent schemas (supports abbreviated invocations)
 - **Default subcommand**: Fall back to a subcommand when none specified
 - **Stdin JSON**: Read arguments as JSON from stdin with `-`
 - **Typo suggestions**: "Did you mean?" for mistyped options
@@ -305,20 +305,6 @@ result["host"].as_s     # => "localhost"
 
 Jargon can generate shell completion scripts for bash, zsh, and fish. The `--completions <shell>` flag is detected automatically:
 
-```crystal
-cli = Jargon.cli("myapp", json: schema)
-result = cli.parse(ARGV)
-
-if result.completion_requested?
-  case result.completion_shell
-  when "bash" then puts cli.bash_completion
-  when "zsh"  then puts cli.zsh_completion
-  when "fish" then puts cli.fish_completion
-  end
-  exit 0
-end
-```
-
 ### Installing Completions
 
 Generate the completion script once and save it to your shell's completions directory:
@@ -340,6 +326,22 @@ The generated scripts provide completions for:
 - Short flags (`-v`, `-o`)
 - Enum values (e.g., `--format json|yaml|xml`)
 - Nested subcommands
+
+### Handling Completions In Code
+
+```crystal
+cli = Jargon.cli("myapp", json: schema)
+result = cli.parse(ARGV)
+
+if result.completion_requested?
+  case result.completion_shell
+  when "bash" then puts cli.bash_completion
+  when "zsh"  then puts cli.zsh_completion
+  when "fish" then puts cli.fish_completion
+  end
+  exit 0
+end
+```
 
 ## Subcommands
 
@@ -705,8 +707,39 @@ cli.fish_completion  # => fish completion script
 
 ## Development
 
+### Prerequisites
+
+- Crystal >= 1.18.2
+
+### Running Tests
+
 ```sh
+shards install
 crystal spec
+```
+
+### Project Structure
+
+```
+src/
+├── jargon.cr              # Main module, convenience methods
+└── jargon/
+    ├── cli.cr             # Core CLI parser
+    ├── schema.cr          # JSON Schema parsing
+    ├── schema/property.cr # Property definitions
+    ├── result.cr          # Parse result container
+    ├── config.cr          # Config file loading (XDG)
+    ├── help.cr            # Help text generation
+    └── completion.cr      # Shell completion scripts
+spec/
+└── jargon_spec.cr         # Test suite
+```
+
+### Building Docs
+
+```sh
+crystal docs
+open docs/index.html
 ```
 
 ## License
