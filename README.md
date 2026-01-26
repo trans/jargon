@@ -485,6 +485,83 @@ cli.subcommand_key("op")  # default is "subcommand"
 echo '{"op": "query", "query_text": "search"}' | xerp -
 ```
 
+## Environment Variables
+
+Map schema properties to environment variables with the `env` property:
+
+```crystal
+schema = %({
+  "type": "object",
+  "properties": {
+    "api-key": {"type": "string", "env": "MY_APP_API_KEY"},
+    "host": {"type": "string", "env": "MY_APP_HOST", "default": "localhost"},
+    "debug": {"type": "boolean", "env": "MY_APP_DEBUG"}
+  }
+})
+
+cli = Jargon.from_json(schema, "myapp")
+result = cli.parse(ARGV)
+```
+
+```sh
+export MY_APP_API_KEY=secret123
+export MY_APP_HOST=prod.example.com
+myapp --debug  # api-key and host from env, debug from CLI
+```
+
+Merge order (highest priority first):
+1. CLI arguments
+2. Environment variables
+3. Config file defaults
+4. Schema defaults
+
+## Config Files
+
+Load configuration from standard XDG locations with `load_config`:
+
+```crystal
+cli = Jargon.from_json(schema, "myapp")
+config = cli.load_config  # Returns JSON::Any or nil
+result = cli.parse(ARGV, defaults: config)
+```
+
+Paths searched (first found wins, or merged if `merge: true`):
+1. `./.config/myapp.json` (project local)
+2. `./.config/myapp/config.json` (project local, directory style)
+3. `$XDG_CONFIG_HOME/myapp.json` (user global, typically `~/.config`)
+4. `$XDG_CONFIG_HOME/myapp/config.json` (user global, directory style)
+
+By default, configs are merged with project overriding user:
+
+```crystal
+# Merge all found configs (default) - project wins over user
+config = cli.load_config
+
+# Or first-found wins
+config = cli.load_config(merge: false)
+```
+
+Example project config (`.config/myapp.json`):
+```json
+{
+  "host": "localhost",
+  "port": 8080,
+  "debug": true
+}
+```
+
+The `defaults:` parameter accepts any JSON-like data, so you can load config however you prefer:
+
+```crystal
+# From YAML
+config = YAML.parse(File.read("config.yaml"))
+result = cli.parse(ARGV, defaults: config)
+
+# From JSON
+config = JSON.parse(File.read("settings.json"))
+result = cli.parse(ARGV, defaults: config)
+```
+
 ## API
 
 ```crystal
@@ -503,6 +580,12 @@ merged = Jargon.merge(subcommand_schema, global_schema)
 
 # Parse arguments
 result = cli.parse(ARGV)
+result = cli.parse(ARGV, defaults: config)  # with config defaults
+
+# Config file loading
+config = cli.load_config              # merge all found configs (project wins)
+config = cli.load_config(merge: false) # first found wins
+paths = cli.config_paths              # list of paths searched
 
 # Check validity
 result.valid?      # => true/false
