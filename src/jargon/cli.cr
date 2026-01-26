@@ -372,8 +372,14 @@ module Jargon
         coerced, error = coerce_value(parts[0], parts[1], schema)
         {parts[0], coerced, 1, error}
       elsif is_boolean
-        # Boolean flags don't consume next arg
-        {key, JSON::Any.new(true), 1, nil}
+        # Check if next arg is a boolean value (--flag true/false)
+        if index + 1 < args.size && is_boolean_value?(args[index + 1])
+          coerced, error = coerce_value(key, args[index + 1], schema)
+          {key, coerced, 2, error}
+        else
+          # No value or non-boolean next arg - treat as flag (true)
+          {key, JSON::Any.new(true), 1, nil}
+        end
       elsif index + 1 < args.size && !is_flag_like?(args[index + 1])
         # Non-boolean with a value (allows negative numbers)
         coerced, error = coerce_value(key, args[index + 1], schema)
@@ -382,6 +388,11 @@ module Jargon
         # Non-boolean without a value - error
         {key, nil, 1, "Missing value for --#{key}"}
       end
+    end
+
+    # Check if a string is a boolean value
+    private def is_boolean_value?(arg : String) : Bool
+      arg.downcase.in?("true", "false", "yes", "no", "on", "off", "1", "0")
     end
 
     # Check if arg looks like a flag (starts with - but not a negative number)

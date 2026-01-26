@@ -168,6 +168,43 @@ describe Jargon do
       result["verbose"].as_bool.should be_true
     end
 
+    it "handles boolean flags with explicit true/false value" do
+      cli = Jargon.from_json(%({
+        "type": "object",
+        "properties": {
+          "enabled": {"type": "boolean"}
+        }
+      }))
+
+      result = cli.parse(["--enabled", "false"])
+      result.valid?.should be_true
+      result["enabled"].as_bool.should be_false
+
+      result = cli.parse(["--enabled", "true"])
+      result.valid?.should be_true
+      result["enabled"].as_bool.should be_true
+
+      result = cli.parse(["--enabled", "no"])
+      result.valid?.should be_true
+      result["enabled"].as_bool.should be_false
+    end
+
+    it "does not consume non-boolean value after boolean flag" do
+      cli = Jargon.from_json(%({
+        "type": "object",
+        "positional": ["file"],
+        "properties": {
+          "verbose": {"type": "boolean"},
+          "file": {"type": "string"}
+        }
+      }))
+
+      result = cli.parse(["--verbose", "output.txt"])
+      result.valid?.should be_true
+      result["verbose"].as_bool.should be_true
+      result["file"].as_s.should eq("output.txt")
+    end
+
     it "accepts various boolean value formats" do
       cli = Jargon.from_json(%({
         "type": "object",
