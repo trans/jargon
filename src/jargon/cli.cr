@@ -497,26 +497,31 @@ module Jargon
     private def coerce_value(key : String, value : String, schema : Schema) : {JSON::Any, String?}
       prop = find_property(key, schema)
 
-      result = case prop.try(&.type)
+      case prop.try(&.type)
       when Property::Type::Integer
-        JSON::Any.new(value.to_i64)
+        if int_val = value.to_i64?(strict: true)
+          {JSON::Any.new(int_val), nil}
+        else
+          {JSON::Any.new(value), "Invalid integer value '#{value}' for #{key}"}
+        end
       when Property::Type::Number
-        JSON::Any.new(value.to_f64)
+        if float_val = value.to_f64?(strict: true)
+          {JSON::Any.new(float_val), nil}
+        else
+          {JSON::Any.new(value), "Invalid number value '#{value}' for #{key}"}
+        end
       when Property::Type::Boolean
         case value.downcase
-        when "true", "1", "yes", "on"   then JSON::Any.new(true)
-        when "false", "0", "no", "off"  then JSON::Any.new(false)
-        else return {JSON::Any.new(value), "Invalid boolean value '#{value}' for #{key}. Use: true/false, yes/no, on/off, 1/0"}
+        when "true", "1", "yes", "on"   then {JSON::Any.new(true), nil}
+        when "false", "0", "no", "off"  then {JSON::Any.new(false), nil}
+        else {JSON::Any.new(value), "Invalid boolean value '#{value}' for #{key}. Use: true/false, yes/no, on/off, 1/0"}
         end
       when Property::Type::Array
         items = value.split(",").map { |v| JSON::Any.new(v.strip) }
-        JSON::Any.new(items)
+        {JSON::Any.new(items), nil}
       else
-        JSON::Any.new(value)
+        {JSON::Any.new(value), nil}
       end
-      {result, nil}
-    rescue
-      {JSON::Any.new(value), nil}
     end
 
     private def set_nested_value(data : Hash(String, JSON::Any), key : String, value : JSON::Any?, errors : Array(String))

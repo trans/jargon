@@ -2292,7 +2292,7 @@ describe Jargon do
   end
 
   describe "error handling edge cases" do
-    it "handles invalid integer coercion gracefully" do
+    it "handles invalid integer coercion with clear error" do
       cli = Jargon.from_json(%({
         "type": "object",
         "properties": {
@@ -2300,13 +2300,12 @@ describe Jargon do
         }
       }))
 
-      # Invalid integer stays as string, type validation catches it
       result = cli.parse(["--count", "abc"])
       result.valid?.should be_false
-      result.errors.first.should contain("Invalid type for count")
+      result.errors.first.should contain("Invalid integer value 'abc' for count")
     end
 
-    it "handles invalid number coercion gracefully" do
+    it "handles invalid number coercion with clear error" do
       cli = Jargon.from_json(%({
         "type": "object",
         "properties": {
@@ -2316,7 +2315,25 @@ describe Jargon do
 
       result = cli.parse(["--rate", "not-a-number"])
       result.valid?.should be_false
-      result.errors.first.should contain("Invalid type for rate")
+      result.errors.first.should contain("Invalid number value 'not-a-number' for rate")
+    end
+
+    it "rejects partial numeric values like '10x'" do
+      cli = Jargon.from_json(%({
+        "type": "object",
+        "properties": {
+          "count": {"type": "integer"},
+          "rate": {"type": "number"}
+        }
+      }))
+
+      result = cli.parse(["--count", "10x"])
+      result.valid?.should be_false
+      result.errors.first.should contain("Invalid integer value '10x' for count")
+
+      result = cli.parse(["--rate", "3.14abc"])
+      result.valid?.should be_false
+      result.errors.first.should contain("Invalid number value '3.14abc' for rate")
     end
 
     it "errors on missing value for non-boolean flag" do
