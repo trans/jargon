@@ -74,9 +74,9 @@ module Jargon
         end
       end
 
-      # Check if first arg matches a known subcommand
-      if args.any? && (subcmd = @subcommands[args[0]]?)
-        subcmd_name = args[0]
+      # Check if first arg matches a known subcommand (supports abbreviations)
+      if args.any? && (resolved_name = resolve_subcommand(args[0])) && (subcmd = @subcommands[resolved_name]?)
+        subcmd_name = resolved_name
         case subcmd
         when CLI
           result = subcmd.parse(args[1..], input)
@@ -142,9 +142,12 @@ module Jargon
         return Result.new({} of String => JSON::Any, ["No '#{@subcommand_key}' specified in JSON"])
       end
 
-      unless subcmd = @subcommands[subcmd_name]?
+      # Resolve abbreviated subcommand name
+      resolved_name = resolve_subcommand(subcmd_name)
+      unless resolved_name && (subcmd = @subcommands[resolved_name]?)
         return Result.new({} of String => JSON::Any, ["Unknown subcommand: #{subcmd_name}"])
       end
+      subcmd_name = resolved_name
 
       case subcmd
       when CLI
@@ -889,6 +892,16 @@ module Jargon
       end
 
       prev_row[s2.size]
+    end
+
+    # Resolve abbreviated subcommand name to full name
+    # Returns nil if no match, ambiguous, or too short (< 3 chars for non-exact)
+    private def resolve_subcommand(input : String) : String?
+      return input if @subcommands.has_key?(input)  # Exact match
+      return nil if input.size < 3                   # Too short for abbreviation
+
+      matches = @subcommands.keys.select { |name| name.starts_with?(input) }
+      matches.size == 1 ? matches.first : nil        # Unambiguous only
     end
   end
 end

@@ -892,6 +892,75 @@ describe Jargon do
     end
   end
 
+  describe "subcommand abbreviations" do
+    it "matches unambiguous prefix" do
+      cli = Jargon.new("myapp")
+      cli.subcommand("checkout", %({"type": "object", "properties": {}}))
+      cli.subcommand("commit", %({"type": "object", "properties": {}}))
+      cli.subcommand("config", %({"type": "object", "properties": {}}))
+
+      result = cli.parse(["che"])
+      result.valid?.should be_true
+      result.subcommand.should eq("checkout")
+
+      result = cli.parse(["comm"])
+      result.valid?.should be_true
+      result.subcommand.should eq("commit")
+
+      result = cli.parse(["conf"])
+      result.valid?.should be_true
+      result.subcommand.should eq("config")
+    end
+
+    it "rejects abbreviations shorter than 3 characters" do
+      cli = Jargon.new("myapp")
+      cli.subcommand("checkout", %({"type": "object", "properties": {}}))
+
+      result = cli.parse(["ch"])
+      result.valid?.should be_false
+      result.errors.should contain("Unknown subcommand: ch")
+
+      result = cli.parse(["c"])
+      result.valid?.should be_false
+    end
+
+    it "rejects ambiguous abbreviations" do
+      cli = Jargon.new("myapp")
+      cli.subcommand("config-get", %({"type": "object", "properties": {}}))
+      cli.subcommand("config-set", %({"type": "object", "properties": {}}))
+
+      result = cli.parse(["config-"])
+      result.valid?.should be_false
+      result.errors.should contain("Unknown subcommand: config-")
+    end
+
+    it "prefers exact match over prefix" do
+      cli = Jargon.new("myapp")
+      cli.subcommand("test", %({"type": "object", "properties": {}}))
+      cli.subcommand("testing", %({"type": "object", "properties": {}}))
+
+      result = cli.parse(["test"])
+      result.valid?.should be_true
+      result.subcommand.should eq("test")
+    end
+
+    it "works with subcommand options" do
+      cli = Jargon.new("git")
+      cli.subcommand("checkout", %({
+        "type": "object",
+        "positional": ["branch"],
+        "properties": {
+          "branch": {"type": "string"}
+        }
+      }))
+
+      result = cli.parse(["che", "main"])
+      result.valid?.should be_true
+      result.subcommand.should eq("checkout")
+      result["branch"].as_s.should eq("main")
+    end
+  end
+
   describe "help with new features" do
     it "generates help with short flags" do
       cli = Jargon.from_json(%({
