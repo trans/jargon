@@ -1,6 +1,9 @@
 require "yaml"
 
 module Jargon
+  # Control whether config parse warnings are emitted to STDERR
+  class_property? config_warnings : Bool = true
+
   class CLI
     # Load config from standard locations.
     # Supports YAML (.yaml, .yml) and JSON (.json) files.
@@ -68,7 +71,9 @@ module Jargon
         nil
       end
     rescue ex
-      STDERR.puts "Warning: Failed to parse config file '#{path}': #{ex.message}"
+      if Jargon.config_warnings?
+        STDERR.puts "Warning: Failed to parse config file '#{path}': #{ex.message}"
+      end
       nil
     end
   end

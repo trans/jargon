@@ -2429,11 +2429,13 @@ describe Jargon do
       File.write("./.config/testbad.json", "{ invalid json }")
 
       begin
+        Jargon.config_warnings = false  # Suppress warning during test
         cli = Jargon.from_json(%({"type": "object", "properties": {}}), "testbad")
-        # Returns nil and prints warning to STDERR
+        # Returns nil and prints warning to STDERR (suppressed here)
         config = cli.load_config
         config.should be_nil
       ensure
+        Jargon.config_warnings = true
         File.delete("./.config/testbad.json")
       end
     end
@@ -2443,11 +2445,13 @@ describe Jargon do
       File.write("./.config/testbadyaml.yaml", "invalid: yaml: content: [")
 
       begin
+        Jargon.config_warnings = false  # Suppress warning during test
         cli = Jargon.from_json(%({"type": "object", "properties": {}}), "testbadyaml")
-        # Returns nil and prints warning to STDERR
+        # Returns nil and prints warning to STDERR (suppressed here)
         config = cli.load_config
         config.should be_nil
       ensure
+        Jargon.config_warnings = true
         File.delete("./.config/testbadyaml.yaml")
       end
     end
