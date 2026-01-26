@@ -11,7 +11,7 @@ A Crystal library that generates CLI interfaces from JSON Schema definitions. De
 - **Help text**: Generated from schema descriptions
 - **Auto help flags**: `--help` and `-h` detected automatically
 - **Shell completions**: Generate completion scripts for bash, zsh, and fish
-- **Positional args**: Non-flag arguments assigned by position
+- **Positional args**: Non-flag arguments assigned by position (variadic supported)
 - **Short flags**: Single-character flag aliases (`-v`, `-n 5`)
 - **Subcommands**: Named sub-parsers with independent schemas
 - **Default subcommand**: Fall back to a subcommand when none specified
@@ -165,6 +165,31 @@ result = cli.parse(["input.txt", "output.txt", "--verbose"])
 ```sh
 myapp input.txt output.txt --verbose
 ```
+
+### Variadic Positionals
+
+When the last positional has `type: array`, it collects all remaining arguments:
+
+```crystal
+schema = %({
+  "type": "object",
+  "positional": ["files"],
+  "properties": {
+    "files": {"type": "array", "description": "Input files"},
+    "number": {"type": "boolean", "short": "n"}
+  }
+})
+
+cli = Jargon.from_json(schema, "cat")
+result = cli.parse(["-n", "a.txt", "b.txt", "c.txt"])
+# => {"number": true, "files": ["a.txt", "b.txt", "c.txt"]}
+```
+
+```sh
+cat -n a.txt b.txt c.txt
+```
+
+Note: Flags should come before variadic positionals. Collection stops at the first flag encountered.
 
 ## Short Flags
 
