@@ -45,9 +45,9 @@ module Jargon
 
     def subcommand(name : String, schema : Schema | String)
       @subcommands[name] = case schema
-      when String then Schema.from_json(schema)
-      else             schema
-      end
+                           when String then Schema.from_json(schema)
+                           else             schema
+                           end
     end
 
     def subcommand(name : String, cli : CLI)
@@ -67,23 +67,21 @@ module Jargon
     end
 
     def parse(args : Array(String), input : IO, *, defaults : JSON::Any | Hash(String, JSON::Any) | Nil = nil) : Result
-      if @subcommands.any?
+      if !@subcommands.empty?
         parse_with_subcommands(args, input, defaults)
+      elsif schema = @schema
+        parse_flat(args, schema, input, nil, defaults)
       else
-        parse_flat(args, @schema.not_nil!, input, nil, defaults)
+        raise ArgumentError.new("CLI has no schema and no subcommands defined")
       end
     end
 
     private def parse_with_subcommands(args : Array(String), input : IO, defaults : JSON::Any | Hash(String, JSON::Any) | Nil = nil) : Result
       # Handle "xerp -" - full JSON with subcommand field
-      if args == ["-"]
-        return parse_from_stdin_full(input, defaults)
-      end
+      return parse_from_stdin_full(input, defaults) if args == ["-"]
 
       # Check for top-level help (--help/-h before any subcommand)
-      if (first = args.first?) && (first == "--help" || first == "-h")
-        return Result.new({} of String => JSON::Any, [] of String, nil, true, nil)
-      end
+      return Result.new({} of String => JSON::Any, [] of String, nil, true, nil) if help_flag?(args.first?)
 
       # Check for --completions
       if result = check_completions_flag(args)
@@ -96,18 +94,17 @@ module Jargon
       end
 
       # Fall back to default subcommand if set
-      if default = @default_subcommand
-        if subcmd = @subcommands[default]?
-          return dispatch_subcommand(subcmd, default, args, input, defaults)
-        end
+      if (default = @default_subcommand) && (subcmd = @subcommands[default]?)
+        return dispatch_subcommand(subcmd, default, args, input, defaults)
       end
 
       # No match and no default
-      if args.empty?
-        Result.new({} of String => JSON::Any, ["No subcommand specified"])
-      else
-        Result.new({} of String => JSON::Any, ["Unknown subcommand: #{args[0]}"])
-      end
+      error = args.empty? ? "No subcommand specified" : "Unknown subcommand: #{args[0]}"
+      Result.new({} of String => JSON::Any, [error])
+    end
+
+    private def help_flag?(arg : String?) : Bool
+      arg == "--help" || arg == "-h"
     end
 
     private def dispatch_subcommand(subcmd : Schema | CLI, subcmd_name : String, args : Array(String), input : IO, defaults : JSON::Any | Hash(String, JSON::Any) | Nil) : Result
@@ -208,15 +205,11 @@ module Jargon
 
       # Check for help flags early
       help_requested, _ = any_help_requested?(args, schema)
-      if help_requested
-        return Result.new({} of String => JSON::Any, [] of String, nil, true, subcommand_path)
-      end
+      return Result.new({} of String => JSON::Any, [] of String, nil, true, subcommand_path) if help_requested
 
       # Check for --completions (only at top level, not within subcommands)
-      if subcommand_path.nil?
-        if result = check_completions_flag(args)
-          return result
-        end
+      if subcommand_path.nil? && (result = check_completions_flag(args))
+        return result
       end
 
       data = {} of String => JSON::Any
@@ -229,106 +222,21 @@ module Jargon
       while i < args.size
         arg = args[i]
 
-        if is_short_flag?(arg)
-          short_keys = arg[1..]
-          if short_keys.size == 1
-            # Single short flag: -v or -n 5
-            if long_key = short_to_long[short_keys]?
-              key, value, consumed, coerce_error = parse_long_flag("--#{long_key}", args, i, schema)
-              if key
-                errors << coerce_error if coerce_error
-                set_nested_value(data, key, value, errors)
-              end
-              i += consumed
-            else
-              errors << unknown_option_error(short_keys, short_to_long.keys, "-")
-              i += 1
-            end
-          else
-            # Combined short flags: -av expands to -a -v (boolean only)
-            valid_combo = true
-            short_keys.each_char do |c|
-              char_str = c.to_s
-              unless short_to_long[char_str]? && boolean_property?(short_to_long[char_str], schema)
-                if !short_to_long[char_str]?
-                  errors << unknown_option_error(char_str, short_to_long.keys, "-", "in '#{arg}'")
-                else
-                  errors << "Cannot combine non-boolean flag '-#{c}' in '#{arg}'"
-                end
-                valid_combo = false
-                break
-              end
-            end
-            if valid_combo
-              short_keys.each_char do |c|
-                long_key = short_to_long[c.to_s]
-                set_nested_value(data, long_key, JSON::Any.new(true), errors)
-              end
-            end
-            i += 1
-          end
-        elsif is_flag?(arg)
-          key, value, consumed, coerce_error = parse_long_flag(arg, args, i, schema)
-          if key
-            errors << coerce_error if coerce_error
-            set_nested_value(data, key, value, errors)
-          else
-            opt_name = arg.split("=", 2)[0][2..]  # Handle --foo=bar format
-            errors << unknown_option_error(opt_name, available_options(schema))
-          end
-          i += consumed
+        if short_flag?(arg)
+          i += handle_short_flag(arg, args, i, data, errors, short_to_long, schema)
+        elsif flag?(arg)
+          i += handle_long_flag(arg, args, i, data, errors, schema)
         elsif positional_index < positional_names.size
-          key = positional_names[positional_index]
-          prop = find_property(key, schema)
-
-          # Check if this is a variadic positional (array type AND last positional)
-          if prop.try(&.type) == Property::Type::Array && positional_index == positional_names.size - 1
-            # Collect all remaining non-flag arguments into this array
-            items = [] of JSON::Any
-            while i < args.size
-              current_arg = args[i]
-              break if current_arg.starts_with?("-")
-              break if current_arg.includes?("=") || current_arg.includes?(":")
-              items << JSON::Any.new(current_arg)
-              i += 1
-            end
-            set_nested_value(data, key, JSON::Any.new(items), errors)
-            positional_index += 1
-          else
-            # Single-value positional (existing behavior)
-            coerced, coerce_error = coerce_value(key, arg, schema)
-            errors << coerce_error if coerce_error
-            set_nested_value(data, key, coerced, errors)
-            positional_index += 1
-            i += 1
-          end
-        else
-          key, value, consumed, coerce_error = parse_argument(arg, args, i, schema)
-          if key
-            errors << coerce_error if coerce_error
-            set_nested_value(data, key, value, errors)
-          else
-            # Determine if this looks like a key=value or key:value with unknown key
-            if arg.includes?("=") || arg.includes?(":")
-              sep = arg.includes?("=") ? "=" : ":"
-              unknown_key = arg.split(sep, 2)[0]
-              errors << unknown_option_error(unknown_key, available_options(schema), "")
-            else
-              errors << "Unexpected argument '#{arg}'"
-            end
-          end
+          consumed, pos_advance = handle_positional(arg, args, i, positional_index, positional_names, data, errors, schema)
           i += consumed
+          positional_index += pos_advance
+        else
+          i += handle_extra_arg(arg, args, i, data, errors, schema)
         end
       end
 
       # Initialize unfilled variadic positionals to empty arrays
-      if positional_index < positional_names.size
-        key = positional_names[positional_names.size - 1]  # Last positional
-        prop = find_property(key, schema)
-        if prop.try(&.type) == Property::Type::Array && !data.has_key?(key)
-          set_nested_value(data, key, JSON::Any.new([] of JSON::Any), errors)
-        end
-      end
+      init_empty_variadic(positional_index, positional_names, data, errors, schema)
 
       # Apply environment variables - CLI args take precedence
       apply_env_vars(data, errors, schema)
@@ -342,12 +250,119 @@ module Jargon
       Result.new(data, errors)
     end
 
-    private def is_flag?(arg : String) : Bool
+    private def flag?(arg : String) : Bool
       arg.starts_with?("--")
     end
 
-    private def is_short_flag?(arg : String) : Bool
+    private def short_flag?(arg : String) : Bool
       arg.starts_with?("-") && !arg.starts_with?("--") && arg.size > 1
+    end
+
+    private def handle_short_flag(arg : String, args : Array(String), i : Int32, data : Hash(String, JSON::Any), errors : Array(String), short_to_long : Hash(String, String), schema : Schema) : Int32
+      short_keys = arg[1..]
+      if short_keys.size == 1
+        handle_single_short_flag(short_keys, args, i, data, errors, short_to_long, schema)
+      else
+        handle_combined_short_flags(arg, short_keys, data, errors, short_to_long, schema)
+        1
+      end
+    end
+
+    private def handle_single_short_flag(short_keys : String, args : Array(String), i : Int32, data : Hash(String, JSON::Any), errors : Array(String), short_to_long : Hash(String, String), schema : Schema) : Int32
+      if long_key = short_to_long[short_keys]?
+        key, value, consumed, coerce_error = parse_long_flag("--#{long_key}", args, i, schema)
+        if key
+          errors << coerce_error if coerce_error
+          set_nested_value(data, key, value, errors)
+        end
+        consumed
+      else
+        errors << unknown_option_error(short_keys, short_to_long.keys, "-")
+        1
+      end
+    end
+
+    private def handle_combined_short_flags(arg : String, short_keys : String, data : Hash(String, JSON::Any), errors : Array(String), short_to_long : Hash(String, String), schema : Schema) : Nil
+      short_keys.each_char do |c|
+        char_str = c.to_s
+        unless short_to_long[char_str]? && boolean_property?(short_to_long[char_str], schema)
+          if !short_to_long[char_str]?
+            errors << unknown_option_error(char_str, short_to_long.keys, "-", "in '#{arg}'")
+          else
+            errors << "Cannot combine non-boolean flag '-#{c}' in '#{arg}'"
+          end
+          return
+        end
+      end
+      short_keys.each_char do |c|
+        long_key = short_to_long[c.to_s]
+        set_nested_value(data, long_key, JSON::Any.new(true), errors)
+      end
+    end
+
+    private def handle_long_flag(arg : String, args : Array(String), i : Int32, data : Hash(String, JSON::Any), errors : Array(String), schema : Schema) : Int32
+      key, value, consumed, coerce_error = parse_long_flag(arg, args, i, schema)
+      if key
+        errors << coerce_error if coerce_error
+        set_nested_value(data, key, value, errors)
+      else
+        opt_name = arg.split("=", 2)[0][2..]
+        errors << unknown_option_error(opt_name, available_options(schema))
+      end
+      consumed
+    end
+
+    private def handle_positional(arg : String, args : Array(String), i : Int32, positional_index : Int32, positional_names : Array(String), data : Hash(String, JSON::Any), errors : Array(String), schema : Schema) : {Int32, Int32}
+      key = positional_names[positional_index]
+      prop = find_property(key, schema)
+
+      if prop.try(&.type) == Property::Type::Array && positional_index == positional_names.size - 1
+        consumed = collect_variadic(args, i, key, data, errors)
+        {consumed, 1}
+      else
+        coerced, coerce_error = coerce_value(key, arg, schema)
+        errors << coerce_error if coerce_error
+        set_nested_value(data, key, coerced, errors)
+        {1, 1}
+      end
+    end
+
+    private def collect_variadic(args : Array(String), start : Int32, key : String, data : Hash(String, JSON::Any), errors : Array(String)) : Int32
+      items = [] of JSON::Any
+      i = start
+      while i < args.size
+        current_arg = args[i]
+        break if current_arg.starts_with?("-")
+        break if current_arg.includes?("=") || current_arg.includes?(":")
+        items << JSON::Any.new(current_arg)
+        i += 1
+      end
+      set_nested_value(data, key, JSON::Any.new(items), errors)
+      i - start
+    end
+
+    private def init_empty_variadic(positional_index : Int32, positional_names : Array(String), data : Hash(String, JSON::Any), errors : Array(String), schema : Schema) : Nil
+      return unless positional_index < positional_names.size
+      key = positional_names[positional_names.size - 1]
+      prop = find_property(key, schema)
+      if prop.try(&.type) == Property::Type::Array && !data.has_key?(key)
+        set_nested_value(data, key, JSON::Any.new([] of JSON::Any), errors)
+      end
+    end
+
+    private def handle_extra_arg(arg : String, args : Array(String), i : Int32, data : Hash(String, JSON::Any), errors : Array(String), schema : Schema) : Int32
+      key, value, consumed, coerce_error = parse_argument(arg, args, i, schema)
+      if key
+        errors << coerce_error if coerce_error
+        set_nested_value(data, key, value, errors)
+      elsif arg.includes?("=") || arg.includes?(":")
+        sep = arg.includes?("=") ? "=" : ":"
+        unknown_key = arg.split(sep, 2)[0]
+        errors << unknown_option_error(unknown_key, available_options(schema), "")
+      else
+        errors << "Unexpected argument '#{arg}'"
+      end
+      consumed
     end
 
     private def build_short_map(schema : Schema) : Hash(String, String)
@@ -380,14 +395,14 @@ module Jargon
         {parts[0], coerced, 1, error}
       elsif is_boolean
         # Check if next arg is a boolean value (--flag true/false)
-        if index + 1 < args.size && is_boolean_value?(args[index + 1])
+        if index + 1 < args.size && boolean_value?(args[index + 1])
           coerced, error = coerce_value(key, args[index + 1], schema)
           {key, coerced, 2, error}
         else
           # No value or non-boolean next arg - treat as flag (true)
           {key, JSON::Any.new(true), 1, nil}
         end
-      elsif index + 1 < args.size && !is_flag_like?(args[index + 1])
+      elsif index + 1 < args.size && !flag_like?(args[index + 1])
         # Non-boolean with a value (allows negative numbers)
         coerced, error = coerce_value(key, args[index + 1], schema)
         {key, coerced, 2, error}
@@ -398,14 +413,14 @@ module Jargon
     end
 
     # Check if a string is a boolean value
-    private def is_boolean_value?(arg : String) : Bool
+    private def boolean_value?(arg : String) : Bool
       arg.downcase.in?("true", "false", "yes", "no", "on", "off", "1", "0")
     end
 
     # Check if arg looks like a flag (starts with - but not a negative number)
-    private def is_flag_like?(arg : String) : Bool
+    private def flag_like?(arg : String) : Bool
       return false unless arg.starts_with?("-")
-      return false if arg.size > 1 && arg[1].ascii_number?  # -5, -3.14
+      return false if arg.size > 1 && arg[1].ascii_number? # -5, -3.14
       true
     end
 
@@ -530,9 +545,9 @@ module Jargon
         end
       when Property::Type::Boolean
         case value.downcase
-        when "true", "1", "yes", "on"   then {JSON::Any.new(true), nil}
-        when "false", "0", "no", "off"  then {JSON::Any.new(false), nil}
-        else {JSON::Any.new(value), "Invalid boolean value '#{value}' for #{key}. Use: true/false, yes/no, on/off, 1/0"}
+        when "true", "1", "yes", "on"  then {JSON::Any.new(true), nil}
+        when "false", "0", "no", "off" then {JSON::Any.new(false), nil}
+        else                                {JSON::Any.new(value), "Invalid boolean value '#{value}' for #{key}. Use: true/false, yes/no, on/off, 1/0"}
         end
       when Property::Type::Array
         items = value.split(",").map { |v| JSON::Any.new(v.strip) }
@@ -572,7 +587,7 @@ module Jargon
 
       props.each do |name, prop|
         resolved_prop = resolve_property(prop, schema)
-        next if data.has_key?(name)  # CLI arg takes precedence
+        next if data.has_key?(name) # CLI arg takes precedence
         next unless env_var = resolved_prop.env
         next unless env_value = ENV[env_var]?
 
@@ -628,7 +643,7 @@ module Jargon
       full_name = prefix.empty? ? name : "#{prefix}.#{name}"
       value = data[name]?
 
-      if prop.required && value.nil?
+      if prop.required? && value.nil?
         errors << "Missing required field: #{full_name}"
         return
       end
@@ -674,7 +689,7 @@ module Jargon
     # Returns nil if no good match found (distance > 2 or > 30% of length)
     private def find_suggestion(input : String, candidates : Array(String)) : String?
       return nil if candidates.empty?
-      return nil if input.size < 2  # Don't suggest for single-character inputs
+      return nil if input.size < 2 # Don't suggest for single-character inputs
 
       best_match : String? = nil
       best_distance = Int32::MAX
@@ -723,11 +738,11 @@ module Jargon
         s2.each_char.with_index do |c2, j|
           cost = c1 == c2 ? 0 : 1
           curr_row[j + 1] = Math.min(
-            curr_row[j] + 1,           # insertion
+            curr_row[j] + 1, # insertion
             Math.min(
-              prev_row[j + 1] + 1,     # deletion
-              prev_row[j] + cost       # substitution
-            )
+            prev_row[j + 1] + 1, # deletion
+            prev_row[j] + cost   # substitution
+          )
           )
         end
 
@@ -740,11 +755,11 @@ module Jargon
     # Resolve abbreviated subcommand name to full name
     # Returns nil if no match, ambiguous, or too short (< 3 chars for non-exact)
     private def resolve_subcommand(input : String) : String?
-      return input if @subcommands.has_key?(input)  # Exact match
-      return nil if input.size < 3                   # Too short for abbreviation
+      return input if @subcommands.has_key?(input) # Exact match
+      return nil if input.size < 3                 # Too short for abbreviation
 
-      matches = @subcommands.keys.select { |name| name.starts_with?(input) }
-      matches.size == 1 ? matches.first : nil        # Unambiguous only
+      matches = @subcommands.keys.select(&.starts_with?(input))
+      matches.size == 1 ? matches.first : nil # Unambiguous only
     end
   end
 end

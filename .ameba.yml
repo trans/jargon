@@ -1,0 +1,14 @@
+# Ameba configuration
+
+# Exclude lib directory
+Excluded:
+  - lib
+
+# Allow not_nil! in specs - it's an intentional assertion
+Lint/NotNil:
+  Excluded:
+    - spec/**
+
+# Single-char block params are fine for iterators
+Naming/BlockParameterName:
+  Enabled: false

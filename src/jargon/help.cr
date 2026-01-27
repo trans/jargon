@@ -1,7 +1,7 @@
 module Jargon
   class CLI
     def help : String
-      if @subcommands.any?
+      if !@subcommands.empty?
         help_with_subcommands
       elsif s = @schema
         help_flat(s)
@@ -102,7 +102,7 @@ module Jargon
       usage_parts = subcmd_name ? ["Usage: #{program_name} #{subcmd_name}"] : ["Usage: #{program_name}"]
       positional_names.each do |name|
         if prop = root.properties.try(&.[name]?)
-          usage_parts << (prop.required ? "<#{name}>" : "[#{name}]")
+          usage_parts << (prop.required? ? "<#{name}>" : "[#{name}]")
         else
           usage_parts << "<#{name}>"
         end
@@ -138,15 +138,15 @@ module Jargon
     private def build_help_lines(lines : Array(String), name : String, prop : Property, prefix : String, schema : Schema)
       full_name = prefix.empty? ? name : "#{prefix}.#{name}"
       type_str = prop.type.to_s.downcase
-      required_str = prop.required ? " (required)" : ""
+      required_str = prop.required? ? " (required)" : ""
       default_str = prop.default ? " [default: #{prop.default}]" : ""
       desc = prop.description || ""
 
       flag_str = if short = prop.short
-        "-#{short}, --#{full_name}"
-      else
-        "    --#{full_name}"
-      end
+                   "-#{short}, --#{full_name}"
+                 else
+                   "    --#{full_name}"
+                 end
 
       if prop.type.boolean?
         lines << "  #{flag_str}#{required_str}#{default_str}"

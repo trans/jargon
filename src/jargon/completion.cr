@@ -19,7 +19,7 @@ module Jargon
       lines << "    local prev=\"${COMP_WORDS[COMP_CWORD-1]}\""
       lines << ""
 
-      if @cli.subcommands.any?
+      if !@cli.subcommands.empty?
         lines << bash_with_subcommands(program)
       else
         lines << bash_flat(program)
@@ -38,7 +38,7 @@ module Jargon
       lines << ""
       lines << "_#{program.gsub("-", "_")}() {"
 
-      if @cli.subcommands.any?
+      if !@cli.subcommands.empty?
         lines << zsh_with_subcommands(program)
       else
         lines << zsh_flat(program)
@@ -58,7 +58,7 @@ module Jargon
       lines << "complete -c #{program} -f"
       lines << ""
 
-      if @cli.subcommands.any?
+      if !@cli.subcommands.empty?
         lines << fish_with_subcommands(program)
       else
         lines << fish_flat(program)
@@ -113,21 +113,23 @@ module Jargon
       flag_words << "--help" << "-h"
 
       # Build enum cases
-      enum_flags = flags.select { |f| f.enum_values }
+      enum_flags = flags.select(&.enum_values)
 
       escaped_name = escape_bash(name)
       lines << "#{indent}#{escaped_name})"
-      if enum_flags.any?
+      if !enum_flags.empty?
         lines << "#{indent}    case \"$prev\" in"
         enum_flags.each do |flag|
-          flag_patterns = ["--#{escape_bash(flag.long)}"]
-          if short = flag.short
-            flag_patterns << "-#{escape_bash(short)}"
+          if ev = flag.enum_values
+            flag_patterns = ["--#{escape_bash(flag.long)}"]
+            if short = flag.short
+              flag_patterns << "-#{escape_bash(short)}"
+            end
+            enum_values_escaped = ev.map { |v| escape_bash(v) }.join(" ")
+            lines << "#{indent}        #{flag_patterns.join("|")})"
+            lines << "#{indent}            COMPREPLY=( $(compgen -W \"#{enum_values_escaped}\" -- \"$cur\") )"
+            lines << "#{indent}            ;;"
           end
-          enum_values_escaped = flag.enum_values.not_nil!.map { |v| escape_bash(v) }.join(" ")
-          lines << "#{indent}        #{flag_patterns.join("|")})"
-          lines << "#{indent}            COMPREPLY=( $(compgen -W \"#{enum_values_escaped}\" -- \"$cur\") )"
-          lines << "#{indent}            ;;"
         end
         lines << "#{indent}        *)"
         lines << "#{indent}            COMPREPLY=( $(compgen -W \"#{flag_words.join(" ")}\" -- \"$cur\") )"
@@ -190,19 +192,21 @@ module Jargon
         end
         flag_words << "--help" << "-h"
 
-        enum_flags = flags.select { |f| f.enum_values }
+        enum_flags = flags.select(&.enum_values)
 
-        if enum_flags.any?
+        if !enum_flags.empty?
           lines << "    case \"$prev\" in"
           enum_flags.each do |flag|
-            flag_patterns = ["--#{escape_bash(flag.long)}"]
-            if short = flag.short
-              flag_patterns << "-#{escape_bash(short)}"
+            if ev = flag.enum_values
+              flag_patterns = ["--#{escape_bash(flag.long)}"]
+              if short = flag.short
+                flag_patterns << "-#{escape_bash(short)}"
+              end
+              enum_values_escaped = ev.map { |v| escape_bash(v) }.join(" ")
+              lines << "        #{flag_patterns.join("|")})"
+              lines << "            COMPREPLY=( $(compgen -W \"#{enum_values_escaped}\" -- \"$cur\") )"
+              lines << "            ;;"
             end
-            enum_values_escaped = flag.enum_values.not_nil!.map { |v| escape_bash(v) }.join(" ")
-            lines << "        #{flag_patterns.join("|")})"
-            lines << "            COMPREPLY=( $(compgen -W \"#{enum_values_escaped}\" -- \"$cur\") )"
-            lines << "            ;;"
           end
           lines << "        *)"
           lines << "            COMPREPLY=( $(compgen -W \"#{flag_words.join(" ")}\" -- \"$cur\") )"
@@ -277,7 +281,7 @@ module Jargon
       end
 
       # Remove trailing backslash from last line if there are flags
-      if flags.any?
+      if !flags.empty?
         lines[-1] = lines[-1].rstrip(" \\")
       else
         lines << "                        '--help[Show help]'"
@@ -468,7 +472,7 @@ module Jargon
           resolved = resolve_property(prop, schema)
 
           enum_values = if ev = resolved.enum_values
-                          ev.map { |v| v.raw.to_s }
+                          ev.map(&.raw.to_s)
                         else
                           nil
                         end
@@ -496,9 +500,9 @@ module Jargon
     # Escape for bash double-quoted strings
     private def escape_bash(str : String) : String
       str.gsub("\\", "\\\\")
-         .gsub("\"", "\\\"")
-         .gsub("$", "\\$")
-         .gsub("`", "\\`")
+        .gsub("\"", "\\\"")
+        .gsub("$", "\\$")
+        .gsub("`", "\\`")
     end
 
     private def escape_zsh(str : String?) : String

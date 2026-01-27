@@ -1259,7 +1259,7 @@ describe Jargon do
 
       result.valid?.should be_true
       result["query_text"].as_s.should eq("search")
-      result["top"].as_i64.should eq(25)  # From defaults
+      result["top"].as_i64.should eq(25) # From defaults
     end
 
     it "applies env vars to stdin JSON input" do
@@ -1278,7 +1278,7 @@ describe Jargon do
         result = cli.parse(["run", "-"], input)
 
         result.valid?.should be_true
-        result["host"].as_s.should eq("env-host")  # From env var
+        result["host"].as_s.should eq("env-host") # From env var
         result["port"].as_i64.should eq(8080)
       ensure
         ENV.delete("TEST_STDIN_HOST")
@@ -1302,8 +1302,8 @@ describe Jargon do
         result = cli.parse(["run", "-"], input, defaults: defaults)
 
         result.valid?.should be_true
-        result["host"].as_s.should eq("json-host")  # JSON wins over defaults
-        result["port"].as_i64.should eq(3000)       # JSON wins over env var
+        result["host"].as_s.should eq("json-host") # JSON wins over defaults
+        result["port"].as_i64.should eq(3000)      # JSON wins over env var
       ensure
         ENV.delete("TEST_STDIN_PORT")
       end
@@ -2239,8 +2239,8 @@ describe Jargon do
         config = cli.load_config
         result = cli.parse(["--count", "10"], defaults: config)
 
-        result["verbose"].as_bool.should be_true  # From config
-        result["count"].as_i64.should eq(10)      # CLI overrides
+        result["verbose"].as_bool.should be_true # From config
+        result["count"].as_i64.should eq(10)     # CLI overrides
       ensure
         File.delete("./.config/testapp2.json")
       end
@@ -2270,10 +2270,10 @@ describe Jargon do
 
         config = cli.load_config(merge: true)
         config.should_not be_nil
-        config.not_nil!["host"].as_s.should eq("project-host")    # Project wins
-        config.not_nil!["port"].as_i.should eq(8080)              # From user
-        config.not_nil!["user_only"].as_s.should eq("yes")        # From user
-        config.not_nil!["project_only"].as_s.should eq("yes")     # From project
+        config.not_nil!["host"].as_s.should eq("project-host") # Project wins
+        config.not_nil!["port"].as_i.should eq(8080)           # From user
+        config.not_nil!["user_only"].as_s.should eq("yes")     # From user
+        config.not_nil!["project_only"].as_s.should eq("yes")  # From project
       ensure
         File.delete("./.config/testapp3.json")
         File.delete("#{xdg_config}/testapp3/config.json")
@@ -2302,9 +2302,9 @@ describe Jargon do
         config = cli.load_config(merge: true)
         config.should_not be_nil
         db = config.not_nil!["database"]
-        db["host"].as_s.should eq("production.example.com")  # Project wins
-        db["port"].as_i.should eq(5432)                       # Preserved from user
-        db["user"].as_s.should eq("default_user")             # Preserved from user
+        db["host"].as_s.should eq("production.example.com") # Project wins
+        db["port"].as_i.should eq(5432)                     # Preserved from user
+        db["user"].as_s.should eq("default_user")           # Preserved from user
       ensure
         File.delete("./.config/testapp4.json")
         File.delete("#{xdg_config}/testapp4/config.json")
@@ -2358,7 +2358,7 @@ describe Jargon do
       result = cli.parse(["--count", "5"], defaults: config_json)
 
       result["output"].as_s.should eq("default.txt")
-      result["count"].as_i64.should eq(5)  # CLI overrides
+      result["count"].as_i64.should eq(5) # CLI overrides
     end
 
     it "schema defaults fill remaining gaps" do
@@ -2376,9 +2376,9 @@ describe Jargon do
       defaults = {"port" => JSON::Any.new(3000_i64), "debug" => JSON::Any.new(true)}
       result = cli.parse([] of String, defaults: defaults)
 
-      result["host"].as_s.should eq("localhost")  # Schema default
-      result["port"].as_i64.should eq(3000)       # User default
-      result["debug"].as_bool.should be_true      # User default
+      result["host"].as_s.should eq("localhost") # Schema default
+      result["port"].as_i64.should eq(3000)      # User default
+      result["debug"].as_bool.should be_true     # User default
     end
 
     it "works with subcommands" do
@@ -2497,7 +2497,7 @@ describe Jargon do
       File.write("./.config/testbad.json", "{ invalid json }")
 
       begin
-        Jargon.config_warnings = false  # Suppress warning during test
+        Jargon.config_warnings = false # Suppress warning during test
         cli = Jargon.cli("cli", json: %({"type": "object", "properties": {}}))
         # Returns nil and prints warning to STDERR (suppressed here)
         config = cli.load_config
@@ -2513,7 +2513,7 @@ describe Jargon do
       File.write("./.config/testbadyaml.yaml", "invalid: yaml: content: [")
 
       begin
-        Jargon.config_warnings = false  # Suppress warning during test
+        Jargon.config_warnings = false # Suppress warning during test
         cli = Jargon.cli("testbadyaml", json: %({"type": "object", "properties": {}}))
         # Returns nil and prints warning to STDERR (suppressed here)
         config = cli.load_config
@@ -2543,7 +2543,7 @@ describe Jargon do
       result = cli.parse(["server.host=example.com"])
       result.valid?.should be_true
       result["server"]["host"].as_s.should eq("example.com")
-      result["server"]["port"].as_i64.should eq(8080)  # Default applied
+      result["server"]["port"].as_i64.should eq(8080) # Default applied
     end
   end
 

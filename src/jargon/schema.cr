@@ -27,12 +27,12 @@ module Jargon
       root = Property.from_json("root", json, required_fields)
 
       definitions = if defs = json["definitions"]? || json["$defs"]?
-        defs.as_h.map do |def_name, def_schema|
-          {def_name, Property.from_json(def_name, def_schema)}
-        end.to_h
-      else
-        {} of String => Property
-      end
+                      defs.as_h.map do |def_name, def_schema|
+                        {def_name, Property.from_json(def_name, def_schema)}
+                      end.to_h
+                    else
+                      {} of String => Property
+                    end
 
       Schema.new(root, definitions, positional)
     end

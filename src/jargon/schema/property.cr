@@ -13,7 +13,7 @@ module Jargon
     getter name : String
     getter type : Type
     getter description : String?
-    getter required : Bool
+    getter? required : Bool
     getter default : JSON::Any?
     getter enum_values : Array(JSON::Any)?
     getter properties : Hash(String, Property)?
@@ -33,7 +33,7 @@ module Jargon
       @items : Property? = nil,
       @ref : String? = nil,
       @short : String? = nil,
-      @env : String? = nil
+      @env : String? = nil,
     )
     end
 
@@ -48,15 +48,15 @@ module Jargon
       is_required = required_fields.includes?(name)
 
       properties = if type.object? && (props = json["properties"]?)
-        nested_required = json["required"]?.try(&.as_a.map(&.as_s)) || [] of String
-        props.as_h.map do |prop_name, prop_schema|
-          {prop_name, Property.from_json(prop_name, prop_schema, nested_required)}
-        end.to_h
-      end
+                     nested_required = json["required"]?.try(&.as_a.map(&.as_s)) || [] of String
+                     props.as_h.map do |prop_name, prop_schema|
+                       {prop_name, Property.from_json(prop_name, prop_schema, nested_required)}
+                     end.to_h
+                   end
 
       items = if type.array? && (item_schema = json["items"]?)
-        Property.from_json("items", item_schema)
-      end
+                Property.from_json("items", item_schema)
+              end
 
       Property.new(
         name: name,
