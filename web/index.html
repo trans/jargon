@@ -1,0 +1,388 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Jargon - Schema-first CLI parsing for Crystal</title>
+    <meta
+      name="description"
+      content="Jargon is a Crystal library that turns JSON Schema into a precise, friendly CLI with validation, defaults, subcommands, and completions."
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="bg-shape bg-shape-a"></div>
+    <div class="bg-shape bg-shape-b"></div>
+    <div class="grain"></div>
+
+    <nav class="nav">
+      <div class="nav-inner">
+        <div class="logo">Jargon</div>
+        <div class="nav-links">
+          <a href="#demo">See It</a>
+          <span class="nav-separator">→</span>
+          <a href="#features">Get It</a>
+          <span class="nav-separator">→</span>
+          <a href="#get-started">Do it!</a>
+        </div>
+        <a class="btn small github-link" href="https://github.com/trans/jargon" aria-label="GitHub">
+          <img src="assets/github.svg" alt="" class="github-icon" />
+        </a>
+      </div>
+    </nav>
+
+    <header class="hero">
+      <div class="hero-content reveal" style="--delay: 0.05s">
+        <div class="eyebrow">Crystal library - JSON Schema in, CLI out</div>
+        <h1>Your CLI is an API.<br /><span class="hero-break">Why aren&rsquo;t you treating it like one?</span></h1>
+        <p class="lead">
+          Jargon turns JSON Schema into a precise, user-friendly CLI. You get
+          validation, defaults, subcommands, and completions with a single
+          definition, delivered as clean JSON.
+        </p>
+        <div class="cta-row">
+          <a class="btn primary" href="#get-started">Get started</a>
+          <a class="btn ghost" href="#demo">See it run</a>
+        </div>
+        <div class="meta-row">
+          <div class="meta-chip">MIT license</div>
+          <div class="meta-chip">stdin JSON</div>
+          <div class="meta-chip">$ref support</div>
+          <div class="meta-chip">XDG friendly</div>
+          <div class="meta-chip">ENV overrides</div>
+          <div class="meta-chip">Schema defaults</div>
+          <div class="meta-chip">Nested objects</div>
+          <div class="meta-chip">Subcommands</div>
+          <div class="meta-chip">Auto help</div>
+          <div class="meta-chip">Shell completions</div>
+          <div class="meta-chip">Typed parsing</div>
+          <div class="meta-chip">Config loading</div>
+        </div>
+      </div>
+
+      <div class="hero-card reveal" style="--delay: 0.15s" data-tabs>
+        <div class="card-header">
+          <span class="schema-label" data-schema-label>schema.json</span>
+          <div class="card-actions">
+            <img src="assets/json-schema.svg" alt="JSON Schema" class="schema-logo" />
+            <div class="tab-bar">
+              <button class="tab-button active" data-tab="json">JSON</button>
+              <button class="tab-button" data-tab="yaml">YAML</button>
+            </div>
+          </div>
+        </div>
+        <div class="tabbed">
+          <div class="code-block wrap" data-tab-content="json">
+            <button class="copy">Copy</button>
+            <pre><code>{
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "User name"
+    },
+    "age": {
+      "type": "integer",
+      "description": "User age"
+    },
+    "verbose": {
+      "type": "boolean",
+      "short": "v"
+    }
+  },
+  "required": ["name"]
+}</code></pre>
+          </div>
+          <div class="code-block wrap hidden" data-tab-content="yaml">
+            <button class="copy">Copy</button>
+            <pre><code>type: object
+properties:
+  name:
+    type: string
+    description: User name
+  age:
+    type: integer
+    description: User age
+  verbose:
+    type: boolean
+    short: v
+required:
+  - name</code></pre>
+          </div>
+        </div>
+        <div class="mini-note">Schema drives help text, defaults, and validation.</div>
+      </div>
+    </header>
+
+    <section class="section steps">
+      <div class="section-head reveal" style="--delay: 0.05s">
+        <h2>The schema becomes the interface</h2>
+        <p>Define the data shape once and reuse it everywhere.</p>
+      </div>
+      <div class="steps-grid">
+        <div class="step-card reveal" style="--delay: 0.1s">
+          <div class="step-number">01</div>
+          <h3>Define your schema</h3>
+          <p>Describe data types, defaults, env overrides, and descriptions.</p>
+        </div>
+        <div class="step-card reveal" style="--delay: 0.15s">
+          <div class="step-number">02</div>
+          <h3>Parse with confidence</h3>
+          <p>Jargon validates inputs and produces consistent JSON output.</p>
+        </div>
+        <div class="step-card reveal" style="--delay: 0.2s">
+          <div class="step-number">03</div>
+          <h3>Ship with polish</h3>
+          <p>Automatic help, completions, and subcommands come built in.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="demo" class="section">
+      <div class="section-head reveal" style="--delay: 0.05s">
+        <h2>Seeing is believing</h2>
+        <p>A tiny demo script that shows parsing, nesting, and validation.</p>
+      </div>
+      <div
+        class="terminal-card reveal"
+        style="--delay: 0.1s"
+        data-terminal
+        data-default-script="schema"
+      >
+        <div class="terminal-header">
+          <div class="terminal-dots">
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+          <div class="terminal-title">jargon-demo</div>
+          <div class="terminal-pill">live</div>
+        </div>
+        <div class="terminal-body">
+          <div class="terminal-output"></div>
+        </div>
+      </div>
+      <div class="terminal-controls reveal" style="--delay: 0.15s">
+        <button class="pill-button active" data-terminal-script="schema">
+          Define schema
+        </button>
+        <button class="pill-button" data-terminal-script="crystal">
+          Crystal usage
+        </button>
+        <button class="pill-button" data-terminal-script="help">
+          Help output
+        </button>
+        <button class="pill-button" data-terminal-script="run">
+          Run command
+        </button>
+        <button class="pill-button" data-terminal-script="validation">
+          Validation
+        </button>
+        <button class="pill-button" data-terminal-script="arguments">
+          Argument styles
+        </button>
+      </div>
+    </section>
+
+    <section id="features" class="section">
+      <div class="section-head reveal" style="--delay: 0.05s">
+        <h2>Built for real-world CLIs</h2>
+        <p>
+          Jargon keeps the CLI surface area predictable, while still letting you
+          express complex data shapes with nested objects and refs.
+        </p>
+      </div>
+      <div class="feature-grid">
+        <article class="card reveal" style="--delay: 0.1s">
+          <h3>Schema-first validation</h3>
+          <p>
+            Required fields, enum constraints, and strict type checks are all
+            derived from your JSON Schema.
+          </p>
+        </article>
+        <article class="card reveal" style="--delay: 0.15s">
+          <h3>XDG config aware</h3>
+          <p>Loads config from standard XDG paths with project overrides.</p>
+        </article>
+        <article class="card reveal" style="--delay: 0.2s">
+          <h3>Defaults &amp; precedence</h3>
+          <p>Schema defaults, config files, and env vars layer predictably.</p>
+        </article>
+        <article class="card reveal" style="--delay: 0.25s">
+          <h3>Environment bindings</h3>
+          <p>Map options to env vars and coerce types automatically.</p>
+        </article>
+        <article class="card reveal" style="--delay: 0.3s">
+          <h3>Subcommands without ceremony</h3>
+          <p>Compose nested sub-parsers, with a default command fallback.</p>
+        </article>
+        <article class="card reveal" style="--delay: 0.4s">
+          <h3>Positional + variadic</h3>
+          <p>Mix ordered arguments with a variadic tail for lists.</p>
+        </article>
+        <article class="card reveal" style="--delay: 0.45s">
+          <h3>Flexible input styles</h3>
+          <p>Accept flags, key=value, or key:value without extra parsing.</p>
+        </article>
+        <article class="card reveal" style="--delay: 0.5s">
+          <h3>Nested object paths</h3>
+          <p>Use dotted keys like user.name for deep objects.</p>
+        </article>
+        <article class="card reveal" style="--delay: 0.55s">
+          <h3>Stdin JSON mode</h3>
+          <p>Parse full JSON payloads via stdin with a single dash.</p>
+        </article>
+        <article class="card reveal" style="--delay: 0.6s">
+          <h3>Help &amp; hints</h3>
+          <p>Auto-generated help plus typo suggestions for options.</p>
+        </article>
+        <article class="card reveal" style="--delay: 0.65s">
+          <h3>Schema reuse</h3>
+          <p>Share definitions via $ref and keep specs DRY.</p>
+        </article>
+        <article class="card reveal" style="--delay: 0.7s">
+          <h3>Shell completions</h3>
+          <p>Generate bash, zsh, and fish scripts from the same schema.</p>
+        </article>
+      </div>
+    </section>
+
+
+    <section id="completions" class="section">
+      <div class="section-head reveal" style="--delay: 0.05s">
+        <h2>Completions that stay in sync</h2>
+        <p>Generate scripts for bash, zsh, and fish straight from your schema.</p>
+      </div>
+      <div class="split">
+        <div class="callout compact reveal" style="--delay: 0.1s">
+          <h3>One command per shell</h3>
+          <p>
+            Jargon can emit shell completion scripts without any extra tooling.
+            Hook them into your install process or generate on demand.
+          </p>
+          <div class="tag-row">
+            <span>bash</span>
+            <span>zsh</span>
+            <span>fish</span>
+          </div>
+        </div>
+        <div class="code-block reveal" style="--delay: 0.15s">
+          <button class="copy">Copy</button>
+          <pre><code>cli = Jargon.cli("mycmd", json: schema)
+puts cli.bash_completion
+puts cli.zsh_completion
+puts cli.fish_completion</code></pre>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head reveal" style="--delay: 0.05s">
+        <h2>Designed for clarity</h2>
+        <p>Help output reads like docs because descriptions come from the schema.</p>
+      </div>
+      <div class="split">
+        <div class="callout reveal" style="--delay: 0.1s">
+          <h3>Succinct help, by design</h3>
+          <p>
+            Perfectly concise help messages that stay readable and focused.
+            Deep dives belong in <strong>man pages</strong>, not in the CLI overview.
+          </p>
+        </div>
+        <div class="code-block reveal" style="--delay: 0.15s">
+          <button class="copy">Copy</button>
+          <pre><code>Usage: mycmd [options]
+
+Options:
+  -v, --verbose           [default: false]
+      Enable verbose logging
+  --count=&lt;integer&gt;       [default: 10]
+      Number of retries
+  --mode=&lt;string&gt;
+      Operation mode</code></pre>
+        </div>
+      </div>
+    </section>
+
+    <section id="get-started" class="section">
+      <div class="section-head reveal" style="--delay: 0.05s">
+        <h2>Get started in minutes</h2>
+        <p>Install the shard, load a schema, and parse.</p>
+      </div>
+      <div class="split">
+        <div class="callout reveal" style="--delay: 0.15s">
+          <h3>From shard to CLI</h3>
+          <p>
+            Add Jargon to your shard dependencies, run <code>shards update</code>,
+            define your schema, wire it up in your code (easy peasy), and enjoy a friendly CLI.
+          </p>
+        </div>
+        <div class="code-block reveal" style="--delay: 0.1s">
+          <button class="copy">Copy</button>
+          <pre><code># shard.yml
+
+dependencies:
+  jargon:
+    github: trans/jargon</code></pre>
+        </div>
+      </div>
+    </section>
+
+    <section id="get-involved" class="section">
+      <div class="section-head reveal" style="--delay: 0.05s">
+        <h2>Get involved</h2>
+        <p>Contribute, explore the docs, or ship Jargon in your next CLI.</p>
+      </div>
+      <div class="split">
+        <div class="callout reveal" style="--delay: 0.1s">
+          <h3>Build with the community</h3>
+          <p>
+            Jargon is MIT-licensed and built to be hacked on. Open issues, send
+            PRs, or browse the API docs to dive deeper.
+          </p>
+          <div class="link-row">
+            <a class="btn primary" href="https://github.com/trans/jargon">
+              GitHub repo
+            </a>
+            <a
+              class="btn"
+              href="https://crystaldoc.info/github/trans/jargon/v0.9.1/index.html"
+            >
+              API docs
+            </a>
+            <a
+              class="btn"
+              href="https://shards.info/github/trans/jargon/"
+            >
+              Shard stats
+            </a>
+          </div>
+        </div>
+        <div class="callout reveal" style="--delay: 0.15s">
+          <h3>Developer friendly</h3>
+          <p>
+            Schema-driven help, JSON output, and shell completions make it easy
+            to ship polished command lines quickly.
+          </p>
+          <div class="tag-row">
+            <a class="btn" href="https://opensource.org/license/mit">
+              MIT
+            </a>
+            <a class="btn" href="https://crystal-lang.org/">
+              Crystal
+            </a>
+            <a class="btn" href="https://json-schema.org/">
+              JSON Schema
+            </a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <footer class="footer">
+      <div><strong>Jargon (c) 2026 Thomas Sawyer</strong></div>
+    </footer>
+
+    <script src="script.js"></script>
+  </body>
+</html>
