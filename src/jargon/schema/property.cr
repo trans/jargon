@@ -23,6 +23,12 @@ module Jargon
     getter env : String?
     getter minimum : Float64?
     getter maximum : Float64?
+    getter exclusive_minimum : Float64?
+    getter exclusive_maximum : Float64?
+    getter min_length : Int32?
+    getter max_length : Int32?
+    getter min_items : Int32?
+    getter max_items : Int32?
     getter pattern : Regex?
 
     def initialize(
@@ -39,6 +45,12 @@ module Jargon
       @env : String? = nil,
       @minimum : Float64? = nil,
       @maximum : Float64? = nil,
+      @exclusive_minimum : Float64? = nil,
+      @exclusive_maximum : Float64? = nil,
+      @min_length : Int32? = nil,
+      @max_length : Int32? = nil,
+      @min_items : Int32? = nil,
+      @max_items : Int32? = nil,
       @pattern : Regex? = nil,
     )
     end
@@ -56,6 +68,16 @@ module Jargon
       # Numeric constraints
       minimum = json["minimum"]?.try(&.as_f?) || json["minimum"]?.try(&.as_i64?.try(&.to_f))
       maximum = json["maximum"]?.try(&.as_f?) || json["maximum"]?.try(&.as_i64?.try(&.to_f))
+      exclusive_minimum = json["exclusiveMinimum"]?.try(&.as_f?) || json["exclusiveMinimum"]?.try(&.as_i64?.try(&.to_f))
+      exclusive_maximum = json["exclusiveMaximum"]?.try(&.as_f?) || json["exclusiveMaximum"]?.try(&.as_i64?.try(&.to_f))
+
+      # String constraints
+      min_length = json["minLength"]?.try(&.as_i?.try(&.to_i32))
+      max_length = json["maxLength"]?.try(&.as_i?.try(&.to_i32))
+
+      # Array constraints
+      min_items = json["minItems"]?.try(&.as_i?.try(&.to_i32))
+      max_items = json["maxItems"]?.try(&.as_i?.try(&.to_i32))
 
       # String pattern
       pattern = if pattern_str = json["pattern"]?.try(&.as_s?)
@@ -87,6 +109,12 @@ module Jargon
         env: env,
         minimum: minimum,
         maximum: maximum,
+        exclusive_minimum: exclusive_minimum,
+        exclusive_maximum: exclusive_maximum,
+        min_length: min_length,
+        max_length: max_length,
+        min_items: min_items,
+        max_items: max_items,
         pattern: pattern
       )
     end

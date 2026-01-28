@@ -146,9 +146,11 @@ Standard JSON Schema validation keywords are supported:
 {
   "properties": {
     "port": {"type": "integer", "minimum": 1, "maximum": 65535},
-    "ratio": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+    "ratio": {"type": "number", "exclusiveMinimum": 0, "exclusiveMaximum": 1},
+    "password": {"type": "string", "minLength": 8, "maxLength": 64},
     "email": {"type": "string", "pattern": "^[^@]+@[^@]+$"},
     "level": {"type": "string", "enum": ["debug", "info", "warn", "error"]},
+    "files": {"type": "array", "minItems": 1, "maxItems": 10},
     "tags": {
       "type": "array",
       "items": {"type": "string", "enum": ["alpha", "beta", "stable"]}
@@ -157,7 +159,10 @@ Standard JSON Schema validation keywords are supported:
 }
 ```
 
-- `minimum`/`maximum`: numeric range validation
+- `minimum`/`maximum`: numeric range (inclusive)
+- `exclusiveMinimum`/`exclusiveMaximum`: numeric range (exclusive)
+- `minLength`/`maxLength`: string length
+- `minItems`/`maxItems`: array length
 - `pattern`: regex validation for strings
 - `enum`: allowed values (works for array items too)
 

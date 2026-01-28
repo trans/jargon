@@ -976,32 +976,48 @@ module Jargon
       if prop.type.integer? || prop.type.number?
         if num = value.as_f? || value.as_i64?.try(&.to_f)
           if min = prop.minimum
-            if num < min
-              errors << "Value for #{full_name} must be >= #{min.to_i == min ? min.to_i : min}"
-            end
+            errors << "Value for #{full_name} must be >= #{format_num(min)}" if num < min
           end
           if max = prop.maximum
-            if num > max
-              errors << "Value for #{full_name} must be <= #{max.to_i == max ? max.to_i : max}"
-            end
+            errors << "Value for #{full_name} must be <= #{format_num(max)}" if num > max
+          end
+          if min = prop.exclusive_minimum
+            errors << "Value for #{full_name} must be > #{format_num(min)}" if num <= min
+          end
+          if max = prop.exclusive_maximum
+            errors << "Value for #{full_name} must be < #{format_num(max)}" if num >= max
           end
         end
       end
 
-      # Pattern validation for strings
-      if prop.type.string? && (pattern = prop.pattern)
+      # String validation
+      if prop.type.string?
         if str = value.as_s?
-          unless pattern.matches?(str)
-            errors << "Value for #{full_name} must match pattern: #{pattern.source}"
+          if min = prop.min_length
+            errors << "Value for #{full_name} must be at least #{min} characters" if str.size < min
+          end
+          if max = prop.max_length
+            errors << "Value for #{full_name} must be at most #{max} characters" if str.size > max
+          end
+          if pattern = prop.pattern
+            errors << "Value for #{full_name} must match pattern: #{pattern.source}" unless pattern.matches?(str)
           end
         end
       end
 
-      # Array item validation
-      if prop.type.array? && (items_prop = prop.items)
+      # Array validation
+      if prop.type.array?
         if arr = value.as_a?
-          arr.each_with_index do |item, i|
-            validate_array_item(item, items_prop, errors, "#{full_name}[#{i}]", schema)
+          if min = prop.min_items
+            errors << "#{full_name} must have at least #{min} items" if arr.size < min
+          end
+          if max = prop.max_items
+            errors << "#{full_name} must have at most #{max} items" if arr.size > max
+          end
+          if items_prop = prop.items
+            arr.each_with_index do |item, i|
+              validate_array_item(item, items_prop, errors, "#{full_name}[#{i}]", schema)
+            end
           end
         end
       end
@@ -1030,26 +1046,42 @@ module Jargon
         end
       end
 
-      # Minimum/maximum validation
+      # Numeric validation
       if prop.type.integer? || prop.type.number?
         if num = value.as_f? || value.as_i64?.try(&.to_f)
           if min = prop.minimum
-            errors << "Value for #{item_name} must be >= #{min.to_i == min ? min.to_i : min}" if num < min
+            errors << "Value for #{item_name} must be >= #{format_num(min)}" if num < min
           end
           if max = prop.maximum
-            errors << "Value for #{item_name} must be <= #{max.to_i == max ? max.to_i : max}" if num > max
+            errors << "Value for #{item_name} must be <= #{format_num(max)}" if num > max
+          end
+          if min = prop.exclusive_minimum
+            errors << "Value for #{item_name} must be > #{format_num(min)}" if num <= min
+          end
+          if max = prop.exclusive_maximum
+            errors << "Value for #{item_name} must be < #{format_num(max)}" if num >= max
           end
         end
       end
 
-      # Pattern validation
-      if prop.type.string? && (pattern = prop.pattern)
+      # String validation
+      if prop.type.string?
         if str = value.as_s?
-          unless pattern.matches?(str)
-            errors << "Value for #{item_name} must match pattern: #{pattern.source}"
+          if min = prop.min_length
+            errors << "Value for #{item_name} must be at least #{min} characters" if str.size < min
+          end
+          if max = prop.max_length
+            errors << "Value for #{item_name} must be at most #{max} characters" if str.size > max
+          end
+          if pattern = prop.pattern
+            errors << "Value for #{item_name} must match pattern: #{pattern.source}" unless pattern.matches?(str)
           end
         end
       end
+    end
+
+    private def format_num(n : Float64) : String
+      n.to_i == n ? n.to_i.to_s : n.to_s
     end
 
     private def valid_type?(value : JSON::Any, expected : Property::Type) : Bool

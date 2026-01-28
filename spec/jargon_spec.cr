@@ -427,6 +427,62 @@ describe Jargon do
       result.valid?.should be_false
       result.errors.first.should eq("Invalid value for level: must be one of debug, info, warn")
     end
+
+    it "validates exclusiveMinimum and exclusiveMaximum" do
+      cli = Jargon.cli("cli", json: %({
+        "type": "object",
+        "properties": {
+          "value": {"type": "number", "exclusiveMinimum": 0, "exclusiveMaximum": 100}
+        }
+      }))
+
+      result = cli.parse(["--value", "50"])
+      result.valid?.should be_true
+
+      result = cli.parse(["--value", "0"])
+      result.valid?.should be_false
+      result.errors.first.should contain("> 0")
+
+      result = cli.parse(["--value", "100"])
+      result.valid?.should be_false
+      result.errors.first.should contain("< 100")
+    end
+
+    it "validates minLength and maxLength" do
+      cli = Jargon.cli("cli", json: %({
+        "type": "object",
+        "properties": {
+          "password": {"type": "string", "minLength": 8, "maxLength": 20}
+        }
+      }))
+
+      result = cli.parse(["--password", "goodpass123"])
+      result.valid?.should be_true
+
+      result = cli.parse(["--password", "short"])
+      result.valid?.should be_false
+      result.errors.first.should contain("at least 8 characters")
+
+      result = cli.parse(["--password", "thispasswordiswaytoolongtobevalid"])
+      result.valid?.should be_false
+      result.errors.first.should contain("at most 20 characters")
+    end
+
+    it "validates minItems and maxItems" do
+      cli = Jargon.cli("cli", json: %({
+        "type": "object",
+        "properties": {
+          "files": {"type": "array", "minItems": 1, "maxItems": 3}
+        }
+      }))
+
+      result = cli.parse(["--files", "a,b"])
+      result.valid?.should be_true
+
+      result = cli.parse(["--files", "a,b,c,d"])
+      result.valid?.should be_false
+      result.errors.first.should contain("at most 3 items")
+    end
   end
 
   describe "defaults" do
