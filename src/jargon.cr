@@ -4,7 +4,7 @@ require "./jargon/result"
 require "./jargon/completion"
 
 module Jargon
-  VERSION = "0.12.0"
+  VERSION = "0.13.0"
 
   class ParseError < Exception
     getter errors : Array(String)
