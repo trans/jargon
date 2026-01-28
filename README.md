@@ -163,6 +163,7 @@ Standard JSON Schema validation keywords are supported:
 
 - `minimum`/`maximum`: numeric range (inclusive)
 - `exclusiveMinimum`/`exclusiveMaximum`: numeric range (exclusive)
+- `multipleOf`: value must be divisible by this number
 - `minLength`/`maxLength`: string length
 - `minItems`/`maxItems`: array length
 - `uniqueItems`: no duplicate values in array
