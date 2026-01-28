@@ -13,22 +13,81 @@ module Jargon
     getter subcommand_key : String
     property output : IO = STDOUT
 
-    # Create a CLI from a JSON schema string
+    # Create a CLI from a JSON schema string.
+    # Auto-detects multi-doc format (relaxed JSONL) for subcommands.
     def self.from_json(json : String, program_name : String = "cli") : CLI
-      schema = Schema.from_json(json)
-      CLI.new(schema, program_name)
+      if multi_json?(json)
+        cli = CLI.new(program_name)
+        cli.load_multi_json(json)
+        cli
+      else
+        schema = Schema.from_json(json)
+        CLI.new(schema, program_name)
+      end
     end
 
-    # Create a CLI from a JSON schema file
+    # Create a CLI from a JSON or YAML schema file.
+    # Auto-detects multi-doc format for subcommands.
     def self.from_file(path : String, program_name : String = "cli") : CLI
-      schema = Schema.from_file(path)
-      CLI.new(schema, program_name)
+      content = File.read(path)
+      if path.ends_with?(".yaml") || path.ends_with?(".yml")
+        from_yaml(content, program_name)
+      else
+        from_json(content, program_name)
+      end
     end
 
-    # Create a CLI from a YAML schema string
+    # Create a CLI from a YAML schema string.
+    # Auto-detects multi-doc format for subcommands.
     def self.from_yaml(yaml : String, program_name : String = "cli") : CLI
-      json = YAML.parse(yaml).to_json
-      from_json(json, program_name)
+      if multi_yaml?(yaml)
+        cli = CLI.new(program_name)
+        cli.load_multi_yaml(yaml)
+        cli
+      else
+        json = YAML.parse(yaml).to_json
+        from_json(json, program_name)
+      end
+    end
+
+    # Check if YAML content has multiple documents
+    protected def self.multi_yaml?(content : String) : Bool
+      YAML.parse_all(content).size > 1
+    end
+
+    # Check if JSON content has multiple objects (relaxed JSONL)
+    protected def self.multi_json?(content : String) : Bool
+      # Count top-level opening braces by tracking depth
+      stripped = content.strip
+      return false unless stripped.starts_with?('{')
+
+      count = 0
+      depth = 0
+      in_string = false
+      escape_next = false
+
+      stripped.each_char do |char|
+        if escape_next
+          escape_next = false
+          next
+        end
+
+        case char
+        when '\\'
+          escape_next = true if in_string
+        when '"'
+          in_string = !in_string
+        when '{'
+          unless in_string
+            depth += 1
+            count += 1 if depth == 1
+          end
+        when '}'
+          depth -= 1 unless in_string
+        end
+      end
+
+      count > 1
     end
 
     def initialize(@schema : Schema, @program_name : String = "cli")
@@ -53,6 +112,86 @@ module Jargon
 
     def subcommand(name : String, cli : CLI)
       @subcommands[name] = cli
+    end
+
+    # Load a subcommand from a file (JSON or YAML)
+    def subcommand(name : String, *, file : String)
+      content = File.read(file)
+      schema = if file.ends_with?(".yaml") || file.ends_with?(".yml")
+                 json = YAML.parse(content).to_json
+                 Schema.from_json(json)
+               else
+                 Schema.from_json(content)
+               end
+      @subcommands[name] = schema
+    end
+
+    # Load multiple subcommands from a multi-document file.
+    # YAML: documents separated by ---
+    # JSON: consecutive objects (relaxed JSONL)
+    # Each document must have a "name" field for the subcommand name.
+    def subcommands(*, file : String)
+      content = File.read(file)
+      if file.ends_with?(".yaml") || file.ends_with?(".yml")
+        load_multi_yaml(content)
+      else
+        load_multi_json(content)
+      end
+    end
+
+    protected def load_multi_yaml(content : String)
+      YAML.parse_all(content).each do |doc|
+        json_any = JSON.parse(doc.to_json)
+        name = json_any["name"]?.try(&.as_s)
+        raise ArgumentError.new("Subcommand schema missing 'name' field") unless name
+        @subcommands[name] = Schema.from_json_any(json_any)
+      end
+    end
+
+    protected def load_multi_json(content : String)
+      # Parse consecutive JSON objects (relaxed JSONL)
+      remaining = content.strip
+      while !remaining.empty?
+        # Find the end of the current JSON object by tracking brace depth
+        start_idx = remaining.index('{')
+        break unless start_idx
+        remaining = remaining[start_idx..]
+
+        depth = 0
+        in_string = false
+        escape_next = false
+        end_idx = 0
+
+        remaining.each_char_with_index do |char, i|
+          if escape_next
+            escape_next = false
+            next
+          end
+
+          case char
+          when '\\'
+            escape_next = true if in_string
+          when '"'
+            in_string = !in_string
+          when '{'
+            depth += 1 unless in_string
+          when '}'
+            depth -= 1 unless in_string
+            if depth == 0
+              end_idx = i
+              break
+            end
+          end
+        end
+
+        json_str = remaining[0..end_idx]
+        json_any = JSON.parse(json_str)
+        name = json_any["name"]?.try(&.as_s)
+        raise ArgumentError.new("Subcommand schema missing 'name' field") unless name
+        @subcommands[name] = Schema.from_json_any(json_any)
+
+        remaining = remaining[(end_idx + 1)..].strip
+      end
     end
 
     def default_subcommand(name : String)

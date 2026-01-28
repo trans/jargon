@@ -984,6 +984,216 @@ describe Jargon do
       result.subcommand.should eq("index")
       result["rebuild"].as_bool.should be_true
     end
+
+    it "loads subcommand from JSON file" do
+      File.write("/tmp/test_subcmd.json", %({
+        "type": "object",
+        "properties": {
+          "url": {"type": "string"}
+        }
+      }))
+      begin
+        cli = Jargon.new("myapp")
+        cli.subcommand("fetch", file: "/tmp/test_subcmd.json")
+
+        result = cli.parse(["fetch", "--url", "https://example.com"])
+        result.valid?.should be_true
+        result.subcommand.should eq("fetch")
+        result["url"].as_s.should eq("https://example.com")
+      ensure
+        File.delete("/tmp/test_subcmd.json")
+      end
+    end
+
+    it "loads subcommand from YAML file" do
+      File.write("/tmp/test_subcmd.yaml", <<-YAML)
+        type: object
+        properties:
+          url:
+            type: string
+        YAML
+      begin
+        cli = Jargon.new("myapp")
+        cli.subcommand("fetch", file: "/tmp/test_subcmd.yaml")
+
+        result = cli.parse(["fetch", "--url", "https://example.com"])
+        result.valid?.should be_true
+        result.subcommand.should eq("fetch")
+        result["url"].as_s.should eq("https://example.com")
+      ensure
+        File.delete("/tmp/test_subcmd.yaml")
+      end
+    end
+
+    it "loads multiple subcommands from multi-document YAML" do
+      File.write("/tmp/test_multi.yaml", <<-YAML)
+        ---
+        name: fetch
+        type: object
+        properties:
+          url:
+            type: string
+        ---
+        name: save
+        type: object
+        properties:
+          file:
+            type: string
+        YAML
+      begin
+        cli = Jargon.new("myapp")
+        cli.subcommands(file: "/tmp/test_multi.yaml")
+
+        result = cli.parse(["fetch", "--url", "https://example.com"])
+        result.valid?.should be_true
+        result.subcommand.should eq("fetch")
+        result["url"].as_s.should eq("https://example.com")
+
+        result = cli.parse(["save", "--file", "output.txt"])
+        result.valid?.should be_true
+        result.subcommand.should eq("save")
+        result["file"].as_s.should eq("output.txt")
+      ensure
+        File.delete("/tmp/test_multi.yaml")
+      end
+    end
+
+    it "loads multiple subcommands from relaxed JSONL" do
+      File.write("/tmp/test_multi.json", <<-JSON)
+        {
+          "name": "fetch",
+          "type": "object",
+          "properties": {
+            "url": {"type": "string"}
+          }
+        }
+        {
+          "name": "save",
+          "type": "object",
+          "properties": {
+            "file": {"type": "string"}
+          }
+        }
+        JSON
+      begin
+        cli = Jargon.new("myapp")
+        cli.subcommands(file: "/tmp/test_multi.json")
+
+        result = cli.parse(["fetch", "--url", "https://example.com"])
+        result.valid?.should be_true
+        result.subcommand.should eq("fetch")
+
+        result = cli.parse(["save", "--file", "output.txt"])
+        result.valid?.should be_true
+        result.subcommand.should eq("save")
+      ensure
+        File.delete("/tmp/test_multi.json")
+      end
+    end
+
+    it "Jargon.cli with file: auto-detects multi-doc YAML" do
+      File.write("/tmp/test_subcmds.yaml", <<-YAML)
+        ---
+        name: run
+        type: object
+        properties:
+          verbose:
+            type: boolean
+        ---
+        name: build
+        type: object
+        properties:
+          output:
+            type: string
+        YAML
+      begin
+        cli = Jargon.cli("myapp", file: "/tmp/test_subcmds.yaml")
+
+        result = cli.parse(["run", "--verbose"])
+        result.valid?.should be_true
+        result.subcommand.should eq("run")
+        result["verbose"].as_bool.should be_true
+
+        result = cli.parse(["build", "--output", "dist/"])
+        result.valid?.should be_true
+        result.subcommand.should eq("build")
+        result["output"].as_s.should eq("dist/")
+      ensure
+        File.delete("/tmp/test_subcmds.yaml")
+      end
+    end
+
+    it "Jargon.cli with json: auto-detects multi-doc JSON" do
+      json = <<-JSON
+        {
+          "name": "fetch",
+          "type": "object",
+          "properties": {"url": {"type": "string"}}
+        }
+        {
+          "name": "save",
+          "type": "object",
+          "properties": {"file": {"type": "string"}}
+        }
+        JSON
+
+      cli = Jargon.cli("myapp", json: json)
+
+      result = cli.parse(["fetch", "--url", "https://example.com"])
+      result.valid?.should be_true
+      result.subcommand.should eq("fetch")
+
+      result = cli.parse(["save", "--file", "out.txt"])
+      result.valid?.should be_true
+      result.subcommand.should eq("save")
+    end
+
+    it "Jargon.cli with yaml: auto-detects multi-doc YAML" do
+      yaml = <<-YAML
+        ---
+        name: start
+        type: object
+        properties:
+          port:
+            type: integer
+        ---
+        name: stop
+        type: object
+        properties:
+          force:
+            type: boolean
+        YAML
+
+      cli = Jargon.cli("myapp", yaml: yaml)
+
+      result = cli.parse(["start", "--port", "8080"])
+      result.valid?.should be_true
+      result.subcommand.should eq("start")
+      result["port"].as_i64.should eq(8080)
+
+      result = cli.parse(["stop", "--force"])
+      result.valid?.should be_true
+      result.subcommand.should eq("stop")
+      result["force"].as_bool.should be_true
+    end
+
+    it "errors when multi-doc schema missing name field" do
+      File.write("/tmp/test_no_name.yaml", <<-YAML)
+        ---
+        type: object
+        properties:
+          url:
+            type: string
+        YAML
+      begin
+        expect_raises(ArgumentError, /missing 'name' field/) do
+          cli = Jargon.new("myapp")
+          cli.subcommands(file: "/tmp/test_no_name.yaml")
+        end
+      ensure
+        File.delete("/tmp/test_no_name.yaml")
+      end
+    end
   end
 
   describe "subcommand abbreviations" do
