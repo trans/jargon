@@ -177,6 +177,18 @@ $ myapp --count 10x
 Error: Invalid integer value '10x' for count
 ```
 
+### Typo Suggestions
+
+Mistyped options get helpful "did you mean?" suggestions:
+
+```sh
+$ myapp --verbos
+Error: Unknown option '--verbos'. Did you mean '--verbose'?
+
+$ myapp --formt json
+Error: Unknown option '--formt'. Did you mean '--format'?
+```
+
 ## Positional Arguments
 
 Define positional arguments with the `positional` array:
@@ -468,6 +480,19 @@ xerp "search term" -n 5
 ```
 
 Note: If the first argument matches a subcommand name, it's treated as a subcommand, not as input to the default. Use the explicit form if you need to search for a term that matches a subcommand name.
+
+### Subcommand Abbreviations
+
+Subcommands can be abbreviated to any unique prefix (minimum 3 characters):
+
+```sh
+$ myapp checkout main   # full name
+$ myapp check main      # abbreviated (if unambiguous)
+$ myapp che main        # still works
+
+$ myapp ch main         # too short (< 3 chars) - error
+$ myapp co main         # ambiguous (commit? config?) - error
+```
 
 ### Global Options
 
