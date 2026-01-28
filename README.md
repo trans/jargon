@@ -535,7 +535,18 @@ properties:
 ```
 
 ```crystal
+# Load as top-level subcommands
 cli = Jargon.cli("myapp", file: "commands.yaml")
+# or
+cli = Jargon.new("myapp")
+cli.subcommand(file: "commands.yaml")
+```
+
+Load multi-doc as nested subcommands by providing a parent name:
+
+```crystal
+cli = Jargon.new("myapp")
+cli.subcommand("config", file: "config_commands.yaml")  # config get, config set, etc.
 ```
 
 Multi-document format is auto-detected for `json:`, `yaml:`, and `file:` parameters. Each document must have a `name` field.
@@ -713,8 +724,9 @@ cli = Jargon.cli(program_name, file: "schema.json")
 cli = Jargon.new(program_name)
 cli.subcommand("name", json: schema_string)
 cli.subcommand("name", yaml: schema_string)
-cli.subcommand("name", file: "schema.yaml")
-cli.subcommands(file: "commands.yaml")  # multi-doc file
+cli.subcommand("name", file: "schema.yaml")      # single-doc file
+cli.subcommand(file: "commands.yaml")            # multi-doc as top-level
+cli.subcommand("parent", file: "commands.yaml")  # multi-doc as nested
 
 # Merge global options into subcommand schema
 merged = Jargon.merge(subcommand_schema, global_schema)

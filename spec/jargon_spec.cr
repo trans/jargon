@@ -1042,7 +1042,7 @@ describe Jargon do
         YAML
       begin
         cli = Jargon.new("myapp")
-        cli.subcommands(file: "/tmp/test_multi.yaml")
+        cli.subcommand(file: "/tmp/test_multi.yaml")
 
         result = cli.parse(["fetch", "--url", "https://example.com"])
         result.valid?.should be_true
@@ -1077,7 +1077,7 @@ describe Jargon do
         JSON
       begin
         cli = Jargon.new("myapp")
-        cli.subcommands(file: "/tmp/test_multi.json")
+        cli.subcommand(file: "/tmp/test_multi.json")
 
         result = cli.parse(["fetch", "--url", "https://example.com"])
         result.valid?.should be_true
@@ -1177,6 +1177,42 @@ describe Jargon do
       result["force"].as_bool.should be_true
     end
 
+    it "loads multi-doc as nested subcommands when name provided" do
+      File.write("/tmp/test_nested_multi.yaml", <<-YAML)
+        ---
+        name: get
+        type: object
+        properties:
+          key:
+            type: string
+        ---
+        name: set
+        type: object
+        properties:
+          key:
+            type: string
+          value:
+            type: string
+        YAML
+      begin
+        cli = Jargon.new("myapp")
+        cli.subcommand("config", file: "/tmp/test_nested_multi.yaml")
+
+        result = cli.parse(["config", "get", "--key", "api_url"])
+        result.valid?.should be_true
+        result.subcommand.should eq("config get")
+        result["key"].as_s.should eq("api_url")
+
+        result = cli.parse(["config", "set", "--key", "api_url", "--value", "https://example.com"])
+        result.valid?.should be_true
+        result.subcommand.should eq("config set")
+        result["key"].as_s.should eq("api_url")
+        result["value"].as_s.should eq("https://example.com")
+      ensure
+        File.delete("/tmp/test_nested_multi.yaml")
+      end
+    end
+
     it "errors when multi-doc schema missing name field" do
       File.write("/tmp/test_no_name.yaml", <<-YAML)
         ---
@@ -1184,11 +1220,17 @@ describe Jargon do
         properties:
           url:
             type: string
+        ---
+        name: save
+        type: object
+        properties:
+          file:
+            type: string
         YAML
       begin
         expect_raises(ArgumentError, /missing 'name' field/) do
           cli = Jargon.new("myapp")
-          cli.subcommands(file: "/tmp/test_no_name.yaml")
+          cli.subcommand(file: "/tmp/test_no_name.yaml")
         end
       ensure
         File.delete("/tmp/test_no_name.yaml")

@@ -120,24 +120,48 @@ module Jargon
       @subcommands[name] = Schema.from_json(json)
     end
 
+    # Load subcommand(s) from a file.
+    # - Single-doc file: requires name, loads as single subcommand
+    # - Multi-doc file without name: loads each doc as top-level subcommand
+    # - Multi-doc file with name: loads docs as nested subcommands under name
     def subcommand(name : String, *, file : String)
       content = File.read(file)
-      schema = if file.ends_with?(".yaml") || file.ends_with?(".yml")
-                 json = YAML.parse(content).to_json
-                 Schema.from_json(json)
-               else
-                 Schema.from_json(content)
-               end
-      @subcommands[name] = schema
+      is_yaml = file.ends_with?(".yaml") || file.ends_with?(".yml")
+      is_multi = is_yaml ? CLI.multi_yaml?(content) : CLI.multi_json?(content)
+
+      if is_multi
+        # Multi-doc with name: create nested CLI
+        nested = CLI.new(name)
+        if is_yaml
+          nested.load_multi_yaml(content)
+        else
+          nested.load_multi_json(content)
+        end
+        @subcommands[name] = nested
+      else
+        # Single-doc: load as single subcommand
+        schema = if is_yaml
+                   json = YAML.parse(content).to_json
+                   Schema.from_json(json)
+                 else
+                   Schema.from_json(content)
+                 end
+        @subcommands[name] = schema
+      end
     end
 
-    # Load multiple subcommands from a multi-document file.
-    # YAML: documents separated by ---
-    # JSON: consecutive objects (relaxed JSONL)
-    # Each document must have a "name" field for the subcommand name.
-    def subcommands(*, file : String)
+    # Load subcommands from a multi-document file (no parent name).
+    # Each document must have a "name" field.
+    def subcommand(*, file : String)
       content = File.read(file)
-      if file.ends_with?(".yaml") || file.ends_with?(".yml")
+      is_yaml = file.ends_with?(".yaml") || file.ends_with?(".yml")
+      is_multi = is_yaml ? CLI.multi_yaml?(content) : CLI.multi_json?(content)
+
+      unless is_multi
+        raise ArgumentError.new("Single-doc file requires a subcommand name: subcommand(\"name\", file: ...)")
+      end
+
+      if is_yaml
         load_multi_yaml(content)
       else
         load_multi_json(content)
