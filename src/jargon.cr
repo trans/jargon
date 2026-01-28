@@ -4,7 +4,15 @@ require "./jargon/result"
 require "./jargon/completion"
 
 module Jargon
-  VERSION = "0.9.2"
+  VERSION = "0.10.0"
+
+  class ParseError < Exception
+    getter errors : Array(String)
+
+    def initialize(@errors : Array(String))
+      super(@errors.join("\n"))
+    end
+  end
 
   # Convenience method to create a CLI with just a program name (for subcommand mode)
   def self.new(program_name : String) : CLI

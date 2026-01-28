@@ -35,12 +35,7 @@ cli = Jargon.cli("pretty", json: <<-JSON)
   }
 JSON
 
-result = cli.parse(ARGV)
-
-if result.help_requested?
-  puts cli.help
-  exit 0
-end
+result = cli.run
 
 unless result.valid?
   STDERR.puts result.errors.join("\n")

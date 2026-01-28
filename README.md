@@ -49,21 +49,17 @@ schema = %({
   "required": ["name"]
 })
 
-# Create CLI and parse arguments
+# Create CLI and run
 cli = Jargon.cli("myapp", json: schema)
-result = cli.parse(ARGV)
-
-if result.help_requested?
-  puts cli.help
-  exit 0
-elsif result.valid?
+cli.run do |result|
   puts result.to_pretty_json
-else
-  STDERR.puts result.errors.join("\n")
-  STDERR.puts cli.help
-  exit 1
 end
 ```
+
+The `run` method automatically handles:
+- `--help` / `-h`: prints help and exits
+- `--completions <shell>`: prints shell completion script and exits
+- Validation errors: prints errors to STDERR and exits with code 1
 
 ## YAML Schemas
 
@@ -257,10 +253,26 @@ myapp --verbose --count 5 --output out.txt  # equivalent
 
 ## Help Flags
 
-Jargon automatically detects `--help` and `-h` flags:
+Jargon automatically detects `--help` and `-h` flags. When using `run`, help is printed and the program exits automatically:
 
 ```crystal
 cli = Jargon.cli("myapp", json: schema)
+cli.run do |result|
+  # This block only runs if --help was NOT passed
+  puts result.to_pretty_json
+end
+```
+
+```sh
+myapp --help           # top-level help
+myapp -h               # same
+myapp fetch --help     # subcommand help
+myapp config set -h    # nested subcommand help
+```
+
+If you need manual control, use `parse` instead:
+
+```crystal
 result = cli.parse(ARGV)
 
 if result.help_requested?
@@ -271,13 +283,6 @@ if result.help_requested?
   end
   exit 0
 end
-```
-
-```sh
-myapp --help           # top-level help
-myapp -h               # same
-myapp fetch --help     # subcommand help
-myapp config set -h    # nested subcommand help
 ```
 
 If you define a `help` property or use `-h` as a short flag for something else, Jargon won't intercept those flags:
@@ -303,7 +308,7 @@ result["host"].as_s     # => "localhost"
 
 ## Shell Completions
 
-Jargon can generate shell completion scripts for bash, zsh, and fish. The `--completions <shell>` flag is detected automatically:
+Jargon can generate shell completion scripts for bash, zsh, and fish. When using `run`, the `--completions <shell>` flag is handled automatically:
 
 ### Installing Completions
 
@@ -327,7 +332,9 @@ The generated scripts provide completions for:
 - Enum values (e.g., `--format json|yaml|xml`)
 - Nested subcommands
 
-### Handling Completions In Code
+### Manual Completion Handling
+
+If you need manual control, use `parse`:
 
 ```crystal
 cli = Jargon.cli("myapp", json: schema)
@@ -369,15 +376,15 @@ cli.subcommand("save", %({
   "required": ["message"]
 }))
 
-result = cli.parse(ARGV)
-
-case result.subcommand
-when "fetch"
-  url = result["url"].as_s
-  depth = result["depth"]?.try(&.as_i64)
-when "save"
-  message = result["message"].as_s
-  all = result["all"]?.try(&.as_bool) || false
+cli.run do |result|
+  case result.subcommand
+  when "fetch"
+    url = result["url"].as_s
+    depth = result["depth"]?.try(&.as_i64)
+  when "save"
+    message = result["message"].as_s
+    all = result["all"]?.try(&.as_bool) || false
+  end
 end
 ```
 
@@ -413,16 +420,16 @@ cli = Jargon.new("myapp")
 cli.subcommand("config", config)
 cli.subcommand("status", %({"type": "object", "properties": {}}))
 
-result = cli.parse(ARGV)
-
-case result.subcommand
-when "config set"
-  key = result["key"].as_s
-  value = result["value"].as_s
-when "config get"
-  key = result["key"].as_s
-when "status"
-  # ...
+cli.run do |result|
+  case result.subcommand
+  when "config set"
+    key = result["key"].as_s
+    value = result["value"].as_s
+  when "config get"
+    key = result["key"].as_s
+  when "status"
+    # ...
+  end
 end
 ```
 
@@ -540,7 +547,9 @@ schema = %({
 })
 
 cli = Jargon.cli("myapp", json: schema)
-result = cli.parse(ARGV)
+cli.run do |result|
+  # result contains api-key, host from env, debug from CLI
+end
 ```
 
 ```sh
@@ -562,7 +571,9 @@ Load configuration from standard XDG locations with `load_config`. Supports YAML
 ```crystal
 cli = Jargon.cli("myapp", json: schema)
 config = cli.load_config  # Returns JSON::Any or nil
-result = cli.parse(ARGV, defaults: config)
+cli.run(defaults: config) do |result|
+  # ...
+end
 ```
 
 Paths searched (first found wins, or merged if `merge: true`):
@@ -636,11 +647,11 @@ The `defaults:` parameter accepts any JSON-like data, so you can load config how
 ```crystal
 # From YAML
 config = YAML.parse(File.read("config.yaml"))
-result = cli.parse(ARGV, defaults: config)
+cli.run(defaults: config) { |result| ... }
 
 # From JSON
 config = JSON.parse(File.read("settings.json"))
-result = cli.parse(ARGV, defaults: config)
+cli.run(defaults: config) { |result| ... }
 ```
 
 ## API
@@ -651,15 +662,6 @@ cli = Jargon.cli(program_name, json: json_string)
 cli = Jargon.cli(program_name, yaml: yaml_string)
 cli = Jargon.cli(program_name, file: "schema.json")
 
-# Create CLI - explicit form
-cli = Jargon::CLI.from_json(json_string, program_name)
-cli = Jargon::CLI.from_yaml(yaml_string, program_name)
-cli = Jargon::CLI.from_file("schema.json", program_name)
-
-# Create CLI - deprecated (use Jargon.cli instead)
-cli = Jargon.from_json(json_string, program_name)
-cli = Jargon.from_file("schema.json", program_name)
-
 # For subcommands (no root schema)
 cli = Jargon.new(program_name)
 cli.subcommand("name", json_schema_string)
@@ -667,30 +669,36 @@ cli.subcommand("name", json_schema_string)
 # Merge global options into subcommand schema
 merged = Jargon.merge(subcommand_schema, global_schema)
 
-# Parse arguments
+# Run with automatic help/completions/error handling (recommended)
+cli.run { |result| puts result.to_pretty_json }
+cli.run(ARGV) { |result| ... }
+result = cli.run                      # without block, returns Result
+
+# Parse arguments - returns Result with errors array
 result = cli.parse(ARGV)
-result = cli.parse(ARGV, defaults: config)  # with config defaults
+result = cli.parse(ARGV, defaults: config)
+
+# Get data as JSON - returns JSON::Any, raises ParseError on errors
+data = cli.json(ARGV)
+data = cli.json(ARGV, defaults: config)
 
 # Config file loading
 config = cli.load_config              # merge all found configs (project wins)
 config = cli.load_config(merge: false) # first found wins
 paths = cli.config_paths              # list of paths searched
 
-# Check validity
+# Result methods (from parse or run)
 result.valid?      # => true/false
 result.errors      # => Array(String)
-
-# Get data
+result.data        # => JSON::Any
 result.to_json         # => compact JSON string
 result.to_pretty_json  # => formatted JSON string
 result["key"]          # => access values
 result.subcommand      # => String? (nil if no subcommands)
 
-# Help detection
+# Help/completion detection (when using parse)
 result.help_requested?  # => true if --help/-h was passed
 result.help_subcommand  # => String? (which subcommand's help, nil for top-level)
-
-# Completion detection
 result.completion_requested?  # => true if --completions was passed
 result.completion_shell       # => String? ("bash", "zsh", or "fish")
 

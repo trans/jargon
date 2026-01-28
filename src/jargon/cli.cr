@@ -11,6 +11,7 @@ module Jargon
     getter subcommands : Hash(String, Schema | CLI)
     getter default_subcommand : String?
     getter subcommand_key : String
+    property output : IO = STDOUT
 
     # Create a CLI from a JSON schema string
     def self.from_json(json : String, program_name : String = "cli") : CLI
@@ -62,7 +63,8 @@ module Jargon
       @subcommand_key = key
     end
 
-    def parse(args : Array(String), *, defaults : JSON::Any | Hash(String, JSON::Any) | Nil = nil) : Result
+    # Parse arguments and return full Result with errors array.
+    def parse(args : Array(String) = ARGV, *, defaults : JSON::Any | Hash(String, JSON::Any) | Nil = nil) : Result
       parse(args, STDIN, defaults: defaults)
     end
 
@@ -73,6 +75,64 @@ module Jargon
         parse_flat(args, schema, input, nil, defaults)
       else
         raise ArgumentError.new("CLI has no schema and no subcommands defined")
+      end
+    end
+
+    # Return just the parsed data as JSON. Raises ParseError on validation errors.
+    def json(args : Array(String) = ARGV, *, defaults : JSON::Any | Hash(String, JSON::Any) | Nil = nil) : JSON::Any
+      json(args, STDIN, defaults: defaults)
+    end
+
+    def json(args : Array(String), input : IO, *, defaults : JSON::Any | Hash(String, JSON::Any) | Nil = nil) : JSON::Any
+      result = parse(args, input, defaults: defaults)
+      raise ParseError.new(result.errors) unless result.valid?
+      result.data
+    end
+
+    # Run the CLI with automatic --help, --completions, and error handling.
+    # Prints help/completions and exits 0, prints errors and exits 1, otherwise returns/yields result.
+    def run(args : Array(String) = ARGV, *, defaults : JSON::Any | Hash(String, JSON::Any) | Nil = nil) : Result
+      run(args, STDIN, defaults: defaults)
+    end
+
+    def run(args : Array(String) = ARGV, *, defaults : JSON::Any | Hash(String, JSON::Any) | Nil = nil, &) : Nil
+      run(args, STDIN, defaults: defaults) { |r| yield r }
+    end
+
+    def run(args : Array(String), input : IO, *, defaults : JSON::Any | Hash(String, JSON::Any) | Nil = nil) : Result
+      result = parse(args, input, defaults: defaults)
+      handle_run_result(result)
+      result
+    end
+
+    def run(args : Array(String), input : IO, *, defaults : JSON::Any | Hash(String, JSON::Any) | Nil = nil, &) : Nil
+      result = parse(args, input, defaults: defaults)
+      handle_run_result(result)
+      yield result
+    end
+
+    private def handle_run_result(result : Result) : Nil
+      if result.help_requested?
+        if subcmd = result.help_subcommand
+          @output.puts help(subcmd)
+        else
+          @output.puts help
+        end
+        exit 0
+      end
+
+      if result.completion_requested?
+        case result.completion_shell
+        when "bash" then @output.puts bash_completion
+        when "zsh"  then @output.puts zsh_completion
+        when "fish" then @output.puts fish_completion
+        end
+        exit 0
+      end
+
+      unless result.valid?
+        STDERR.puts result.errors.join("\n")
+        exit 1
       end
     end
 

@@ -633,7 +633,7 @@ body {
 }
 
 .footer {
-  padding: 40px 24px 96px;
+  padding: 40px 24px 42px;
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
