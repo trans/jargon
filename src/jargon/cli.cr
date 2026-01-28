@@ -994,6 +994,11 @@ module Jargon
           if max = prop.exclusive_maximum
             errors << "Value for #{full_name} must be < #{format_num(max)}" if num >= max
           end
+          if mult = prop.multiple_of
+            unless (num % mult).abs < 1e-10
+              errors << "Value for #{full_name} must be a multiple of #{format_num(mult)}"
+            end
+          end
         end
       end
 
@@ -1078,6 +1083,11 @@ module Jargon
           end
           if max = prop.exclusive_maximum
             errors << "Value for #{item_name} must be < #{format_num(max)}" if num >= max
+          end
+          if mult = prop.multiple_of
+            unless (num % mult).abs < 1e-10
+              errors << "Value for #{item_name} must be a multiple of #{format_num(mult)}"
+            end
           end
         end
       end

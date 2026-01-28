@@ -25,6 +25,7 @@ module Jargon
     getter maximum : Float64?
     getter exclusive_minimum : Float64?
     getter exclusive_maximum : Float64?
+    getter multiple_of : Float64?
     getter min_length : Int32?
     getter max_length : Int32?
     getter min_items : Int32?
@@ -49,6 +50,7 @@ module Jargon
       @maximum : Float64? = nil,
       @exclusive_minimum : Float64? = nil,
       @exclusive_maximum : Float64? = nil,
+      @multiple_of : Float64? = nil,
       @min_length : Int32? = nil,
       @max_length : Int32? = nil,
       @min_items : Int32? = nil,
@@ -74,6 +76,7 @@ module Jargon
       maximum = json["maximum"]?.try(&.as_f?) || json["maximum"]?.try(&.as_i64?.try(&.to_f))
       exclusive_minimum = json["exclusiveMinimum"]?.try(&.as_f?) || json["exclusiveMinimum"]?.try(&.as_i64?.try(&.to_f))
       exclusive_maximum = json["exclusiveMaximum"]?.try(&.as_f?) || json["exclusiveMaximum"]?.try(&.as_i64?.try(&.to_f))
+      multiple_of = json["multipleOf"]?.try(&.as_f?) || json["multipleOf"]?.try(&.as_i64?.try(&.to_f))
 
       # String constraints
       min_length = json["minLength"]?.try(&.as_i?.try(&.to_i32))
@@ -119,6 +122,7 @@ module Jargon
         maximum: maximum,
         exclusive_minimum: exclusive_minimum,
         exclusive_maximum: exclusive_maximum,
+        multiple_of: multiple_of,
         min_length: min_length,
         max_length: max_length,
         min_items: min_items,

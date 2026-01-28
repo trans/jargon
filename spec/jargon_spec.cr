@@ -516,6 +516,22 @@ describe Jargon do
       result.errors.first.should contain("unique items")
       result.errors.first.should contain("duplicate: a")
     end
+
+    it "validates multipleOf" do
+      cli = Jargon.cli("cli", json: %({
+        "type": "object",
+        "properties": {
+          "count": {"type": "integer", "multipleOf": 5}
+        }
+      }))
+
+      result = cli.parse(["--count", "10"])
+      result.valid?.should be_true
+
+      result = cli.parse(["--count", "7"])
+      result.valid?.should be_false
+      result.errors.first.should contain("multiple of 5")
+    end
   end
 
   describe "defaults" do
