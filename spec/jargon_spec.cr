@@ -1213,7 +1213,119 @@ describe Jargon do
       end
     end
 
-    it "errors when multi-doc schema missing name field" do
+    it "supports $id mixins with $ref in allOf" do
+      File.write("/tmp/test_mixin.yaml", <<-YAML)
+        ---
+        $id: global
+        type: object
+        properties:
+          verbose:
+            type: boolean
+            short: v
+          config:
+            type: string
+            short: c
+        ---
+        name: fetch
+        allOf:
+          - {$ref: global}
+          - properties:
+              url:
+                type: string
+        ---
+        name: save
+        allOf:
+          - {$ref: global}
+          - properties:
+              file:
+                type: string
+        YAML
+      begin
+        cli = Jargon.new("myapp")
+        cli.subcommand(file: "/tmp/test_mixin.yaml")
+
+        # fetch should have verbose, config, and url
+        result = cli.parse(["fetch", "--verbose", "--config", "app.conf", "--url", "https://example.com"])
+        result.valid?.should be_true
+        result.subcommand.should eq("fetch")
+        result["verbose"].as_bool.should be_true
+        result["config"].as_s.should eq("app.conf")
+        result["url"].as_s.should eq("https://example.com")
+
+        # save should have verbose, config, and file
+        result = cli.parse(["save", "-v", "-c", "app.conf", "--file", "out.txt"])
+        result.valid?.should be_true
+        result.subcommand.should eq("save")
+        result["verbose"].as_bool.should be_true
+        result["config"].as_s.should eq("app.conf")
+        result["file"].as_s.should eq("out.txt")
+      ensure
+        File.delete("/tmp/test_mixin.yaml")
+      end
+    end
+
+    it "supports multiple $id mixins" do
+      File.write("/tmp/test_multi_mixin.yaml", <<-YAML)
+        ---
+        $id: global
+        properties:
+          verbose:
+            type: boolean
+            short: v
+        ---
+        $id: output
+        properties:
+          format:
+            type: string
+            enum: [json, yaml, csv]
+        ---
+        name: export
+        allOf:
+          - {$ref: global}
+          - {$ref: output}
+          - properties:
+              file:
+                type: string
+        YAML
+      begin
+        cli = Jargon.new("myapp")
+        cli.subcommand(file: "/tmp/test_multi_mixin.yaml")
+
+        result = cli.parse(["export", "-v", "--format", "json", "--file", "out.txt"])
+        result.valid?.should be_true
+        result["verbose"].as_bool.should be_true
+        result["format"].as_s.should eq("json")
+        result["file"].as_s.should eq("out.txt")
+      ensure
+        File.delete("/tmp/test_multi_mixin.yaml")
+      end
+    end
+
+    it "errors on unknown $ref" do
+      File.write("/tmp/test_bad_ref.yaml", <<-YAML)
+        ---
+        $id: dummy
+        properties:
+          x: {type: string}
+        ---
+        name: fetch
+        allOf:
+          - {$ref: nonexistent}
+          - properties:
+              url:
+                type: string
+        YAML
+      begin
+        expect_raises(ArgumentError, /Unknown \$ref: nonexistent/) do
+          cli = Jargon.new("myapp")
+          cli.subcommand(file: "/tmp/test_bad_ref.yaml")
+        end
+      ensure
+        File.delete("/tmp/test_bad_ref.yaml")
+      end
+    end
+
+    it "errors when multi-doc schema missing both name and $id" do
       File.write("/tmp/test_no_name.yaml", <<-YAML)
         ---
         type: object
@@ -1228,7 +1340,7 @@ describe Jargon do
             type: string
         YAML
       begin
-        expect_raises(ArgumentError, /missing 'name' field/) do
+        expect_raises(ArgumentError, /must have either 'name'.*or '\$id'/) do
           cli = Jargon.new("myapp")
           cli.subcommand(file: "/tmp/test_no_name.yaml")
         end

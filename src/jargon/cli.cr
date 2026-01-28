@@ -169,15 +169,12 @@ module Jargon
     end
 
     protected def load_multi_yaml(content : String)
-      YAML.parse_all(content).each do |doc|
-        json_any = JSON.parse(doc.to_json)
-        name = json_any["name"]?.try(&.as_s)
-        raise ArgumentError.new("Subcommand schema missing 'name' field") unless name
-        @subcommands[name] = Schema.from_json_any(json_any)
-      end
+      docs = YAML.parse_all(content).map { |doc| JSON.parse(doc.to_json) }
+      load_multi_docs(docs)
     end
 
     protected def load_multi_json(content : String)
+      docs = [] of JSON::Any
       # Parse consecutive JSON objects (relaxed JSONL)
       remaining = content.strip
       while !remaining.empty?
@@ -214,12 +211,96 @@ module Jargon
         end
 
         json_str = remaining[0..end_idx]
-        json_any = JSON.parse(json_str)
-        name = json_any["name"]?.try(&.as_s)
-        raise ArgumentError.new("Subcommand schema missing 'name' field") unless name
-        @subcommands[name] = Schema.from_json_any(json_any)
-
+        docs << JSON.parse(json_str)
         remaining = remaining[(end_idx + 1)..].strip
+      end
+      load_multi_docs(docs)
+    end
+
+    # Process multi-doc schemas with $id/$ref resolution
+    protected def load_multi_docs(docs : Array(JSON::Any))
+      # First pass: build registry of $id schemas (mixins)
+      registry = {} of String => Hash(String, JSON::Any)
+      subcommand_docs = [] of JSON::Any
+
+      docs.each do |doc|
+        hash = doc.as_h
+        id = hash["$id"]?.try(&.as_s)
+        name = hash["name"]?.try(&.as_s)
+
+        if id && !name
+          # Mixin: has $id but no name
+          registry[id] = hash
+        elsif name
+          # Subcommand: has name
+          subcommand_docs << doc
+        else
+          raise ArgumentError.new("Schema must have either 'name' (subcommand) or '$id' (mixin)")
+        end
+      end
+
+      # Second pass: resolve refs and register subcommands
+      subcommand_docs.each do |doc|
+        hash = doc.as_h
+        name = hash["name"].as_s
+        resolved = resolve_all_of(hash, registry)
+        @subcommands[name] = Schema.from_json_any(JSON.parse(resolved.to_json))
+      end
+    end
+
+    # Resolve allOf with $ref, merging properties
+    private def resolve_all_of(schema : Hash(String, JSON::Any), registry : Hash(String, Hash(String, JSON::Any))) : Hash(String, JSON::Any)
+      all_of = schema["allOf"]?.try(&.as_a)
+      return schema unless all_of
+
+      merged = {} of String => JSON::Any
+
+      all_of.each do |item|
+        item_hash = item.as_h
+        if ref = item_hash["$ref"]?.try(&.as_s)
+          # Resolve reference
+          referenced = registry[ref]?
+          raise ArgumentError.new("Unknown $ref: #{ref}") unless referenced
+          merge_schema(merged, referenced)
+        else
+          # Inline schema
+          merge_schema(merged, item_hash)
+        end
+      end
+
+      # Merge remaining schema properties (excluding allOf)
+      schema.each do |key, value|
+        next if key == "allOf"
+        if key == "properties" && merged["properties"]?
+          # Deep merge properties
+          merged_props = merged["properties"].as_h
+          value.as_h.each { |k, v| merged_props[k] = v }
+          merged["properties"] = JSON::Any.new(merged_props)
+        else
+          merged[key] = value
+        end
+      end
+
+      # Ensure type: object if properties exist
+      if merged["properties"]? && !merged["type"]?
+        merged["type"] = JSON::Any.new("object")
+      end
+
+      merged
+    end
+
+    # Merge source schema into target
+    private def merge_schema(target : Hash(String, JSON::Any), source : Hash(String, JSON::Any))
+      source.each do |key, value|
+        next if key == "$id" # Don't copy $id to merged schema
+        if key == "properties" && target["properties"]?
+          # Deep merge properties
+          target_props = target["properties"].as_h
+          value.as_h.each { |k, v| target_props[k] = v }
+          target["properties"] = JSON::Any.new(target_props)
+        else
+          target[key] = value unless target.has_key?(key)
+        end
       end
     end
 

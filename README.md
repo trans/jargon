@@ -591,6 +591,42 @@ JSON uses relaxed JSONL (consecutive objects with whitespace):
 }
 ```
 
+### Schema Mixins
+
+Share properties across subcommands using standard JSON Schema `$id`, `$ref`, and `allOf`:
+
+```yaml
+---
+$id: global
+properties:
+  verbose: {type: boolean, short: v}
+  config: {type: string, short: c}
+---
+$id: output
+properties:
+  format: {type: string, enum: [json, yaml, csv]}
+---
+name: fetch
+allOf:
+  - {$ref: global}
+  - properties:
+      url: {type: string}
+---
+name: export
+allOf:
+  - {$ref: global}
+  - {$ref: output}
+  - properties:
+      file: {type: string}
+```
+
+- Schemas with `$id` (no `name`) are mixins - not registered as subcommands
+- `$ref` in `allOf` resolves to mixins defined in the same file
+- Properties are merged; `type: object` is inferred if missing
+- Subcommands explicitly opt-in via `allOf`
+
+This approach uses standard JSON Schema keywords while keeping mixin definitions alongside subcommands in a single file.
+
 ### JSON from Stdin
 
 Use `-` to read JSON input from stdin:

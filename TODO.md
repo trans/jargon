@@ -1,46 +1,43 @@
 # TODO
 
-## Schema Includes (Future)
+## Completed
 
-Add `include` field for sharing properties across subcommands in multi-doc files.
+### Schema Mixins with $id/$ref/allOf (v0.12.0)
 
-Schemas starting with `@` are "mixins" - not registered as subcommands, only used for inclusion.
+Support for sharing properties across subcommands using standard JSON Schema keywords.
 
 ```yaml
 ---
-name: @global
+$id: global
 properties:
   verbose: {type: boolean, short: v}
   config: {type: string, short: c}
 ---
-name: @output
+$id: output
 properties:
   format: {type: string, enum: [json, yaml, csv]}
 ---
 name: fetch
-include: [@global]
-properties:
-  url: {type: string}
+allOf:
+  - {$ref: global}
+  - properties:
+      url: {type: string}
 ---
 name: export
-include: [@global, @output]
-properties:
-  file: {type: string}
+allOf:
+  - {$ref: global}
+  - {$ref: output}
+  - properties:
+      file: {type: string}
 ```
 
-- `fetch` gets: `verbose`, `config`, `url`
-- `export` gets: `verbose`, `config`, `format`, `file`
+- `$id` schemas (no `name`) are mixins - not registered as subcommands
+- `$ref` in `allOf` resolves to mixins in the same file
+- Properties are merged; `type: object` is inferred if missing
+- Subcommands opt-in explicitly via `allOf`
 
-### Why `@`?
+## Future Ideas
 
-- Can't conflict with real subcommands (`myapp @global` would require shell quoting)
-- Reads like an annotation/decorator
-- Clear visual distinction from regular subcommands
-
-### Implementation Notes
-
-- Schemas with `name` starting with `@` are not added to `@subcommands`
-- Process `include` field before parsing properties
-- Merge included properties first, then local properties override
-- Support multiple includes, processed in order
-- Error if included schema not found
+- Man page generation
+- Config file generation from schema
+- Shell completion for enum values with descriptions
