@@ -103,18 +103,23 @@ module Jargon
       @subcommand_key = "subcommand"
     end
 
-    def subcommand(name : String, schema : Schema | String)
-      @subcommands[name] = case schema
-                           when String then Schema.from_json(schema)
-                           else             schema
-                           end
+    def subcommand(name : String, schema : Schema)
+      @subcommands[name] = schema
     end
 
     def subcommand(name : String, cli : CLI)
       @subcommands[name] = cli
     end
 
-    # Load a subcommand from a file (JSON or YAML)
+    def subcommand(name : String, *, json : String)
+      @subcommands[name] = Schema.from_json(json)
+    end
+
+    def subcommand(name : String, *, yaml : String)
+      json = YAML.parse(yaml).to_json
+      @subcommands[name] = Schema.from_json(json)
+    end
+
     def subcommand(name : String, *, file : String)
       content = File.read(file)
       schema = if file.ends_with?(".yaml") || file.ends_with?(".yml")

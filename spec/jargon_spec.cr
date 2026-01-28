@@ -828,7 +828,7 @@ describe Jargon do
   describe "subcommands" do
     it "parses subcommand with its options" do
       cli = Jargon.new("myapp")
-      cli.subcommand("run", %({
+      cli.subcommand("run", json: %({
         "type": "object",
         "positional": ["file"],
         "properties": {
@@ -846,7 +846,7 @@ describe Jargon do
 
     it "errors on missing subcommand" do
       cli = Jargon.new("myapp")
-      cli.subcommand("run", %({"type": "object", "properties": {}}))
+      cli.subcommand("run", json: %({"type": "object", "properties": {}}))
 
       result = cli.parse([] of String)
       result.valid?.should be_false
@@ -855,7 +855,7 @@ describe Jargon do
 
     it "errors on unknown subcommand" do
       cli = Jargon.new("myapp")
-      cli.subcommand("run", %({"type": "object", "properties": {}}))
+      cli.subcommand("run", json: %({"type": "object", "properties": {}}))
 
       result = cli.parse(["unknown"])
       result.valid?.should be_false
@@ -864,13 +864,13 @@ describe Jargon do
 
     it "parses multiple subcommands independently" do
       cli = Jargon.new("xerp")
-      cli.subcommand("index", %({
+      cli.subcommand("index", json: %({
         "type": "object",
         "properties": {
           "rebuild": {"type": "boolean"}
         }
       }))
-      cli.subcommand("query", %({
+      cli.subcommand("query", json: %({
         "type": "object",
         "positional": ["query_text"],
         "properties": {
@@ -893,7 +893,7 @@ describe Jargon do
 
     it "applies defaults in subcommands" do
       cli = Jargon.new("myapp")
-      cli.subcommand("query", %({
+      cli.subcommand("query", json: %({
         "type": "object",
         "properties": {
           "top": {"type": "integer", "default": 10}
@@ -907,7 +907,7 @@ describe Jargon do
 
     it "validates required fields in subcommands" do
       cli = Jargon.new("myapp")
-      cli.subcommand("mark", %({
+      cli.subcommand("mark", json: %({
         "type": "object",
         "positional": ["result_id"],
         "properties": {
@@ -923,13 +923,13 @@ describe Jargon do
 
     it "uses default subcommand when no subcommand given" do
       cli = Jargon.new("xerp")
-      cli.subcommand("index", %({
+      cli.subcommand("index", json: %({
         "type": "object",
         "properties": {
           "rebuild": {"type": "boolean"}
         }
       }))
-      cli.subcommand("query", %({
+      cli.subcommand("query", json: %({
         "type": "object",
         "positional": ["query_text"],
         "properties": {
@@ -948,7 +948,7 @@ describe Jargon do
 
     it "uses default subcommand with empty args" do
       cli = Jargon.new("myapp")
-      cli.subcommand("list", %({
+      cli.subcommand("list", json: %({
         "type": "object",
         "properties": {
           "all": {"type": "boolean", "default": false}
@@ -964,13 +964,13 @@ describe Jargon do
 
     it "prefers explicit subcommand over default" do
       cli = Jargon.new("xerp")
-      cli.subcommand("index", %({
+      cli.subcommand("index", json: %({
         "type": "object",
         "properties": {
           "rebuild": {"type": "boolean"}
         }
       }))
-      cli.subcommand("query", %({
+      cli.subcommand("query", json: %({
         "type": "object",
         "positional": ["query_text"],
         "properties": {
@@ -1199,9 +1199,9 @@ describe Jargon do
   describe "subcommand abbreviations" do
     it "matches unambiguous prefix" do
       cli = Jargon.new("myapp")
-      cli.subcommand("checkout", %({"type": "object", "properties": {}}))
-      cli.subcommand("commit", %({"type": "object", "properties": {}}))
-      cli.subcommand("config", %({"type": "object", "properties": {}}))
+      cli.subcommand("checkout", json: %({"type": "object", "properties": {}}))
+      cli.subcommand("commit", json: %({"type": "object", "properties": {}}))
+      cli.subcommand("config", json: %({"type": "object", "properties": {}}))
 
       result = cli.parse(["che"])
       result.valid?.should be_true
@@ -1218,7 +1218,7 @@ describe Jargon do
 
     it "rejects abbreviations shorter than 3 characters" do
       cli = Jargon.new("myapp")
-      cli.subcommand("checkout", %({"type": "object", "properties": {}}))
+      cli.subcommand("checkout", json: %({"type": "object", "properties": {}}))
 
       result = cli.parse(["ch"])
       result.valid?.should be_false
@@ -1230,8 +1230,8 @@ describe Jargon do
 
     it "rejects ambiguous abbreviations" do
       cli = Jargon.new("myapp")
-      cli.subcommand("config-get", %({"type": "object", "properties": {}}))
-      cli.subcommand("config-set", %({"type": "object", "properties": {}}))
+      cli.subcommand("config-get", json: %({"type": "object", "properties": {}}))
+      cli.subcommand("config-set", json: %({"type": "object", "properties": {}}))
 
       result = cli.parse(["config-"])
       result.valid?.should be_false
@@ -1240,8 +1240,8 @@ describe Jargon do
 
     it "prefers exact match over prefix" do
       cli = Jargon.new("myapp")
-      cli.subcommand("test", %({"type": "object", "properties": {}}))
-      cli.subcommand("testing", %({"type": "object", "properties": {}}))
+      cli.subcommand("test", json: %({"type": "object", "properties": {}}))
+      cli.subcommand("testing", json: %({"type": "object", "properties": {}}))
 
       result = cli.parse(["test"])
       result.valid?.should be_true
@@ -1250,7 +1250,7 @@ describe Jargon do
 
     it "works with subcommand options" do
       cli = Jargon.new("git")
-      cli.subcommand("checkout", %({
+      cli.subcommand("checkout", json: %({
         "type": "object",
         "positional": ["branch"],
         "properties": {
@@ -1297,8 +1297,8 @@ describe Jargon do
 
     it "generates help for subcommands" do
       cli = Jargon.new("myapp")
-      cli.subcommand("run", %({"type": "object", "properties": {}}))
-      cli.subcommand("test", %({"type": "object", "properties": {}}))
+      cli.subcommand("run", json: %({"type": "object", "properties": {}}))
+      cli.subcommand("test", json: %({"type": "object", "properties": {}}))
 
       help = cli.help
       help.should contain("Commands:")
@@ -1310,7 +1310,7 @@ describe Jargon do
   describe "stdin JSON input" do
     it "parses JSON from stdin with subcommand in JSON" do
       cli = Jargon.new("xerp")
-      cli.subcommand("query", %({
+      cli.subcommand("query", json: %({
         "type": "object",
         "properties": {
           "query_text": {"type": "string"},
@@ -1330,7 +1330,7 @@ describe Jargon do
 
     it "parses JSON from stdin for explicit subcommand" do
       cli = Jargon.new("xerp")
-      cli.subcommand("mark", %({
+      cli.subcommand("mark", json: %({
         "type": "object",
         "properties": {
           "result_id": {"type": "string"},
@@ -1350,7 +1350,7 @@ describe Jargon do
 
     it "uses default subcommand when not specified in JSON" do
       cli = Jargon.new("xerp")
-      cli.subcommand("query", %({
+      cli.subcommand("query", json: %({
         "type": "object",
         "properties": {
           "query_text": {"type": "string"}
@@ -1369,7 +1369,7 @@ describe Jargon do
 
     it "applies defaults to JSON input" do
       cli = Jargon.new("xerp")
-      cli.subcommand("query", %({
+      cli.subcommand("query", json: %({
         "type": "object",
         "properties": {
           "query_text": {"type": "string"},
@@ -1386,7 +1386,7 @@ describe Jargon do
 
     it "validates JSON input" do
       cli = Jargon.new("xerp")
-      cli.subcommand("mark", %({
+      cli.subcommand("mark", json: %({
         "type": "object",
         "properties": {
           "result_id": {"type": "string"}
@@ -1403,7 +1403,7 @@ describe Jargon do
 
     it "errors on invalid JSON" do
       cli = Jargon.new("xerp")
-      cli.subcommand("query", %({"type": "object", "properties": {}}))
+      cli.subcommand("query", json: %({"type": "object", "properties": {}}))
 
       input = IO::Memory.new("not valid json")
       result = cli.parse(["query", "-"], input)
@@ -1414,7 +1414,7 @@ describe Jargon do
 
     it "errors when no subcommand in JSON and no default" do
       cli = Jargon.new("xerp")
-      cli.subcommand("query", %({"type": "object", "properties": {}}))
+      cli.subcommand("query", json: %({"type": "object", "properties": {}}))
 
       input = IO::Memory.new(%({"foo": "bar"}))
       result = cli.parse(["-"], input)
@@ -1425,7 +1425,7 @@ describe Jargon do
 
     it "uses custom subcommand key" do
       cli = Jargon.new("xerp")
-      cli.subcommand("query", %({
+      cli.subcommand("query", json: %({
         "type": "object",
         "properties": {
           "query_text": {"type": "string"}
@@ -1443,7 +1443,7 @@ describe Jargon do
 
     it "errors with custom key name in message" do
       cli = Jargon.new("xerp")
-      cli.subcommand("query", %({"type": "object", "properties": {}}))
+      cli.subcommand("query", json: %({"type": "object", "properties": {}}))
       cli.subcommand_key("op")
 
       input = IO::Memory.new(%({"foo": "bar"}))
@@ -1455,7 +1455,7 @@ describe Jargon do
 
     it "applies user defaults to stdin JSON input" do
       cli = Jargon.new("xerp")
-      cli.subcommand("query", %({
+      cli.subcommand("query", json: %({
         "type": "object",
         "properties": {
           "query_text": {"type": "string"},
@@ -1476,7 +1476,7 @@ describe Jargon do
       ENV["TEST_STDIN_HOST"] = "env-host"
       begin
         cli = Jargon.new("myapp")
-        cli.subcommand("run", %({
+        cli.subcommand("run", json: %({
           "type": "object",
           "properties": {
             "host": {"type": "string", "env": "TEST_STDIN_HOST"},
@@ -1499,7 +1499,7 @@ describe Jargon do
       ENV["TEST_STDIN_PORT"] = "9000"
       begin
         cli = Jargon.new("myapp")
-        cli.subcommand("run", %({
+        cli.subcommand("run", json: %({
           "type": "object",
           "properties": {
             "host": {"type": "string"},
@@ -1523,7 +1523,7 @@ describe Jargon do
   describe "nested subcommands" do
     it "parses nested subcommand" do
       remote = Jargon.new("remote")
-      remote.subcommand("add", %({
+      remote.subcommand("add", json: %({
         "type": "object",
         "positional": ["name", "url"],
         "properties": {
@@ -1532,7 +1532,7 @@ describe Jargon do
         },
         "required": ["name", "url"]
       }))
-      remote.subcommand("remove", %({
+      remote.subcommand("remove", json: %({
         "type": "object",
         "positional": ["name"],
         "properties": {
@@ -1543,7 +1543,7 @@ describe Jargon do
 
       cli = Jargon.new("git")
       cli.subcommand("remote", remote)
-      cli.subcommand("status", %({"type": "object", "properties": {}}))
+      cli.subcommand("status", json: %({"type": "object", "properties": {}}))
 
       result = cli.parse(["remote", "add", "origin", "https://github.com/user/repo"])
       result.valid?.should be_true
@@ -1554,7 +1554,7 @@ describe Jargon do
 
     it "handles deeply nested subcommands" do
       level2 = Jargon.new("level2")
-      level2.subcommand("action", %({
+      level2.subcommand("action", json: %({
         "type": "object",
         "properties": {
           "flag": {"type": "boolean"}
@@ -1575,11 +1575,11 @@ describe Jargon do
 
     it "mixes nested CLI and schema subcommands" do
       remote = Jargon.new("remote")
-      remote.subcommand("add", %({"type": "object", "properties": {"name": {"type": "string"}}}))
+      remote.subcommand("add", json: %({"type": "object", "properties": {"name": {"type": "string"}}}))
 
       cli = Jargon.new("git")
       cli.subcommand("remote", remote)
-      cli.subcommand("status", %({"type": "object", "properties": {"short": {"type": "boolean", "short": "s"}}}))
+      cli.subcommand("status", json: %({"type": "object", "properties": {"short": {"type": "boolean", "short": "s"}}}))
 
       result1 = cli.parse(["remote", "add", "name=origin"])
       result1.valid?.should be_true
@@ -1593,8 +1593,8 @@ describe Jargon do
 
     it "uses default subcommand in nested CLI" do
       remote = Jargon.new("remote")
-      remote.subcommand("list", %({"type": "object", "properties": {"verbose": {"type": "boolean"}}}))
-      remote.subcommand("add", %({"type": "object", "properties": {"name": {"type": "string"}}}))
+      remote.subcommand("list", json: %({"type": "object", "properties": {"verbose": {"type": "boolean"}}}))
+      remote.subcommand("add", json: %({"type": "object", "properties": {"name": {"type": "string"}}}))
       remote.default_subcommand("list")
 
       cli = Jargon.new("git")
@@ -1608,7 +1608,7 @@ describe Jargon do
 
     it "validates nested subcommand data" do
       remote = Jargon.new("remote")
-      remote.subcommand("add", %({
+      remote.subcommand("add", json: %({
         "type": "object",
         "properties": {"name": {"type": "string"}},
         "required": ["name"]
@@ -1626,12 +1626,12 @@ describe Jargon do
 
     it "shows nested commands in help" do
       remote = Jargon.new("remote")
-      remote.subcommand("add", %({"type": "object", "properties": {}}))
-      remote.subcommand("remove", %({"type": "object", "properties": {}}))
+      remote.subcommand("add", json: %({"type": "object", "properties": {}}))
+      remote.subcommand("remove", json: %({"type": "object", "properties": {}}))
 
       cli = Jargon.new("git")
       cli.subcommand("remote", remote)
-      cli.subcommand("status", %({"type": "object", "properties": {}}))
+      cli.subcommand("status", json: %({"type": "object", "properties": {}}))
 
       help = cli.help
       help.should contain("remote")
@@ -1696,7 +1696,7 @@ describe Jargon do
       })
 
       cli = Jargon.new("myapp")
-      cli.subcommand("run", Jargon.merge(%({
+      cli.subcommand("run", json: Jargon.merge(%({
         "type": "object",
         "positional": ["file"],
         "properties": {
@@ -1776,7 +1776,7 @@ describe Jargon do
 
     it "detects top-level --help with subcommands" do
       cli = Jargon.new("myapp")
-      cli.subcommand("query", %({"type": "object", "properties": {"text": {"type": "string"}}}))
+      cli.subcommand("query", json: %({"type": "object", "properties": {"text": {"type": "string"}}}))
 
       result = cli.parse(["--help"])
       result.help_requested?.should be_true
@@ -1785,7 +1785,7 @@ describe Jargon do
 
     it "detects top-level -h with subcommands" do
       cli = Jargon.new("myapp")
-      cli.subcommand("query", %({"type": "object", "properties": {"text": {"type": "string"}}}))
+      cli.subcommand("query", json: %({"type": "object", "properties": {"text": {"type": "string"}}}))
 
       result = cli.parse(["-h"])
       result.help_requested?.should be_true
@@ -1794,7 +1794,7 @@ describe Jargon do
 
     it "detects subcommand help (query --help)" do
       cli = Jargon.new("myapp")
-      cli.subcommand("query", %({"type": "object", "properties": {"text": {"type": "string"}}}))
+      cli.subcommand("query", json: %({"type": "object", "properties": {"text": {"type": "string"}}}))
 
       result = cli.parse(["query", "--help"])
       result.help_requested?.should be_true
@@ -1803,7 +1803,7 @@ describe Jargon do
 
     it "detects subcommand help (query -h)" do
       cli = Jargon.new("myapp")
-      cli.subcommand("query", %({"type": "object", "properties": {"text": {"type": "string"}}}))
+      cli.subcommand("query", json: %({"type": "object", "properties": {"text": {"type": "string"}}}))
 
       result = cli.parse(["query", "-h"])
       result.help_requested?.should be_true
@@ -1812,7 +1812,7 @@ describe Jargon do
 
     it "detects nested subcommand help (remote add --help)" do
       remote = Jargon.new("remote")
-      remote.subcommand("add", %({
+      remote.subcommand("add", json: %({
         "type": "object",
         "properties": {
           "name": {"type": "string"},
@@ -1830,7 +1830,7 @@ describe Jargon do
 
     it "cli.help(subcommand) generates correct output" do
       cli = Jargon.new("myapp")
-      cli.subcommand("query", %({
+      cli.subcommand("query", json: %({
         "type": "object",
         "positional": ["text"],
         "properties": {
@@ -1850,7 +1850,7 @@ describe Jargon do
 
     it "cli.help(subcommand) works for nested subcommands" do
       remote = Jargon.new("remote")
-      remote.subcommand("add", %({
+      remote.subcommand("add", json: %({
         "type": "object",
         "positional": ["name"],
         "properties": {
@@ -1870,7 +1870,7 @@ describe Jargon do
 
     it "cli.help(subcommand) returns error for unknown subcommand" do
       cli = Jargon.new("myapp")
-      cli.subcommand("query", %({"type": "object", "properties": {}}))
+      cli.subcommand("query", json: %({"type": "object", "properties": {}}))
 
       help = cli.help("unknown")
       help.should contain("Unknown subcommand: unknown")
@@ -1933,7 +1933,7 @@ describe Jargon do
 
     it "validates subcommand data with subcommand name" do
       cli = Jargon.new("myapp")
-      cli.subcommand("run", %({
+      cli.subcommand("run", json: %({
         "type": "object",
         "properties": {
           "file": {"type": "string"}
@@ -1947,7 +1947,7 @@ describe Jargon do
 
     it "validates result from subcommand" do
       cli = Jargon.new("myapp")
-      cli.subcommand("run", %({
+      cli.subcommand("run", json: %({
         "type": "object",
         "properties": {
           "file": {"type": "string"}
@@ -1983,14 +1983,14 @@ describe Jargon do
 
       it "generates completion for CLI with subcommands" do
         cli = Jargon.new("myapp")
-        cli.subcommand("fetch", %({
+        cli.subcommand("fetch", json: %({
           "type": "object",
           "properties": {
             "url": {"type": "string"},
             "depth": {"type": "integer", "short": "d"}
           }
         }))
-        cli.subcommand("save", %({
+        cli.subcommand("save", json: %({
           "type": "object",
           "properties": {
             "file": {"type": "string"}
@@ -2021,14 +2021,14 @@ describe Jargon do
 
       it "generates completion for nested subcommands" do
         remote = Jargon.new("remote")
-        remote.subcommand("add", %({
+        remote.subcommand("add", json: %({
           "type": "object",
           "properties": {
             "name": {"type": "string"},
             "url": {"type": "string"}
           }
         }))
-        remote.subcommand("remove", %({
+        remote.subcommand("remove", json: %({
           "type": "object",
           "properties": {
             "name": {"type": "string"}
@@ -2068,7 +2068,7 @@ describe Jargon do
 
       it "generates completion for CLI with subcommands" do
         cli = Jargon.new("myapp")
-        cli.subcommand("fetch", %({
+        cli.subcommand("fetch", json: %({
           "type": "object",
           "properties": {
             "url": {"type": "string", "description": "Resource URL"},
@@ -2099,7 +2099,7 @@ describe Jargon do
 
       it "generates completion for nested subcommands" do
         remote = Jargon.new("remote")
-        remote.subcommand("add", %({
+        remote.subcommand("add", json: %({
           "type": "object",
           "properties": {
             "name": {"type": "string"}
@@ -2137,14 +2137,14 @@ describe Jargon do
 
       it "generates completion for CLI with subcommands" do
         cli = Jargon.new("myapp")
-        cli.subcommand("fetch", %({
+        cli.subcommand("fetch", json: %({
           "type": "object",
           "properties": {
             "url": {"type": "string", "description": "Resource URL"},
             "depth": {"type": "integer", "short": "d"}
           }
         }))
-        cli.subcommand("save", %({
+        cli.subcommand("save", json: %({
           "type": "object",
           "properties": {
             "file": {"type": "string"}
@@ -2177,13 +2177,13 @@ describe Jargon do
 
       it "generates completion for nested subcommands" do
         remote = Jargon.new("remote")
-        remote.subcommand("add", %({
+        remote.subcommand("add", json: %({
           "type": "object",
           "properties": {
             "name": {"type": "string", "description": "Remote name"}
           }
         }))
-        remote.subcommand("remove", %({
+        remote.subcommand("remove", json: %({
           "type": "object",
           "properties": {
             "force": {"type": "boolean", "short": "f"}
@@ -2308,7 +2308,7 @@ describe Jargon do
 
       it "detects --completions in CLI with subcommands" do
         cli = Jargon.new("myapp")
-        cli.subcommand("query", %({"type": "object", "properties": {}}))
+        cli.subcommand("query", json: %({"type": "object", "properties": {}}))
 
         result = cli.parse(["--completions", "bash"])
         result.completion_requested?.should be_true
@@ -2593,7 +2593,7 @@ describe Jargon do
 
     it "works with subcommands" do
       cli = Jargon.new("myapp")
-      cli.subcommand("run", %({
+      cli.subcommand("run", json: %({
         "type": "object",
         "properties": {
           "env": {"type": "string"}

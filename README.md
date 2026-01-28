@@ -357,7 +357,7 @@ Create CLIs with subcommands, each with their own schema:
 ```crystal
 cli = Jargon.new("myapp")
 
-cli.subcommand("fetch", %({
+cli.subcommand("fetch", json: %({
   "type": "object",
   "positional": ["url"],
   "properties": {
@@ -367,7 +367,7 @@ cli.subcommand("fetch", %({
   "required": ["url"]
 }))
 
-cli.subcommand("save", %({
+cli.subcommand("save", json: %({
   "type": "object",
   "properties": {
     "message": {"type": "string", "short": "m"},
@@ -399,7 +399,7 @@ Create nested subcommands by passing a `CLI` instance as the subcommand:
 
 ```crystal
 config = Jargon.new("config")
-config.subcommand("set", %({
+config.subcommand("set", json: %({
   "type": "object",
   "positional": ["key", "value"],
   "properties": {
@@ -408,7 +408,7 @@ config.subcommand("set", %({
   },
   "required": ["key", "value"]
 }))
-config.subcommand("get", %({
+config.subcommand("get", json: %({
   "type": "object",
   "positional": ["key"],
   "properties": {
@@ -418,7 +418,7 @@ config.subcommand("get", %({
 
 cli = Jargon.new("myapp")
 cli.subcommand("config", config)
-cli.subcommand("status", %({"type": "object", "properties": {}}))
+cli.subcommand("status", json: %({"type": "object", "properties": {}}))
 
 cli.run do |result|
   case result.subcommand
@@ -448,8 +448,8 @@ Set a default subcommand to use when no subcommand name is given:
 ```crystal
 cli = Jargon.new("xerp")
 
-cli.subcommand("index", %({...}))
-cli.subcommand("query", %({
+cli.subcommand("index", json: %({...}))
+cli.subcommand("query", json: %({
   "type": "object",
   "positional": ["query_text"],
   "properties": {
@@ -484,7 +484,7 @@ global = %({
 
 cli = Jargon.new("myapp")
 
-cli.subcommand("fetch", Jargon.merge(%({
+cli.subcommand("fetch", json: Jargon.merge(%({
   "type": "object",
   "positional": ["url"],
   "properties": {
@@ -493,7 +493,7 @@ cli.subcommand("fetch", Jargon.merge(%({
   }
 }), global))
 
-cli.subcommand("sync", Jargon.merge(%({
+cli.subcommand("sync", json: Jargon.merge(%({
   "type": "object",
   "properties": {
     "force": {"type": "boolean", "short": "f"}
@@ -711,9 +711,10 @@ cli = Jargon.cli(program_name, file: "schema.json")
 
 # For subcommands (no root schema)
 cli = Jargon.new(program_name)
-cli.subcommand("name", json_schema_string)
-cli.subcommand("name", file: "schema.yaml")  # from file
-cli.subcommands(file: "commands.yaml")       # multi-doc file
+cli.subcommand("name", json: schema_string)
+cli.subcommand("name", yaml: schema_string)
+cli.subcommand("name", file: "schema.yaml")
+cli.subcommands(file: "commands.yaml")  # multi-doc file
 
 # Merge global options into subcommand schema
 merged = Jargon.merge(subcommand_schema, global_schema)
