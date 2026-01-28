@@ -483,6 +483,39 @@ describe Jargon do
       result.valid?.should be_false
       result.errors.first.should contain("at most 3 items")
     end
+
+    it "validates const values" do
+      cli = Jargon.cli("cli", json: %({
+        "type": "object",
+        "properties": {
+          "version": {"type": "string", "const": "v1"}
+        }
+      }))
+
+      result = cli.parse(["--version", "v1"])
+      result.valid?.should be_true
+
+      result = cli.parse(["--version", "v2"])
+      result.valid?.should be_false
+      result.errors.first.should contain("must be v1")
+    end
+
+    it "validates uniqueItems" do
+      cli = Jargon.cli("cli", json: %({
+        "type": "object",
+        "properties": {
+          "tags": {"type": "array", "uniqueItems": true}
+        }
+      }))
+
+      result = cli.parse(["--tags", "a,b,c"])
+      result.valid?.should be_true
+
+      result = cli.parse(["--tags", "a,b,a"])
+      result.valid?.should be_false
+      result.errors.first.should contain("unique items")
+      result.errors.first.should contain("duplicate: a")
+    end
   end
 
   describe "defaults" do

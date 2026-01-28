@@ -29,7 +29,9 @@ module Jargon
     getter max_length : Int32?
     getter min_items : Int32?
     getter max_items : Int32?
+    getter? unique_items : Bool
     getter pattern : Regex?
+    getter const : JSON::Any?
 
     def initialize(
       @name : String,
@@ -51,7 +53,9 @@ module Jargon
       @max_length : Int32? = nil,
       @min_items : Int32? = nil,
       @max_items : Int32? = nil,
+      @unique_items : Bool = false,
       @pattern : Regex? = nil,
+      @const : JSON::Any? = nil,
     )
     end
 
@@ -78,6 +82,10 @@ module Jargon
       # Array constraints
       min_items = json["minItems"]?.try(&.as_i?.try(&.to_i32))
       max_items = json["maxItems"]?.try(&.as_i?.try(&.to_i32))
+      unique_items = json["uniqueItems"]?.try(&.as_bool?) || false
+
+      # Const value
+      const_value = json["const"]?
 
       # String pattern
       pattern = if pattern_str = json["pattern"]?.try(&.as_s?)
@@ -115,7 +123,9 @@ module Jargon
         max_length: max_length,
         min_items: min_items,
         max_items: max_items,
-        pattern: pattern
+        unique_items: unique_items,
+        pattern: pattern,
+        const: const_value
       )
     end
 

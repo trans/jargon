@@ -964,6 +964,13 @@ module Jargon
         errors << "Invalid type for #{full_name}: expected #{prop.type}, got #{value.raw.class}"
       end
 
+      # Const validation
+      if const_val = prop.const
+        unless value == const_val
+          errors << "Value for #{full_name} must be #{const_val.as_s? || const_val.to_json}"
+        end
+      end
+
       # Enum validation
       if enum_values = prop.enum_values
         unless enum_values.includes?(value)
@@ -1013,6 +1020,17 @@ module Jargon
           end
           if max = prop.max_items
             errors << "#{full_name} must have at most #{max} items" if arr.size > max
+          end
+          if prop.unique_items?
+            seen = Set(String).new
+            arr.each do |item|
+              key = item.to_json
+              if seen.includes?(key)
+                errors << "#{full_name} must have unique items (duplicate: #{item.as_s? || item.to_json})"
+                break
+              end
+              seen << key
+            end
           end
           if items_prop = prop.items
             arr.each_with_index do |item, i|

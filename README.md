@@ -150,7 +150,8 @@ Standard JSON Schema validation keywords are supported:
     "password": {"type": "string", "minLength": 8, "maxLength": 64},
     "email": {"type": "string", "pattern": "^[^@]+@[^@]+$"},
     "level": {"type": "string", "enum": ["debug", "info", "warn", "error"]},
-    "files": {"type": "array", "minItems": 1, "maxItems": 10},
+    "files": {"type": "array", "minItems": 1, "maxItems": 10, "uniqueItems": true},
+    "apiVersion": {"type": "string", "const": "v1"},
     "tags": {
       "type": "array",
       "items": {"type": "string", "enum": ["alpha", "beta", "stable"]}
@@ -163,8 +164,10 @@ Standard JSON Schema validation keywords are supported:
 - `exclusiveMinimum`/`exclusiveMaximum`: numeric range (exclusive)
 - `minLength`/`maxLength`: string length
 - `minItems`/`maxItems`: array length
+- `uniqueItems`: no duplicate values in array
 - `pattern`: regex validation for strings
 - `enum`: allowed values (works for array items too)
+- `const`: exact value match
 
 ### Boolean Flags
 
