@@ -508,6 +508,53 @@ myapp sync --force --config myconfig.json
 
 Subcommand properties take precedence if there's a conflict with global properties.
 
+### File-Based Subcommands
+
+Load subcommands from external files for cleaner organization:
+
+```crystal
+cli = Jargon.new("myapp")
+cli.subcommand("fetch", file: "schemas/fetch.yaml")
+cli.subcommand("save", file: "schemas/save.json")
+```
+
+Or define all subcommands in a single multi-document file:
+
+```yaml
+# commands.yaml
+---
+name: fetch
+type: object
+properties:
+  url: {type: string}
+---
+name: save
+type: object
+properties:
+  file: {type: string}
+```
+
+```crystal
+cli = Jargon.cli("myapp", file: "commands.yaml")
+```
+
+Multi-document format is auto-detected for `json:`, `yaml:`, and `file:` parameters. Each document must have a `name` field.
+
+JSON uses relaxed JSONL (consecutive objects with whitespace):
+
+```json
+{
+  "name": "fetch",
+  "type": "object",
+  "properties": {"url": {"type": "string"}}
+}
+{
+  "name": "save",
+  "type": "object",
+  "properties": {"file": {"type": "string"}}
+}
+```
+
 ### JSON from Stdin
 
 Use `-` to read JSON input from stdin:
@@ -665,6 +712,8 @@ cli = Jargon.cli(program_name, file: "schema.json")
 # For subcommands (no root schema)
 cli = Jargon.new(program_name)
 cli.subcommand("name", json_schema_string)
+cli.subcommand("name", file: "schema.yaml")  # from file
+cli.subcommands(file: "commands.yaml")       # multi-doc file
 
 # Merge global options into subcommand schema
 merged = Jargon.merge(subcommand_schema, global_schema)
