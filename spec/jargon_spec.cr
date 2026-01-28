@@ -532,6 +532,82 @@ describe Jargon do
       result.valid?.should be_false
       result.errors.first.should contain("multiple of 5")
     end
+
+    it "validates format: email" do
+      cli = Jargon.cli("cli", json: %({
+        "type": "object",
+        "properties": {
+          "email": {"type": "string", "format": "email"}
+        }
+      }))
+
+      result = cli.parse(["--email", "test@example.com"])
+      result.valid?.should be_true
+
+      result = cli.parse(["--email", "not-an-email"])
+      result.valid?.should be_false
+      result.errors.first.should contain("valid email")
+    end
+
+    it "validates format: uri" do
+      cli = Jargon.cli("cli", json: %({
+        "type": "object",
+        "properties": {
+          "url": {"type": "string", "format": "uri"}
+        }
+      }))
+
+      result = cli.parse(["--url", "https://example.com/path"])
+      result.valid?.should be_true
+
+      result = cli.parse(["--url", "not-a-url"])
+      result.valid?.should be_false
+    end
+
+    it "validates format: uuid" do
+      cli = Jargon.cli("cli", json: %({
+        "type": "object",
+        "properties": {
+          "id": {"type": "string", "format": "uuid"}
+        }
+      }))
+
+      result = cli.parse(["--id", "550e8400-e29b-41d4-a716-446655440000"])
+      result.valid?.should be_true
+
+      result = cli.parse(["--id", "not-a-uuid"])
+      result.valid?.should be_false
+    end
+
+    it "validates format: date" do
+      cli = Jargon.cli("cli", json: %({
+        "type": "object",
+        "properties": {
+          "date": {"type": "string", "format": "date"}
+        }
+      }))
+
+      result = cli.parse(["--date", "2024-01-15"])
+      result.valid?.should be_true
+
+      result = cli.parse(["--date", "01-15-2024"])
+      result.valid?.should be_false
+    end
+
+    it "validates format: ipv4" do
+      cli = Jargon.cli("cli", json: %({
+        "type": "object",
+        "properties": {
+          "ip": {"type": "string", "format": "ipv4"}
+        }
+      }))
+
+      result = cli.parse(["--ip", "192.168.1.1"])
+      result.valid?.should be_true
+
+      result = cli.parse(["--ip", "999.999.999.999"])
+      result.valid?.should be_false
+    end
   end
 
   describe "defaults" do

@@ -148,7 +148,8 @@ Standard JSON Schema validation keywords are supported:
     "port": {"type": "integer", "minimum": 1, "maximum": 65535},
     "ratio": {"type": "number", "exclusiveMinimum": 0, "exclusiveMaximum": 1},
     "password": {"type": "string", "minLength": 8, "maxLength": 64},
-    "email": {"type": "string", "pattern": "^[^@]+@[^@]+$"},
+    "email": {"type": "string", "format": "email"},
+    "website": {"type": "string", "format": "uri"},
     "level": {"type": "string", "enum": ["debug", "info", "warn", "error"]},
     "files": {"type": "array", "minItems": 1, "maxItems": 10, "uniqueItems": true},
     "apiVersion": {"type": "string", "const": "v1"},
@@ -166,6 +167,7 @@ Standard JSON Schema validation keywords are supported:
 - `minItems`/`maxItems`: array length
 - `uniqueItems`: no duplicate values in array
 - `pattern`: regex validation for strings
+- `format`: semantic formats (`email`, `uri`, `uuid`, `date`, `time`, `date-time`, `ipv4`, `ipv6`, `hostname`)
 - `enum`: allowed values (works for array items too)
 - `const`: exact value match
 

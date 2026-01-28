@@ -1014,6 +1014,11 @@ module Jargon
           if pattern = prop.pattern
             errors << "Value for #{full_name} must match pattern: #{pattern.source}" unless pattern.matches?(str)
           end
+          if fmt = prop.format
+            unless valid_format?(str, fmt)
+              errors << "Value for #{full_name} must be a valid #{fmt}"
+            end
+          end
         end
       end
 
@@ -1104,12 +1109,43 @@ module Jargon
           if pattern = prop.pattern
             errors << "Value for #{item_name} must match pattern: #{pattern.source}" unless pattern.matches?(str)
           end
+          if fmt = prop.format
+            unless valid_format?(str, fmt)
+              errors << "Value for #{item_name} must be a valid #{fmt}"
+            end
+          end
         end
       end
     end
 
     private def format_num(n : Float64) : String
       n.to_i == n ? n.to_i.to_s : n.to_s
+    end
+
+    private def valid_format?(value : String, format : String) : Bool
+      case format
+      when "email"
+        value.matches?(/^[^@\s]+@[^@\s]+\.[^@\s]+$/)
+      when "uri", "url"
+        value.matches?(/^[a-z][a-z0-9+.-]*:\/\/.+$/i)
+      when "uuid"
+        value.matches?(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)
+      when "date"
+        value.matches?(/^\d{4}-\d{2}-\d{2}$/)
+      when "time"
+        value.matches?(/^\d{2}:\d{2}:\d{2}(Z|[+-]\d{2}:\d{2})?$/)
+      when "date-time"
+        value.matches?(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(Z|[+-]\d{2}:\d{2})?$/)
+      when "ipv4"
+        parts = value.split(".")
+        parts.size == 4 && parts.all? { |p| p.to_i?.try { |n| n >= 0 && n <= 255 } || false }
+      when "ipv6"
+        value.matches?(/^([0-9a-f]{0,4}:){2,7}[0-9a-f]{0,4}$/i)
+      when "hostname"
+        value.matches?(/^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*$/i)
+      else
+        true # Unknown formats pass (per JSON Schema spec)
+      end
     end
 
     private def valid_type?(value : JSON::Any, expected : Property::Type) : Bool
