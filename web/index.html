@@ -62,13 +62,10 @@
 
       <div class="hero-card reveal" style="--delay: 0.15s" data-tabs>
         <div class="card-header">
-          <span class="schema-label" data-schema-label>schema.json</span>
-          <div class="card-actions">
-            <img src="assets/json-schema.svg" alt="JSON Schema" class="schema-logo" />
-            <div class="tab-bar">
-              <button class="tab-button active" data-tab="json">JSON</button>
-              <button class="tab-button" data-tab="yaml">YAML</button>
-            </div>
+          <img src="assets/json-schema.svg" alt="JSON Schema" class="schema-logo" />
+          <div class="tab-bar">
+            <button class="tab-button active" data-tab="json">JSON</button>
+            <button class="tab-button" data-tab="yaml">YAML</button>
           </div>
         </div>
         <div class="tabbed">
@@ -83,7 +80,8 @@
     },
     "age": {
       "type": "integer",
-      "description": "User age"
+      "description": "User age",
+      "default": 0
     },
     "verbose": {
       "type": "boolean",
@@ -103,6 +101,7 @@ properties:
   age:
     type: integer
     description: User age
+    default: 0
   verbose:
     type: boolean
     short: v
@@ -110,7 +109,7 @@ required:
   - name</code></pre>
           </div>
         </div>
-        <div class="mini-note">Schema drives help text, defaults, and validation.</div>
+        <div class="mini-note"><span class="schema-label" data-schema-label>schema.json</span></div>
       </div>
     </header>
 
