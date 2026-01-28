@@ -340,6 +340,93 @@ describe Jargon do
       result = cli.parse(["count=42"])
       result.valid?.should be_true
     end
+
+    it "validates array item enums" do
+      cli = Jargon.cli("cli", json: %({
+        "type": "object",
+        "properties": {
+          "tags": {
+            "type": "array",
+            "items": {"type": "string", "enum": ["alpha", "beta", "stable"]}
+          }
+        }
+      }))
+
+      result = cli.parse(["--tags", "alpha,beta"])
+      result.valid?.should be_true
+
+      result = cli.parse(["--tags", "alpha,invalid,beta"])
+      result.valid?.should be_false
+      result.errors.first.should contain("tags[1]")
+      result.errors.first.should contain("must be one of")
+    end
+
+    it "validates minimum and maximum for integers" do
+      cli = Jargon.cli("cli", json: %({
+        "type": "object",
+        "properties": {
+          "port": {"type": "integer", "minimum": 1, "maximum": 65535}
+        }
+      }))
+
+      result = cli.parse(["--port", "8080"])
+      result.valid?.should be_true
+
+      result = cli.parse(["--port", "0"])
+      result.valid?.should be_false
+      result.errors.first.should contain(">= 1")
+
+      result = cli.parse(["--port", "70000"])
+      result.valid?.should be_false
+      result.errors.first.should contain("<= 65535")
+    end
+
+    it "validates minimum and maximum for numbers" do
+      cli = Jargon.cli("cli", json: %({
+        "type": "object",
+        "properties": {
+          "ratio": {"type": "number", "minimum": 0.0, "maximum": 1.0}
+        }
+      }))
+
+      result = cli.parse(["--ratio", "0.5"])
+      result.valid?.should be_true
+
+      result = cli.parse(["--ratio", "-0.1"])
+      result.valid?.should be_false
+
+      result = cli.parse(["--ratio", "1.5"])
+      result.valid?.should be_false
+    end
+
+    it "validates string patterns" do
+      cli = Jargon.cli("cli", json: %({
+        "type": "object",
+        "properties": {
+          "code": {"type": "string", "pattern": "^[A-Z]{2}[0-9]{3}$"}
+        }
+      }))
+
+      result = cli.parse(["--code", "AB123"])
+      result.valid?.should be_true
+
+      result = cli.parse(["--code", "invalid"])
+      result.valid?.should be_false
+      result.errors.first.should contain("must match pattern")
+    end
+
+    it "formats enum error messages nicely" do
+      cli = Jargon.cli("cli", json: %({
+        "type": "object",
+        "properties": {
+          "level": {"type": "string", "enum": ["debug", "info", "warn"]}
+        }
+      }))
+
+      result = cli.parse(["--level", "bad"])
+      result.valid?.should be_false
+      result.errors.first.should eq("Invalid value for level: must be one of debug, info, warn")
+    end
   end
 
   describe "defaults" do

@@ -967,7 +967,42 @@ module Jargon
       # Enum validation
       if enum_values = prop.enum_values
         unless enum_values.includes?(value)
-          errors << "Invalid value for #{full_name}: must be one of #{enum_values.map(&.inspect).join(", ")}"
+          formatted = enum_values.map { |v| v.as_s? || v.to_json }.join(", ")
+          errors << "Invalid value for #{full_name}: must be one of #{formatted}"
+        end
+      end
+
+      # Minimum/maximum validation for numbers
+      if prop.type.integer? || prop.type.number?
+        if num = value.as_f? || value.as_i64?.try(&.to_f)
+          if min = prop.minimum
+            if num < min
+              errors << "Value for #{full_name} must be >= #{min.to_i == min ? min.to_i : min}"
+            end
+          end
+          if max = prop.maximum
+            if num > max
+              errors << "Value for #{full_name} must be <= #{max.to_i == max ? max.to_i : max}"
+            end
+          end
+        end
+      end
+
+      # Pattern validation for strings
+      if prop.type.string? && (pattern = prop.pattern)
+        if str = value.as_s?
+          unless pattern.matches?(str)
+            errors << "Value for #{full_name} must match pattern: #{pattern.source}"
+          end
+        end
+      end
+
+      # Array item validation
+      if prop.type.array? && (items_prop = prop.items)
+        if arr = value.as_a?
+          arr.each_with_index do |item, i|
+            validate_array_item(item, items_prop, errors, "#{full_name}[#{i}]", schema)
+          end
         end
       end
 
@@ -976,6 +1011,42 @@ module Jargon
         if nested_data = value.as_h?
           nested_props.each do |nested_name, nested_prop|
             validate_property(nested_data, nested_name, resolve_property(nested_prop, schema), errors, full_name, schema)
+          end
+        end
+      end
+    end
+
+    private def validate_array_item(value : JSON::Any, prop : Property, errors : Array(String), item_name : String, schema : Schema)
+      # Type validation
+      unless valid_type?(value, prop.type)
+        errors << "Invalid type for #{item_name}: expected #{prop.type}, got #{value.raw.class}"
+      end
+
+      # Enum validation
+      if enum_values = prop.enum_values
+        unless enum_values.includes?(value)
+          formatted = enum_values.map { |v| v.as_s? || v.to_json }.join(", ")
+          errors << "Invalid value for #{item_name}: must be one of #{formatted}"
+        end
+      end
+
+      # Minimum/maximum validation
+      if prop.type.integer? || prop.type.number?
+        if num = value.as_f? || value.as_i64?.try(&.to_f)
+          if min = prop.minimum
+            errors << "Value for #{item_name} must be >= #{min.to_i == min ? min.to_i : min}" if num < min
+          end
+          if max = prop.maximum
+            errors << "Value for #{item_name} must be <= #{max.to_i == max ? max.to_i : max}" if num > max
+          end
+        end
+      end
+
+      # Pattern validation
+      if prop.type.string? && (pattern = prop.pattern)
+        if str = value.as_s?
+          unless pattern.matches?(str)
+            errors << "Value for #{item_name} must match pattern: #{pattern.source}"
           end
         end
       end

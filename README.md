@@ -138,6 +138,29 @@ result = cli.parse(["user.name=John", "user.email=john@example.com"])
 | `array` | `tags=a,b,c` | Comma-separated |
 | `object` | `user.name=John` | Dot notation |
 
+### Validation Constraints
+
+Standard JSON Schema validation keywords are supported:
+
+```json
+{
+  "properties": {
+    "port": {"type": "integer", "minimum": 1, "maximum": 65535},
+    "ratio": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+    "email": {"type": "string", "pattern": "^[^@]+@[^@]+$"},
+    "level": {"type": "string", "enum": ["debug", "info", "warn", "error"]},
+    "tags": {
+      "type": "array",
+      "items": {"type": "string", "enum": ["alpha", "beta", "stable"]}
+    }
+  }
+}
+```
+
+- `minimum`/`maximum`: numeric range validation
+- `pattern`: regex validation for strings
+- `enum`: allowed values (works for array items too)
+
 ### Boolean Flags
 
 Boolean flags support multiple styles:

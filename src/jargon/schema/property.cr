@@ -21,6 +21,9 @@ module Jargon
     getter ref : String?
     getter short : String?
     getter env : String?
+    getter minimum : Float64?
+    getter maximum : Float64?
+    getter pattern : Regex?
 
     def initialize(
       @name : String,
@@ -34,6 +37,9 @@ module Jargon
       @ref : String? = nil,
       @short : String? = nil,
       @env : String? = nil,
+      @minimum : Float64? = nil,
+      @maximum : Float64? = nil,
+      @pattern : Regex? = nil,
     )
     end
 
@@ -46,6 +52,15 @@ module Jargon
       short = json["short"]?.try(&.as_s?)
       env = json["env"]?.try(&.as_s?)
       is_required = required_fields.includes?(name)
+
+      # Numeric constraints
+      minimum = json["minimum"]?.try(&.as_f?) || json["minimum"]?.try(&.as_i64?.try(&.to_f))
+      maximum = json["maximum"]?.try(&.as_f?) || json["maximum"]?.try(&.as_i64?.try(&.to_f))
+
+      # String pattern
+      pattern = if pattern_str = json["pattern"]?.try(&.as_s?)
+                  Regex.new(pattern_str)
+                end
 
       properties = if type.object? && (props = json["properties"]?)
                      nested_required = json["required"]?.try(&.as_a.map(&.as_s)) || [] of String
@@ -69,7 +84,10 @@ module Jargon
         items: items,
         ref: ref,
         short: short,
-        env: env
+        env: env,
+        minimum: minimum,
+        maximum: maximum,
+        pattern: pattern
       )
     end
 
