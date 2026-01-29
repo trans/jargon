@@ -56,7 +56,34 @@ To be spec-complete, would need:
 - `if`/`then`/`else`
 - `dependentRequired`, `dependentSchemas`
 
-See also: https://github.com/aarongodin/jsonschema (dormant since June 2022, has composite schemas but no `$ref` support)
+See also:
+- https://github.com/aarongodin/jsonschema (dormant since June 2022, has composite schemas but no `$ref` support)
+- https://github.com/cyangle/json_schemer.cr (active, Draft 2020-12 compliant, has `$ref` - worth watching)
+
+### Semantic Command Discovery ("Bash Spell Checker")
+
+Use Jargon's JSON Schema definitions as a corpus for semantic search over CLI tools. Natural language → tool call translation without an LLM.
+
+**Concept:**
+```
+$(repo push) → git push      # high confidence, auto-execute
+$(delete old logs) → rm ...  # destructive, confirm first
+```
+
+**Techniques:**
+- TF-IDF / co-occurrence vectors over tool schemas
+- Embeddings over man pages and descriptions
+- Salience scoring for match confidence
+
+**Context signals to improve accuracy:**
+- Current working directory (git repo? node project?)
+- Recent bash history
+- Cursor position in IDE/Vim
+- Active file types
+
+**Use case:** People who know what they want but forget exact syntax. Acts as a validator/refinement layer for LLM-generated commands - LLM gets close, system finds exact match, gates unsafe operations.
+
+**Not a priority now** - Jargon is the foundation (self-describing tools). This layer can come later. See also: memo, xerp projects.
 
 ### Other Ideas
 
