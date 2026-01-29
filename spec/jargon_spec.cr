@@ -3294,4 +3294,141 @@ describe Jargon do
       result["missing"]?.should be_nil
     end
   end
+
+  describe "schema flatten" do
+    it "resolves $ref from $defs" do
+      schema = %({
+        "type": "object",
+        "$defs": {
+          "name": {"type": "string", "minLength": 1}
+        },
+        "properties": {
+          "user": {"$ref": "#/$defs/name"}
+        }
+      })
+
+      flattened = Jargon.flatten(schema)
+      parsed = JSON.parse(flattened)
+
+      parsed["$defs"]?.should be_nil
+      parsed["properties"]["user"]["type"].as_s.should eq("string")
+      parsed["properties"]["user"]["minLength"].as_i.should eq(1)
+    end
+
+    it "resolves $ref from definitions" do
+      schema = %({
+        "type": "object",
+        "definitions": {
+          "count": {"type": "integer", "minimum": 0}
+        },
+        "properties": {
+          "total": {"$ref": "#/definitions/count"}
+        }
+      })
+
+      flattened = Jargon.flatten(schema)
+      parsed = JSON.parse(flattened)
+
+      parsed["definitions"]?.should be_nil
+      parsed["properties"]["total"]["type"].as_s.should eq("integer")
+      parsed["properties"]["total"]["minimum"].as_i.should eq(0)
+    end
+
+    it "resolves nested $refs" do
+      schema = %({
+        "type": "object",
+        "$defs": {
+          "address": {
+            "type": "object",
+            "properties": {
+              "city": {"$ref": "#/$defs/city"}
+            }
+          },
+          "city": {"type": "string"}
+        },
+        "properties": {
+          "home": {"$ref": "#/$defs/address"}
+        }
+      })
+
+      flattened = Jargon.flatten(schema)
+      parsed = JSON.parse(flattened)
+
+      parsed["$defs"]?.should be_nil
+      parsed["properties"]["home"]["properties"]["city"]["type"].as_s.should eq("string")
+    end
+
+    it "resolves $refs in allOf" do
+      schema = %({
+        "type": "object",
+        "$defs": {
+          "base": {"properties": {"id": {"type": "string"}}}
+        },
+        "allOf": [
+          {"$ref": "#/$defs/base"},
+          {"properties": {"name": {"type": "string"}}}
+        ]
+      })
+
+      flattened = Jargon.flatten(schema)
+      parsed = JSON.parse(flattened)
+
+      parsed["$defs"]?.should be_nil
+      parsed["allOf"][0]["properties"]["id"]["type"].as_s.should eq("string")
+      parsed["allOf"][1]["properties"]["name"]["type"].as_s.should eq("string")
+    end
+
+    it "resolves $refs in array items" do
+      schema = %({
+        "type": "object",
+        "$defs": {
+          "tag": {"type": "string", "minLength": 1}
+        },
+        "properties": {
+          "tags": {
+            "type": "array",
+            "items": {"$ref": "#/$defs/tag"}
+          }
+        }
+      })
+
+      flattened = Jargon.flatten(schema)
+      parsed = JSON.parse(flattened)
+
+      parsed["$defs"]?.should be_nil
+      parsed["properties"]["tags"]["items"]["type"].as_s.should eq("string")
+    end
+
+    it "keeps unresolvable $refs unchanged" do
+      schema = %({
+        "type": "object",
+        "properties": {
+          "external": {"$ref": "https://example.com/schema.json"}
+        }
+      })
+
+      flattened = Jargon.flatten(schema)
+      parsed = JSON.parse(flattened)
+
+      parsed["properties"]["external"]["$ref"].as_s.should eq("https://example.com/schema.json")
+    end
+
+    it "preserves Jargon extensions in flattened output" do
+      schema = %({
+        "type": "object",
+        "$defs": {
+          "verbose": {"type": "boolean", "short": "v", "description": "Verbose output"}
+        },
+        "properties": {
+          "verbose": {"$ref": "#/$defs/verbose"}
+        }
+      })
+
+      flattened = Jargon.flatten(schema)
+      parsed = JSON.parse(flattened)
+
+      parsed["properties"]["verbose"]["short"].as_s.should eq("v")
+      parsed["properties"]["verbose"]["description"].as_s.should eq("Verbose output")
+    end
+  end
 end
