@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="Crystal Docs 1.19.1">
+<meta name="crystal_docs.project_version" content="0.15.0-dev">
+<meta name="crystal_docs.project_name" content="jargon">
+
+
+
+<link href="css/style.css" rel="stylesheet" type="text/css" />
+<script type="text/javascript" src="js/doc.js"></script>
+
+  <meta name="repository-name" content="jargon">
+  <title>Jargon - jargon 0.15.0-dev</title>
+  <script type="text/javascript">
+    CrystalDocs.base_path = "";
+  </script>
+</head>
+<body>
+
+<svg class="hidden">
+  <symbol id="octicon-link" viewBox="0 0 16 16">
+    <path fill="currentColor" fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path>
+  </symbol>
+</svg>
+<input type="checkbox" id="sidebar-btn">
+<label for="sidebar-btn" id="sidebar-btn-label">
+  <svg class="open" xmlns="http://www.w3.org/2000/svg" height="2em" width="2em" viewBox="0 0 512 512"><title>Open Sidebar</title><path fill="currentColor" d="M80 96v64h352V96H80zm0 112v64h352v-64H80zm0 112v64h352v-64H80z"></path></svg>
+  <svg class="close" xmlns="http://www.w3.org/2000/svg" width="2em" height="2em" viewBox="0 0 512 512"><title>Close Sidebar</title><path fill="currentColor" d="m118.6 73.4-45.2 45.2L210.7 256 73.4 393.4l45.2 45.2L256 301.3l137.4 137.3 45.2-45.2L301.3 256l137.3-137.4-45.2-45.2L256 210.7Z"></path></svg>
+</label>
+<div class="sidebar">
+  <div class="sidebar-header">
+    <div class="search-box">
+      <input type="search" class="search-input" placeholder="Search..." spellcheck="false" aria-label="Search">
+    </div>
+
+    <div class="project-summary">
+      <h1 class="project-name">
+        <a href="index.html">
+          jargon
+        </a>
+      </h1>
+
+      <span class="project-version">
+        0.15.0-dev
+      </span>
+    </div>
+  </div>
+
+  <div class="search-results hidden">
+    <ul class="search-list"></ul>
+  </div>
+
+  <div class="types-list">
+    <ul>
+  
+  <li class="parent open current" data-id="jargon/Jargon" data-name="jargon">
+      <a href="Jargon.html">Jargon</a>
+      
+        <ul>
+  
+  <li class=" " data-id="jargon/Jargon/CLI" data-name="jargon::cli">
+      <a href="Jargon/CLI.html">CLI</a>
+      
+    </li>
+  
+  <li class=" " data-id="jargon/Jargon/Completion" data-name="jargon::completion">
+      <a href="Jargon/Completion.html">Completion</a>
+      
+    </li>
+  
+  <li class=" " data-id="jargon/Jargon/FlagInfo" data-name="jargon::flaginfo">
+      <a href="Jargon/FlagInfo.html">FlagInfo</a>
+      
+    </li>
+  
+  <li class=" " data-id="jargon/Jargon/ParseError" data-name="jargon::parseerror">
+      <a href="Jargon/ParseError.html">ParseError</a>
+      
+    </li>
+  
+  <li class="parent " data-id="jargon/Jargon/Property" data-name="jargon::property">
+      <a href="Jargon/Property.html">Property</a>
+      
+        <ul>
+  
+  <li class=" " data-id="jargon/Jargon/Property/Type" data-name="jargon::property::type">
+      <a href="Jargon/Property/Type.html">Type</a>
+      
+    </li>
+  
+</ul>
+
+      
+    </li>
+  
+  <li class=" " data-id="jargon/Jargon/Result" data-name="jargon::result">
+      <a href="Jargon/Result.html">Result</a>
+      
+    </li>
+  
+  <li class=" " data-id="jargon/Jargon/Schema" data-name="jargon::schema">
+      <a href="Jargon/Schema.html">Schema</a>
+      
+    </li>
+  
+  <li class=" " data-id="jargon/Jargon/SubcommandInfo" data-name="jargon::subcommandinfo">
+      <a href="Jargon/SubcommandInfo.html">SubcommandInfo</a>
+      
+    </li>
+  
+</ul>
+
+      
+    </li>
+  
+</ul>
+
+  </div>
+</div>
+
+
+<div class="main-content">
+<h1 class="type-name">
+
+  <span class="kind">
+    module
+  </span> Jargon
+
+</h1>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  <h2>
+    <a id="defined-in" class="anchor" href="#defined-in">
+  <svg class="octicon-link" aria-hidden="true">
+    <use href="#octicon-link"/>
+  </svg>
+</a>
+    Defined in:
+  </h2>
+  
+    
+      jargon.cr
+    
+    <br/>
+  
+    
+      jargon/cli.cr
+    
+    <br/>
+  
+    
+      jargon/completion.cr
+    
+    <br/>
+  
+    
+      jargon/config.cr
+    
+    <br/>
+  
+    
+      jargon/help.cr
+    
+    <br/>
+  
+    
+      jargon/result.cr
+    
+    <br/>
+  
+    
+      jargon/schema.cr
+    
+    <br/>
+  
+    
+      jargon/schema/property.cr
+    
+    <br/>
+  
+
+
+
+  
+    <h2>
+      <a id="constant-summary" class="anchor" href="#constant-summary">
+  <svg class="octicon-link" aria-hidden="true">
+    <use href="#octicon-link"/>
+  </svg>
+</a>
+      Constant Summary
+    </h2>
+  
+  <dl>
+    
+      <dt class="entry-const" id="VERSION">
+        <strong>VERSION</strong> = <code><span class="s">&quot;0.15.0&quot;</span></code>
+      </dt>
+      
+    
+  </dl>
+
+
+
+  
+  <h2>
+    <a id="constructors" class="anchor" href="#constructors">
+  <svg class="octicon-link" aria-hidden="true">
+    <use href="#octicon-link"/>
+  </svg>
+</a>
+    Constructors
+  </h2>
+  <ul class="list-summary">
+    
+      <li class="entry-summary">
+        <a href="#new%28program_name%3AString%29%3ACLI-class-method" class="signature"><strong>.new</strong>(program_name : String) : CLI</a>
+        
+          <div class="summary"><p>Convenience method to create a CLI with just a program name (for subcommand mode)</p></div>
+        
+      </li>
+    
+  </ul>
+
+
+  
+  <h2>
+    <a id="class-method-summary" class="anchor" href="#class-method-summary">
+  <svg class="octicon-link" aria-hidden="true">
+    <use href="#octicon-link"/>
+  </svg>
+</a>
+    Class Method Summary
+  </h2>
+  <ul class="list-summary">
+    
+      <li class="entry-summary">
+        <a href="#cli%28program_name%3AString%2C%2A%2Cjson%3AString%29%3ACLI-class-method" class="signature"><strong>.cli</strong>(program_name : String, *, json : String) : CLI</a>
+        
+          <div class="summary"><p>Convenience shortcut with program name first</p></div>
+        
+      </li>
+    
+      <li class="entry-summary">
+        <a href="#cli%28program_name%3AString%2C%2A%2Cfile%3AString%29%3ACLI-class-method" class="signature"><strong>.cli</strong>(program_name : String, *, file : String) : CLI</a>
+        
+      </li>
+    
+      <li class="entry-summary">
+        <a href="#cli%28program_name%3AString%2C%2A%2Cyaml%3AString%29%3ACLI-class-method" class="signature"><strong>.cli</strong>(program_name : String, *, yaml : String) : CLI</a>
+        
+      </li>
+    
+      <li class="entry-summary">
+        <a href="#config_warnings%3D%28config_warnings%3ABool%29-class-method" class="signature"><strong>.config_warnings=</strong>(config_warnings : Bool)</a>
+        
+          <div class="summary"><p>Control whether config parse warnings are emitted to STDERR</p></div>
+        
+      </li>
+    
+      <li class="entry-summary">
+        <a href="#config_warnings%3F%3ABool-class-method" class="signature"><strong>.config_warnings?</strong> : Bool</a>
+        
+          <div class="summary"><p>Control whether config parse warnings are emitted to STDERR</p></div>
+        
+      </li>
+    
+      <li class="entry-summary">
+        <a href="#flatten%28schema%3AString%29%3AString-class-method" class="signature"><strong>.flatten</strong>(schema : String) : String</a>
+        
+          <div class="summary"><p>Flatten a schema by resolving all $ref pointers and removing $defs.</p></div>
+        
+      </li>
+    
+      <li class="entry-summary">
+        <a href="#from_file%28path%3AString%2Cprogram_name%3AString%3D%22cli%22%29%3ACLI-class-method" class="signature"><strong>.from_file</strong>(path : String, program_name : String = <span class="s">&quot;cli&quot;</span>) : CLI</a>
+        
+          <div class="summary"><p><span class="flag red">DEPRECATED</span>  Use Jargon.cli(program_name, file: path) instead</p></div>
+        
+      </li>
+    
+      <li class="entry-summary">
+        <a href="#from_json%28json%3AString%2Cprogram_name%3AString%3D%22cli%22%29%3ACLI-class-method" class="signature"><strong>.from_json</strong>(json : String, program_name : String = <span class="s">&quot;cli&quot;</span>) : CLI</a>
+        
+          <div class="summary"><p><span class="flag red">DEPRECATED</span>  Use Jargon.cli(program_name, json: schema) instead</p></div>
+        
+      </li>
+    
+      <li class="entry-summary">
+        <a href="#merge%28sub%3AString%2Cglobal%3AString%29%3AString-class-method" class="signature"><strong>.merge</strong>(sub : String, global : String) : String</a>
+        
+          <div class="summary"><p>Merge global schema properties into a subcommand schema.</p></div>
+        
+      </li>
+    
+  </ul>
+
+
+  
+
+  
+
+
+  <div class="methods-inherited">
+    
+  </div>
+
+  
+  <h2>
+    <a id="constructor-detail" class="anchor" href="#constructor-detail">
+  <svg class="octicon-link" aria-hidden="true">
+    <use href="#octicon-link"/>
+  </svg>
+</a>
+    Constructor Detail
+  </h2>
+  
+    <div class="entry-detail" id="new(program_name:String):CLI-class-method">
+      <div class="signature">
+        
+        def self.<strong>new</strong>(program_name : String) : <a href="Jargon/CLI.html">CLI</a>
+
+        <a class="method-permalink" href="#new%28program_name%3AString%29%3ACLI-class-method">#</a>
+      </div>
+      
+        <div class="doc">
+          
+          <p>Convenience method to create a CLI with just a program name (for subcommand mode)</p>
+        </div>
+      
+      <br/>
+      <div>
+        
+      </div>
+    </div>
+  
+
+
+  
+  <h2>
+    <a id="class-method-detail" class="anchor" href="#class-method-detail">
+  <svg class="octicon-link" aria-hidden="true">
+    <use href="#octicon-link"/>
+  </svg>
+</a>
+    Class Method Detail
+  </h2>
+  
+    <div class="entry-detail" id="cli(program_name:String,*,json:String):CLI-class-method">
+      <div class="signature">
+        
+        def self.<strong>cli</strong>(program_name : String, *, json : String) : <a href="Jargon/CLI.html">CLI</a>
+
+        <a class="method-permalink" href="#cli%28program_name%3AString%2C%2A%2Cjson%3AString%29%3ACLI-class-method">#</a>
+      </div>
+      
+        <div class="doc">
+          
+          <p>Convenience shortcut with program name first</p>
+        </div>
+      
+      <br/>
+      <div>
+        
+      </div>
+    </div>
+  
+    <div class="entry-detail" id="cli(program_name:String,*,file:String):CLI-class-method">
+      <div class="signature">
+        
+        def self.<strong>cli</strong>(program_name : String, *, file : String) : <a href="Jargon/CLI.html">CLI</a>
+
+        <a class="method-permalink" href="#cli%28program_name%3AString%2C%2A%2Cfile%3AString%29%3ACLI-class-method">#</a>
+      </div>
+      
+      <br/>
+      <div>
+        
+      </div>
+    </div>
+  
+    <div class="entry-detail" id="cli(program_name:String,*,yaml:String):CLI-class-method">
+      <div class="signature">
+        
+        def self.<strong>cli</strong>(program_name : String, *, yaml : String) : <a href="Jargon/CLI.html">CLI</a>
+
+        <a class="method-permalink" href="#cli%28program_name%3AString%2C%2A%2Cyaml%3AString%29%3ACLI-class-method">#</a>
+      </div>
+      
+      <br/>
+      <div>
+        
+      </div>
+    </div>
+  
+    <div class="entry-detail" id="config_warnings=(config_warnings:Bool)-class-method">
+      <div class="signature">
+        
+        def self.<strong>config_warnings=</strong>(config_warnings : Bool)
+
+        <a class="method-permalink" href="#config_warnings%3D%28config_warnings%3ABool%29-class-method">#</a>
+      </div>
+      
+        <div class="doc">
+          
+          <p>Control whether config parse warnings are emitted to STDERR</p>
+        </div>
+      
+      <br/>
+      <div>
+        
+      </div>
+    </div>
+  
+    <div class="entry-detail" id="config_warnings?:Bool-class-method">
+      <div class="signature">
+        
+        def self.<strong>config_warnings?</strong> : Bool
+
+        <a class="method-permalink" href="#config_warnings%3F%3ABool-class-method">#</a>
+      </div>
+      
+        <div class="doc">
+          
+          <p>Control whether config parse warnings are emitted to STDERR</p>
+        </div>
+      
+      <br/>
+      <div>
+        
+      </div>
+    </div>
+  
+    <div class="entry-detail" id="flatten(schema:String):String-class-method">
+      <div class="signature">
+        
+        def self.<strong>flatten</strong>(schema : String) : String
+
+        <a class="method-permalink" href="#flatten%28schema%3AString%29%3AString-class-method">#</a>
+      </div>
+      
+        <div class="doc">
+          
+          <p>Flatten a schema by resolving all $ref pointers and removing $defs.
+Useful for AI tool definitions that don't support $ref.</p>
+        </div>
+      
+      <br/>
+      <div>
+        
+      </div>
+    </div>
+  
+    <div class="entry-detail" id="from_file(path:String,program_name:String=&quot;cli&quot;):CLI-class-method">
+      <div class="signature">
+        
+        def self.<strong>from_file</strong>(path : String, program_name : String = <span class="s">&quot;cli&quot;</span>) : <a href="Jargon/CLI.html">CLI</a>
+
+        <a class="method-permalink" href="#from_file%28path%3AString%2Cprogram_name%3AString%3D%22cli%22%29%3ACLI-class-method">#</a>
+      </div>
+      
+        <div class="doc">
+          
+          <p><span class="flag red">DEPRECATED</span>  Use Jargon.cli(program_name, file: path) instead</p>
+        </div>
+      
+      <br/>
+      <div>
+        
+      </div>
+    </div>
+  
+    <div class="entry-detail" id="from_json(json:String,program_name:String=&quot;cli&quot;):CLI-class-method">
+      <div class="signature">
+        
+        def self.<strong>from_json</strong>(json : String, program_name : String = <span class="s">&quot;cli&quot;</span>) : <a href="Jargon/CLI.html">CLI</a>
+
+        <a class="method-permalink" href="#from_json%28json%3AString%2Cprogram_name%3AString%3D%22cli%22%29%3ACLI-class-method">#</a>
+      </div>
+      
+        <div class="doc">
+          
+          <p><span class="flag red">DEPRECATED</span>  Use Jargon.cli(program_name, json: schema) instead</p>
+        </div>
+      
+      <br/>
+      <div>
+        
+      </div>
+    </div>
+  
+    <div class="entry-detail" id="merge(sub:String,global:String):String-class-method">
+      <div class="signature">
+        
+        def self.<strong>merge</strong>(sub : String, global : String) : String
+
+        <a class="method-permalink" href="#merge%28sub%3AString%2Cglobal%3AString%29%3AString-class-method">#</a>
+      </div>
+      
+        <div class="doc">
+          
+          <p>Merge global schema properties into a subcommand schema.
+Properties from global are added to sub (sub takes precedence if both define same key).</p>
+        </div>
+      
+      <br/>
+      <div>
+        
+      </div>
+    </div>
+  
+
+
+  
+
+  
+
+
+</div>
+
+</body>
+</html>

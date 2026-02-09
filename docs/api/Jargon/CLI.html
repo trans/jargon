@@ -1,0 +1,1083 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="Crystal Docs 1.19.1">
+<meta name="crystal_docs.project_version" content="0.15.0-dev">
+<meta name="crystal_docs.project_name" content="jargon">
+
+
+
+<link href="../css/style.css" rel="stylesheet" type="text/css" />
+<script type="text/javascript" src="../js/doc.js"></script>
+
+  <meta name="repository-name" content="jargon">
+  <title>Jargon::CLI - jargon 0.15.0-dev</title>
+  <script type="text/javascript">
+    CrystalDocs.base_path = "../";
+  </script>
+</head>
+<body>
+
+<svg class="hidden">
+  <symbol id="octicon-link" viewBox="0 0 16 16">
+    <path fill="currentColor" fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path>
+  </symbol>
+</svg>
+<input type="checkbox" id="sidebar-btn">
+<label for="sidebar-btn" id="sidebar-btn-label">
+  <svg class="open" xmlns="http://www.w3.org/2000/svg" height="2em" width="2em" viewBox="0 0 512 512"><title>Open Sidebar</title><path fill="currentColor" d="M80 96v64h352V96H80zm0 112v64h352v-64H80zm0 112v64h352v-64H80z"></path></svg>
+  <svg class="close" xmlns="http://www.w3.org/2000/svg" width="2em" height="2em" viewBox="0 0 512 512"><title>Close Sidebar</title><path fill="currentColor" d="m118.6 73.4-45.2 45.2L210.7 256 73.4 393.4l45.2 45.2L256 301.3l137.4 137.3 45.2-45.2L301.3 256l137.3-137.4-45.2-45.2L256 210.7Z"></path></svg>
+</label>
+<div class="sidebar">
+  <div class="sidebar-header">
+    <div class="search-box">
+      <input type="search" class="search-input" placeholder="Search..." spellcheck="false" aria-label="Search">
+    </div>
+
+    <div class="project-summary">
+      <h1 class="project-name">
+        <a href="../index.html">
+          jargon
+        </a>
+      </h1>
+
+      <span class="project-version">
+        0.15.0-dev
+      </span>
+    </div>
+  </div>
+
+  <div class="search-results hidden">
+    <ul class="search-list"></ul>
+  </div>
+
+  <div class="types-list">
+    <ul>
+  
+  <li class="parent open current" data-id="jargon/Jargon" data-name="jargon">
+      <a href="../Jargon.html">Jargon</a>
+      
+        <ul>
+  
+  <li class=" current" data-id="jargon/Jargon/CLI" data-name="jargon::cli">
+      <a href="../Jargon/CLI.html">CLI</a>
+      
+    </li>
+  
+  <li class=" " data-id="jargon/Jargon/Completion" data-name="jargon::completion">
+      <a href="../Jargon/Completion.html">Completion</a>
+      
+    </li>
+  
+  <li class=" " data-id="jargon/Jargon/FlagInfo" data-name="jargon::flaginfo">
+      <a href="../Jargon/FlagInfo.html">FlagInfo</a>
+      
+    </li>
+  
+  <li class=" " data-id="jargon/Jargon/ParseError" data-name="jargon::parseerror">
+      <a href="../Jargon/ParseError.html">ParseError</a>
+      
+    </li>
+  
+  <li class="parent " data-id="jargon/Jargon/Property" data-name="jargon::property">
+      <a href="../Jargon/Property.html">Property</a>
+      
+        <ul>
+  
+  <li class=" " data-id="jargon/Jargon/Property/Type" data-name="jargon::property::type">
+      <a href="../Jargon/Property/Type.html">Type</a>
+      
+    </li>
+  
+</ul>
+
+      
+    </li>
+  
+  <li class=" " data-id="jargon/Jargon/Result" data-name="jargon::result">
+      <a href="../Jargon/Result.html">Result</a>
+      
+    </li>
+  
+  <li class=" " data-id="jargon/Jargon/Schema" data-name="jargon::schema">
+      <a href="../Jargon/Schema.html">Schema</a>
+      
+    </li>
+  
+  <li class=" " data-id="jargon/Jargon/SubcommandInfo" data-name="jargon::subcommandinfo">
+      <a href="../Jargon/SubcommandInfo.html">SubcommandInfo</a>
+      
+    </li>
+  
+</ul>
+
+      
+    </li>
+  
+</ul>
+
+  </div>
+</div>
+
+
+<div class="main-content">
+<h1 class="type-name">
+
+  <span class="kind">
+    class
+  </span> Jargon::<wbr>CLI
+
+</h1>
+
+
+  <ul class="superclass-hierarchy"><li class="superclass"><a href="../Jargon/CLI.html">Jargon::CLI</a></li><li class="superclass">Reference</li><li class="superclass">Object</li></ul>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  <h2>
+    <a id="defined-in" class="anchor" href="#defined-in">
+  <svg class="octicon-link" aria-hidden="true">
+    <use href="#octicon-link"/>
+  </svg>
+</a>
+    Defined in:
+  </h2>
+  
+    
+      jargon/cli.cr
+    
+    <br/>
+  
+    
+      jargon/config.cr
+    
+    <br/>
+  
+    
+      jargon/help.cr
+    
+    <br/>
+  
+
+
+
+
+
+  
+  <h2>
+    <a id="constructors" class="anchor" href="#constructors">
+  <svg class="octicon-link" aria-hidden="true">
+    <use href="#octicon-link"/>
+  </svg>
+</a>
+    Constructors
+  </h2>
+  <ul class="list-summary">
+    
+      <li class="entry-summary">
+        <a href="#from_file%28path%3AString%2Cprogram_name%3AString%3D%22cli%22%29%3ACLI-class-method" class="signature"><strong>.from_file</strong>(path : String, program_name : String = <span class="s">&quot;cli&quot;</span>) : CLI</a>
+        
+          <div class="summary"><p>Create a CLI from a JSON or YAML schema file.</p></div>
+        
+      </li>
+    
+      <li class="entry-summary">
+        <a href="#from_json%28json%3AString%2Cprogram_name%3AString%3D%22cli%22%29%3ACLI-class-method" class="signature"><strong>.from_json</strong>(json : String, program_name : String = <span class="s">&quot;cli&quot;</span>) : CLI</a>
+        
+          <div class="summary"><p>Create a CLI from a JSON schema string.</p></div>
+        
+      </li>
+    
+      <li class="entry-summary">
+        <a href="#from_yaml%28yaml%3AString%2Cprogram_name%3AString%3D%22cli%22%29%3ACLI-class-method" class="signature"><strong>.from_yaml</strong>(yaml : String, program_name : String = <span class="s">&quot;cli&quot;</span>) : CLI</a>
+        
+          <div class="summary"><p>Create a CLI from a YAML schema string.</p></div>
+        
+      </li>
+    
+      <li class="entry-summary">
+        <a href="#new%28schema%3ASchema%2Cprogram_name%3AString%3D%22cli%22%29-class-method" class="signature"><strong>.new</strong>(schema : Schema, program_name : String = <span class="s">&quot;cli&quot;</span>)</a>
+        
+      </li>
+    
+      <li class="entry-summary">
+        <a href="#new%28program_name%3AString%29-class-method" class="signature"><strong>.new</strong>(program_name : String)</a>
+        
+      </li>
+    
+  </ul>
+
+
+  
+
+  
+
+  
+  <h2>
+    <a id="instance-method-summary" class="anchor" href="#instance-method-summary">
+  <svg class="octicon-link" aria-hidden="true">
+    <use href="#octicon-link"/>
+  </svg>
+</a>
+    Instance Method Summary
+  </h2>
+  <ul class="list-summary">
+    
+      <li class="entry-summary">
+        <a href="#bash_completion%3AString-instance-method" class="signature"><strong>#bash_completion</strong> : String</a>
+        
+      </li>
+    
+      <li class="entry-summary">
+        <a href="#config_paths%3AArray%28String%29-instance-method" class="signature"><strong>#config_paths</strong> : Array(String)</a>
+        
+          <div class="summary"><p>Returns the list of config paths that would be searched</p></div>
+        
+      </li>
+    
+      <li class="entry-summary">
+        <a href="#default_subcommand%28name%3AString%29-instance-method" class="signature"><strong>#default_subcommand</strong>(name : String)</a>
+        
+      </li>
+    
+      <li class="entry-summary">
+        <a href="#default_subcommand%3AString%7CNil-instance-method" class="signature"><strong>#default_subcommand</strong> : String | Nil</a>
+        
+      </li>
+    
+      <li class="entry-summary">
+        <a href="#fish_completion%3AString-instance-method" class="signature"><strong>#fish_completion</strong> : String</a>
+        
+      </li>
+    
+      <li class="entry-summary">
+        <a href="#help%28subcommand%3AString%29%3AString-instance-method" class="signature"><strong>#help</strong>(subcommand : String) : String</a>
+        
+      </li>
+    
+      <li class="entry-summary">
+        <a href="#help%3AString-instance-method" class="signature"><strong>#help</strong> : String</a>
+        
+      </li>
+    
+      <li class="entry-summary">
+        <a href="#json%28args%3AArray%28String%29%2Cinput%3AIO%2C%2A%2Cdefaults%3AJSON%3A%3AAny%7CHash%28String%2CJSON%3A%3AAny%29%7CNil%3Dnil%29%3AJSON%3A%3AAny-instance-method" class="signature"><strong>#json</strong>(args : Array(String), input : IO, *, defaults : JSON::Any | Hash(String, JSON::Any) | Nil = <span class="n">nil</span>) : JSON::Any</a>
+        
+      </li>
+    
+      <li class="entry-summary">
+        <a href="#json%28args%3AArray%28String%29%3DARGV%2C%2A%2Cdefaults%3AJSON%3A%3AAny%7CHash%28String%2CJSON%3A%3AAny%29%7CNil%3Dnil%29%3AJSON%3A%3AAny-instance-method" class="signature"><strong>#json</strong>(args : Array(String) = <span class="t">ARGV</span>, *, defaults : JSON::Any | Hash(String, JSON::Any) | Nil = <span class="n">nil</span>) : JSON::Any</a>
+        
+          <div class="summary"><p>Return just the parsed data as JSON.</p></div>
+        
+      </li>
+    
+      <li class="entry-summary">
+        <a href="#load_config%28%2A%2Cmerge%3ABool%3Dtrue%29%3AJSON%3A%3AAny%7CNil-instance-method" class="signature"><strong>#load_config</strong>(*, merge : Bool = <span class="n">true</span>) : JSON::Any | Nil</a>
+        
+          <div class="summary"><p>Load config from standard locations.</p></div>
+        
+      </li>
+    
+      <li class="entry-summary">
+        <a href="#output%3AIO-instance-method" class="signature"><strong>#output</strong> : IO</a>
+        
+      </li>
+    
+      <li class="entry-summary">
+        <a href="#output%3D%28output%3AIO%29-instance-method" class="signature"><strong>#output=</strong>(output : IO)</a>
+        
+      </li>
+    
+      <li class="entry-summary">
+        <a href="#parse%28args%3AArray%28String%29%2Cinput%3AIO%2C%2A%2Cdefaults%3AJSON%3A%3AAny%7CHash%28String%2CJSON%3A%3AAny%29%7CNil%3Dnil%29%3AResult-instance-method" class="signature"><strong>#parse</strong>(args : Array(String), input : IO, *, defaults : JSON::Any | Hash(String, JSON::Any) | Nil = <span class="n">nil</span>) : Result</a>
+        
+      </li>
+    
+      <li class="entry-summary">
+        <a href="#parse%28args%3AArray%28String%29%3DARGV%2C%2A%2Cdefaults%3AJSON%3A%3AAny%7CHash%28String%2CJSON%3A%3AAny%29%7CNil%3Dnil%29%3AResult-instance-method" class="signature"><strong>#parse</strong>(args : Array(String) = <span class="t">ARGV</span>, *, defaults : JSON::Any | Hash(String, JSON::Any) | Nil = <span class="n">nil</span>) : Result</a>
+        
+          <div class="summary"><p>Parse arguments and return full Result with errors array.</p></div>
+        
+      </li>
+    
+      <li class="entry-summary">
+        <a href="#program_name%3AString-instance-method" class="signature"><strong>#program_name</strong> : String</a>
+        
+      </li>
+    
+      <li class="entry-summary">
+        <a href="#run%28args%3AArray%28String%29%2Cinput%3AIO%2C%2A%2Cdefaults%3AJSON%3A%3AAny%7CHash%28String%2CJSON%3A%3AAny%29%7CNil%3Dnil%29%3AResult-instance-method" class="signature"><strong>#run</strong>(args : Array(String), input : IO, *, defaults : JSON::Any | Hash(String, JSON::Any) | Nil = <span class="n">nil</span>) : Result</a>
+        
+      </li>
+    
+      <li class="entry-summary">
+        <a href="#run%28args%3AArray%28String%29%3DARGV%2C%2A%2Cdefaults%3AJSON%3A%3AAny%7CHash%28String%2CJSON%3A%3AAny%29%7CNil%3Dnil%29%3AResult-instance-method" class="signature"><strong>#run</strong>(args : Array(String) = <span class="t">ARGV</span>, *, defaults : JSON::Any | Hash(String, JSON::Any) | Nil = <span class="n">nil</span>) : Result</a>
+        
+          <div class="summary"><p>Run the CLI with automatic --help, --completions, and error handling.</p></div>
+        
+      </li>
+    
+      <li class="entry-summary">
+        <a href="#run%28args%3AArray%28String%29%2Cinput%3AIO%2C%2A%2Cdefaults%3AJSON%3A%3AAny%7CHash%28String%2CJSON%3A%3AAny%29%7CNil%3Dnil%2C%26%29%3ANil-instance-method" class="signature"><strong>#run</strong>(args : Array(String), input : IO, *, defaults : JSON::Any | Hash(String, JSON::Any) | Nil = <span class="n">nil</span>, &) : Nil</a>
+        
+      </li>
+    
+      <li class="entry-summary">
+        <a href="#run%28args%3AArray%28String%29%3DARGV%2C%2A%2Cdefaults%3AJSON%3A%3AAny%7CHash%28String%2CJSON%3A%3AAny%29%7CNil%3Dnil%2C%26%29%3ANil-instance-method" class="signature"><strong>#run</strong>(args : Array(String) = <span class="t">ARGV</span>, *, defaults : JSON::Any | Hash(String, JSON::Any) | Nil = <span class="n">nil</span>, &) : Nil</a>
+        
+      </li>
+    
+      <li class="entry-summary">
+        <a href="#schema%3ASchema%7CNil-instance-method" class="signature"><strong>#schema</strong> : Schema | Nil</a>
+        
+      </li>
+    
+      <li class="entry-summary">
+        <a href="#subcommand%28name%3AString%2Cschema%3ASchema%29-instance-method" class="signature"><strong>#subcommand</strong>(name : String, schema : Schema)</a>
+        
+      </li>
+    
+      <li class="entry-summary">
+        <a href="#subcommand%28name%3AString%2Ccli%3ACLI%29-instance-method" class="signature"><strong>#subcommand</strong>(name : String, cli : CLI)</a>
+        
+      </li>
+    
+      <li class="entry-summary">
+        <a href="#subcommand%28name%3AString%2C%2A%2Cjson%3AString%29-instance-method" class="signature"><strong>#subcommand</strong>(name : String, *, json : String)</a>
+        
+      </li>
+    
+      <li class="entry-summary">
+        <a href="#subcommand%28name%3AString%2C%2A%2Cyaml%3AString%29-instance-method" class="signature"><strong>#subcommand</strong>(name : String, *, yaml : String)</a>
+        
+      </li>
+    
+      <li class="entry-summary">
+        <a href="#subcommand%28name%3AString%2C%2A%2Cfile%3AString%29-instance-method" class="signature"><strong>#subcommand</strong>(name : String, *, file : String)</a>
+        
+          <div class="summary"><p>Load subcommand(s) from a file.</p></div>
+        
+      </li>
+    
+      <li class="entry-summary">
+        <a href="#subcommand%28%2A%2Cfile%3AString%29-instance-method" class="signature"><strong>#subcommand</strong>(*, file : String)</a>
+        
+          <div class="summary"><p>Load subcommands from a multi-document file (no parent name).</p></div>
+        
+      </li>
+    
+      <li class="entry-summary">
+        <a href="#subcommand_key%28key%3AString%29-instance-method" class="signature"><strong>#subcommand_key</strong>(key : String)</a>
+        
+      </li>
+    
+      <li class="entry-summary">
+        <a href="#subcommand_key%3AString-instance-method" class="signature"><strong>#subcommand_key</strong> : String</a>
+        
+      </li>
+    
+      <li class="entry-summary">
+        <a href="#subcommands%3AHash%28String%2CSchema%7CCLI%29-instance-method" class="signature"><strong>#subcommands</strong> : Hash(String, Schema | CLI)</a>
+        
+      </li>
+    
+      <li class="entry-summary">
+        <a href="#validate%28data%3AHash%28String%2CJSON%3A%3AAny%29%2Csubcommand%3AString%7CNil%3Dnil%29%3AArray%28String%29-instance-method" class="signature"><strong>#validate</strong>(data : Hash(String, JSON::Any), subcommand : String | Nil = <span class="n">nil</span>) : Array(String)</a>
+        
+          <div class="summary"><p>Validate data against a schema, returning any errors.</p></div>
+        
+      </li>
+    
+      <li class="entry-summary">
+        <a href="#validate%28result%3AResult%29%3AArray%28String%29-instance-method" class="signature"><strong>#validate</strong>(result : Result) : Array(String)</a>
+        
+      </li>
+    
+      <li class="entry-summary">
+        <a href="#zsh_completion%3AString-instance-method" class="signature"><strong>#zsh_completion</strong> : String</a>
+        
+      </li>
+    
+  </ul>
+
+
+
+  <div class="methods-inherited">
+    
+      
+
+
+      
+
+
+      
+
+
+      
+
+
+    
+      
+
+
+      
+
+
+      
+
+
+      
+
+
+    
+  </div>
+
+  
+  <h2>
+    <a id="constructor-detail" class="anchor" href="#constructor-detail">
+  <svg class="octicon-link" aria-hidden="true">
+    <use href="#octicon-link"/>
+  </svg>
+</a>
+    Constructor Detail
+  </h2>
+  
+    <div class="entry-detail" id="from_file(path:String,program_name:String=&quot;cli&quot;):CLI-class-method">
+      <div class="signature">
+        
+        def self.<strong>from_file</strong>(path : String, program_name : String = <span class="s">&quot;cli&quot;</span>) : <a href="../Jargon/CLI.html">CLI</a>
+
+        <a class="method-permalink" href="#from_file%28path%3AString%2Cprogram_name%3AString%3D%22cli%22%29%3ACLI-class-method">#</a>
+      </div>
+      
+        <div class="doc">
+          
+          <p>Create a CLI from a JSON or YAML schema file.
+Auto-detects multi-doc format for subcommands.</p>
+        </div>
+      
+      <br/>
+      <div>
+        
+      </div>
+    </div>
+  
+    <div class="entry-detail" id="from_json(json:String,program_name:String=&quot;cli&quot;):CLI-class-method">
+      <div class="signature">
+        
+        def self.<strong>from_json</strong>(json : String, program_name : String = <span class="s">&quot;cli&quot;</span>) : <a href="../Jargon/CLI.html">CLI</a>
+
+        <a class="method-permalink" href="#from_json%28json%3AString%2Cprogram_name%3AString%3D%22cli%22%29%3ACLI-class-method">#</a>
+      </div>
+      
+        <div class="doc">
+          
+          <p>Create a CLI from a JSON schema string.
+Auto-detects multi-doc format (relaxed JSONL) for subcommands.</p>
+        </div>
+      
+      <br/>
+      <div>
+        
+      </div>
+    </div>
+  
+    <div class="entry-detail" id="from_yaml(yaml:String,program_name:String=&quot;cli&quot;):CLI-class-method">
+      <div class="signature">
+        
+        def self.<strong>from_yaml</strong>(yaml : String, program_name : String = <span class="s">&quot;cli&quot;</span>) : <a href="../Jargon/CLI.html">CLI</a>
+
+        <a class="method-permalink" href="#from_yaml%28yaml%3AString%2Cprogram_name%3AString%3D%22cli%22%29%3ACLI-class-method">#</a>
+      </div>
+      
+        <div class="doc">
+          
+          <p>Create a CLI from a YAML schema string.
+Auto-detects multi-doc format for subcommands.</p>
+        </div>
+      
+      <br/>
+      <div>
+        
+      </div>
+    </div>
+  
+    <div class="entry-detail" id="new(schema:Schema,program_name:String=&quot;cli&quot;)-class-method">
+      <div class="signature">
+        
+        def self.<strong>new</strong>(schema : <a href="../Jargon/Schema.html">Schema</a>, program_name : String = <span class="s">&quot;cli&quot;</span>)
+
+        <a class="method-permalink" href="#new%28schema%3ASchema%2Cprogram_name%3AString%3D%22cli%22%29-class-method">#</a>
+      </div>
+      
+      <br/>
+      <div>
+        
+      </div>
+    </div>
+  
+    <div class="entry-detail" id="new(program_name:String)-class-method">
+      <div class="signature">
+        
+        def self.<strong>new</strong>(program_name : String)
+
+        <a class="method-permalink" href="#new%28program_name%3AString%29-class-method">#</a>
+      </div>
+      
+      <br/>
+      <div>
+        
+      </div>
+    </div>
+  
+
+
+  
+
+  
+
+  
+  <h2>
+    <a id="instance-method-detail" class="anchor" href="#instance-method-detail">
+  <svg class="octicon-link" aria-hidden="true">
+    <use href="#octicon-link"/>
+  </svg>
+</a>
+    Instance Method Detail
+  </h2>
+  
+    <div class="entry-detail" id="bash_completion:String-instance-method">
+      <div class="signature">
+        
+        def <strong>bash_completion</strong> : String
+
+        <a class="method-permalink" href="#bash_completion%3AString-instance-method">#</a>
+      </div>
+      
+      <br/>
+      <div>
+        
+      </div>
+    </div>
+  
+    <div class="entry-detail" id="config_paths:Array(String)-instance-method">
+      <div class="signature">
+        
+        def <strong>config_paths</strong> : Array(String)
+
+        <a class="method-permalink" href="#config_paths%3AArray%28String%29-instance-method">#</a>
+      </div>
+      
+        <div class="doc">
+          
+          <p>Returns the list of config paths that would be searched</p>
+        </div>
+      
+      <br/>
+      <div>
+        
+      </div>
+    </div>
+  
+    <div class="entry-detail" id="default_subcommand(name:String)-instance-method">
+      <div class="signature">
+        
+        def <strong>default_subcommand</strong>(name : String)
+
+        <a class="method-permalink" href="#default_subcommand%28name%3AString%29-instance-method">#</a>
+      </div>
+      
+      <br/>
+      <div>
+        
+      </div>
+    </div>
+  
+    <div class="entry-detail" id="default_subcommand:String|Nil-instance-method">
+      <div class="signature">
+        
+        def <strong>default_subcommand</strong> : String | Nil
+
+        <a class="method-permalink" href="#default_subcommand%3AString%7CNil-instance-method">#</a>
+      </div>
+      
+      <br/>
+      <div>
+        
+      </div>
+    </div>
+  
+    <div class="entry-detail" id="fish_completion:String-instance-method">
+      <div class="signature">
+        
+        def <strong>fish_completion</strong> : String
+
+        <a class="method-permalink" href="#fish_completion%3AString-instance-method">#</a>
+      </div>
+      
+      <br/>
+      <div>
+        
+      </div>
+    </div>
+  
+    <div class="entry-detail" id="help(subcommand:String):String-instance-method">
+      <div class="signature">
+        
+        def <strong>help</strong>(subcommand : String) : String
+
+        <a class="method-permalink" href="#help%28subcommand%3AString%29%3AString-instance-method">#</a>
+      </div>
+      
+      <br/>
+      <div>
+        
+      </div>
+    </div>
+  
+    <div class="entry-detail" id="help:String-instance-method">
+      <div class="signature">
+        
+        def <strong>help</strong> : String
+
+        <a class="method-permalink" href="#help%3AString-instance-method">#</a>
+      </div>
+      
+      <br/>
+      <div>
+        
+      </div>
+    </div>
+  
+    <div class="entry-detail" id="json(args:Array(String),input:IO,*,defaults:JSON::Any|Hash(String,JSON::Any)|Nil=nil):JSON::Any-instance-method">
+      <div class="signature">
+        
+        def <strong>json</strong>(args : Array(String), input : IO, *, defaults : JSON::Any | Hash(String, JSON::Any) | Nil = <span class="n">nil</span>) : JSON::Any
+
+        <a class="method-permalink" href="#json%28args%3AArray%28String%29%2Cinput%3AIO%2C%2A%2Cdefaults%3AJSON%3A%3AAny%7CHash%28String%2CJSON%3A%3AAny%29%7CNil%3Dnil%29%3AJSON%3A%3AAny-instance-method">#</a>
+      </div>
+      
+      <br/>
+      <div>
+        
+      </div>
+    </div>
+  
+    <div class="entry-detail" id="json(args:Array(String)=ARGV,*,defaults:JSON::Any|Hash(String,JSON::Any)|Nil=nil):JSON::Any-instance-method">
+      <div class="signature">
+        
+        def <strong>json</strong>(args : Array(String) = <span class="t">ARGV</span>, *, defaults : JSON::Any | Hash(String, JSON::Any) | Nil = <span class="n">nil</span>) : JSON::Any
+
+        <a class="method-permalink" href="#json%28args%3AArray%28String%29%3DARGV%2C%2A%2Cdefaults%3AJSON%3A%3AAny%7CHash%28String%2CJSON%3A%3AAny%29%7CNil%3Dnil%29%3AJSON%3A%3AAny-instance-method">#</a>
+      </div>
+      
+        <div class="doc">
+          
+          <p>Return just the parsed data as JSON. Raises ParseError on validation errors.</p>
+        </div>
+      
+      <br/>
+      <div>
+        
+      </div>
+    </div>
+  
+    <div class="entry-detail" id="load_config(*,merge:Bool=true):JSON::Any|Nil-instance-method">
+      <div class="signature">
+        
+        def <strong>load_config</strong>(*, merge : Bool = <span class="n">true</span>) : JSON::Any | Nil
+
+        <a class="method-permalink" href="#load_config%28%2A%2Cmerge%3ABool%3Dtrue%29%3AJSON%3A%3AAny%7CNil-instance-method">#</a>
+      </div>
+      
+        <div class="doc">
+          
+          <p>Load config from standard locations.
+Supports YAML (.yaml, .yml) and JSON (.json) files.</p>
+<p>Paths searched (in order):</p>
+<ol>
+<li>./.config/{program_name}.yaml/.yml/.json (project local, flat)</li>
+<li>./.config/{program_name}/config.yaml/.yml/.json (project local, directory)</li>
+<li>$XDG_CONFIG_HOME/{program_name}.yaml/.yml/.json (user global, flat)</li>
+<li>$XDG_CONFIG_HOME/{program_name}/config.yaml/.yml/.json (user global, directory)</li>
+</ol>
+<p>With merge: true (default), merges all configs found (project wins over user).
+With merge: false, returns first config found.
+Returns nil if no config file found.</p>
+        </div>
+      
+      <br/>
+      <div>
+        
+      </div>
+    </div>
+  
+    <div class="entry-detail" id="output:IO-instance-method">
+      <div class="signature">
+        
+        def <strong>output</strong> : IO
+
+        <a class="method-permalink" href="#output%3AIO-instance-method">#</a>
+      </div>
+      
+      <br/>
+      <div>
+        
+      </div>
+    </div>
+  
+    <div class="entry-detail" id="output=(output:IO)-instance-method">
+      <div class="signature">
+        
+        def <strong>output=</strong>(output : IO)
+
+        <a class="method-permalink" href="#output%3D%28output%3AIO%29-instance-method">#</a>
+      </div>
+      
+      <br/>
+      <div>
+        
+      </div>
+    </div>
+  
+    <div class="entry-detail" id="parse(args:Array(String),input:IO,*,defaults:JSON::Any|Hash(String,JSON::Any)|Nil=nil):Result-instance-method">
+      <div class="signature">
+        
+        def <strong>parse</strong>(args : Array(String), input : IO, *, defaults : JSON::Any | Hash(String, JSON::Any) | Nil = <span class="n">nil</span>) : <a href="../Jargon/Result.html">Result</a>
+
+        <a class="method-permalink" href="#parse%28args%3AArray%28String%29%2Cinput%3AIO%2C%2A%2Cdefaults%3AJSON%3A%3AAny%7CHash%28String%2CJSON%3A%3AAny%29%7CNil%3Dnil%29%3AResult-instance-method">#</a>
+      </div>
+      
+      <br/>
+      <div>
+        
+      </div>
+    </div>
+  
+    <div class="entry-detail" id="parse(args:Array(String)=ARGV,*,defaults:JSON::Any|Hash(String,JSON::Any)|Nil=nil):Result-instance-method">
+      <div class="signature">
+        
+        def <strong>parse</strong>(args : Array(String) = <span class="t">ARGV</span>, *, defaults : JSON::Any | Hash(String, JSON::Any) | Nil = <span class="n">nil</span>) : <a href="../Jargon/Result.html">Result</a>
+
+        <a class="method-permalink" href="#parse%28args%3AArray%28String%29%3DARGV%2C%2A%2Cdefaults%3AJSON%3A%3AAny%7CHash%28String%2CJSON%3A%3AAny%29%7CNil%3Dnil%29%3AResult-instance-method">#</a>
+      </div>
+      
+        <div class="doc">
+          
+          <p>Parse arguments and return full Result with errors array.</p>
+        </div>
+      
+      <br/>
+      <div>
+        
+      </div>
+    </div>
+  
+    <div class="entry-detail" id="program_name:String-instance-method">
+      <div class="signature">
+        
+        def <strong>program_name</strong> : String
+
+        <a class="method-permalink" href="#program_name%3AString-instance-method">#</a>
+      </div>
+      
+      <br/>
+      <div>
+        
+      </div>
+    </div>
+  
+    <div class="entry-detail" id="run(args:Array(String),input:IO,*,defaults:JSON::Any|Hash(String,JSON::Any)|Nil=nil):Result-instance-method">
+      <div class="signature">
+        
+        def <strong>run</strong>(args : Array(String), input : IO, *, defaults : JSON::Any | Hash(String, JSON::Any) | Nil = <span class="n">nil</span>) : <a href="../Jargon/Result.html">Result</a>
+
+        <a class="method-permalink" href="#run%28args%3AArray%28String%29%2Cinput%3AIO%2C%2A%2Cdefaults%3AJSON%3A%3AAny%7CHash%28String%2CJSON%3A%3AAny%29%7CNil%3Dnil%29%3AResult-instance-method">#</a>
+      </div>
+      
+      <br/>
+      <div>
+        
+      </div>
+    </div>
+  
+    <div class="entry-detail" id="run(args:Array(String)=ARGV,*,defaults:JSON::Any|Hash(String,JSON::Any)|Nil=nil):Result-instance-method">
+      <div class="signature">
+        
+        def <strong>run</strong>(args : Array(String) = <span class="t">ARGV</span>, *, defaults : JSON::Any | Hash(String, JSON::Any) | Nil = <span class="n">nil</span>) : <a href="../Jargon/Result.html">Result</a>
+
+        <a class="method-permalink" href="#run%28args%3AArray%28String%29%3DARGV%2C%2A%2Cdefaults%3AJSON%3A%3AAny%7CHash%28String%2CJSON%3A%3AAny%29%7CNil%3Dnil%29%3AResult-instance-method">#</a>
+      </div>
+      
+        <div class="doc">
+          
+          <p>Run the CLI with automatic --help, --completions, and error handling.
+Prints help/completions and exits 0, prints errors and exits 1, otherwise returns/yields result.</p>
+        </div>
+      
+      <br/>
+      <div>
+        
+      </div>
+    </div>
+  
+    <div class="entry-detail" id="run(args:Array(String),input:IO,*,defaults:JSON::Any|Hash(String,JSON::Any)|Nil=nil,&amp;):Nil-instance-method">
+      <div class="signature">
+        
+        def <strong>run</strong>(args : Array(String), input : IO, *, defaults : JSON::Any | Hash(String, JSON::Any) | Nil = <span class="n">nil</span>, &) : Nil
+
+        <a class="method-permalink" href="#run%28args%3AArray%28String%29%2Cinput%3AIO%2C%2A%2Cdefaults%3AJSON%3A%3AAny%7CHash%28String%2CJSON%3A%3AAny%29%7CNil%3Dnil%2C%26%29%3ANil-instance-method">#</a>
+      </div>
+      
+      <br/>
+      <div>
+        
+      </div>
+    </div>
+  
+    <div class="entry-detail" id="run(args:Array(String)=ARGV,*,defaults:JSON::Any|Hash(String,JSON::Any)|Nil=nil,&amp;):Nil-instance-method">
+      <div class="signature">
+        
+        def <strong>run</strong>(args : Array(String) = <span class="t">ARGV</span>, *, defaults : JSON::Any | Hash(String, JSON::Any) | Nil = <span class="n">nil</span>, &) : Nil
+
+        <a class="method-permalink" href="#run%28args%3AArray%28String%29%3DARGV%2C%2A%2Cdefaults%3AJSON%3A%3AAny%7CHash%28String%2CJSON%3A%3AAny%29%7CNil%3Dnil%2C%26%29%3ANil-instance-method">#</a>
+      </div>
+      
+      <br/>
+      <div>
+        
+      </div>
+    </div>
+  
+    <div class="entry-detail" id="schema:Schema|Nil-instance-method">
+      <div class="signature">
+        
+        def <strong>schema</strong> : <a href="../Jargon/Schema.html">Schema</a> | Nil
+
+        <a class="method-permalink" href="#schema%3ASchema%7CNil-instance-method">#</a>
+      </div>
+      
+      <br/>
+      <div>
+        
+      </div>
+    </div>
+  
+    <div class="entry-detail" id="subcommand(name:String,schema:Schema)-instance-method">
+      <div class="signature">
+        
+        def <strong>subcommand</strong>(name : String, schema : <a href="../Jargon/Schema.html">Schema</a>)
+
+        <a class="method-permalink" href="#subcommand%28name%3AString%2Cschema%3ASchema%29-instance-method">#</a>
+      </div>
+      
+      <br/>
+      <div>
+        
+      </div>
+    </div>
+  
+    <div class="entry-detail" id="subcommand(name:String,cli:CLI)-instance-method">
+      <div class="signature">
+        
+        def <strong>subcommand</strong>(name : String, cli : <a href="../Jargon/CLI.html">CLI</a>)
+
+        <a class="method-permalink" href="#subcommand%28name%3AString%2Ccli%3ACLI%29-instance-method">#</a>
+      </div>
+      
+      <br/>
+      <div>
+        
+      </div>
+    </div>
+  
+    <div class="entry-detail" id="subcommand(name:String,*,json:String)-instance-method">
+      <div class="signature">
+        
+        def <strong>subcommand</strong>(name : String, *, json : String)
+
+        <a class="method-permalink" href="#subcommand%28name%3AString%2C%2A%2Cjson%3AString%29-instance-method">#</a>
+      </div>
+      
+      <br/>
+      <div>
+        
+      </div>
+    </div>
+  
+    <div class="entry-detail" id="subcommand(name:String,*,yaml:String)-instance-method">
+      <div class="signature">
+        
+        def <strong>subcommand</strong>(name : String, *, yaml : String)
+
+        <a class="method-permalink" href="#subcommand%28name%3AString%2C%2A%2Cyaml%3AString%29-instance-method">#</a>
+      </div>
+      
+      <br/>
+      <div>
+        
+      </div>
+    </div>
+  
+    <div class="entry-detail" id="subcommand(name:String,*,file:String)-instance-method">
+      <div class="signature">
+        
+        def <strong>subcommand</strong>(name : String, *, file : String)
+
+        <a class="method-permalink" href="#subcommand%28name%3AString%2C%2A%2Cfile%3AString%29-instance-method">#</a>
+      </div>
+      
+        <div class="doc">
+          
+          <p>Load subcommand(s) from a file.</p>
+<ul>
+<li>Single-doc file: requires name, loads as single subcommand</li>
+<li>Multi-doc file without name: loads each doc as top-level subcommand</li>
+<li>Multi-doc file with name: loads docs as nested subcommands under name</li>
+</ul>
+        </div>
+      
+      <br/>
+      <div>
+        
+      </div>
+    </div>
+  
+    <div class="entry-detail" id="subcommand(*,file:String)-instance-method">
+      <div class="signature">
+        
+        def <strong>subcommand</strong>(*, file : String)
+
+        <a class="method-permalink" href="#subcommand%28%2A%2Cfile%3AString%29-instance-method">#</a>
+      </div>
+      
+        <div class="doc">
+          
+          <p>Load subcommands from a multi-document file (no parent name).
+Each document must have a &quot;name&quot; field.</p>
+        </div>
+      
+      <br/>
+      <div>
+        
+      </div>
+    </div>
+  
+    <div class="entry-detail" id="subcommand_key(key:String)-instance-method">
+      <div class="signature">
+        
+        def <strong>subcommand_key</strong>(key : String)
+
+        <a class="method-permalink" href="#subcommand_key%28key%3AString%29-instance-method">#</a>
+      </div>
+      
+      <br/>
+      <div>
+        
+      </div>
+    </div>
+  
+    <div class="entry-detail" id="subcommand_key:String-instance-method">
+      <div class="signature">
+        
+        def <strong>subcommand_key</strong> : String
+
+        <a class="method-permalink" href="#subcommand_key%3AString-instance-method">#</a>
+      </div>
+      
+      <br/>
+      <div>
+        
+      </div>
+    </div>
+  
+    <div class="entry-detail" id="subcommands:Hash(String,Schema|CLI)-instance-method">
+      <div class="signature">
+        
+        def <strong>subcommands</strong> : Hash(String, <a href="../Jargon/Schema.html">Schema</a> | <a href="../Jargon/CLI.html">CLI</a>)
+
+        <a class="method-permalink" href="#subcommands%3AHash%28String%2CSchema%7CCLI%29-instance-method">#</a>
+      </div>
+      
+      <br/>
+      <div>
+        
+      </div>
+    </div>
+  
+    <div class="entry-detail" id="validate(data:Hash(String,JSON::Any),subcommand:String|Nil=nil):Array(String)-instance-method">
+      <div class="signature">
+        
+        def <strong>validate</strong>(data : Hash(String, JSON::Any), subcommand : String | Nil = <span class="n">nil</span>) : Array(String)
+
+        <a class="method-permalink" href="#validate%28data%3AHash%28String%2CJSON%3A%3AAny%29%2Csubcommand%3AString%7CNil%3Dnil%29%3AArray%28String%29-instance-method">#</a>
+      </div>
+      
+        <div class="doc">
+          
+          <p>Validate data against a schema, returning any errors.
+If no schema is provided, uses the CLI's root schema.
+For subcommand validation, pass the subcommand name (space-separated for nested).</p>
+        </div>
+      
+      <br/>
+      <div>
+        
+      </div>
+    </div>
+  
+    <div class="entry-detail" id="validate(result:Result):Array(String)-instance-method">
+      <div class="signature">
+        
+        def <strong>validate</strong>(result : <a href="../Jargon/Result.html">Result</a>) : Array(String)
+
+        <a class="method-permalink" href="#validate%28result%3AResult%29%3AArray%28String%29-instance-method">#</a>
+      </div>
+      
+      <br/>
+      <div>
+        
+      </div>
+    </div>
+  
+    <div class="entry-detail" id="zsh_completion:String-instance-method">
+      <div class="signature">
+        
+        def <strong>zsh_completion</strong> : String
+
+        <a class="method-permalink" href="#zsh_completion%3AString-instance-method">#</a>
+      </div>
+      
+      <br/>
+      <div>
+        
+      </div>
+    </div>
+  
+
+
+
+</div>
+
+</body>
+</html>
