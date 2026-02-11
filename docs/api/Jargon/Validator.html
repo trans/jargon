@@ -14,7 +14,7 @@
 <script type="text/javascript" src="../js/doc.js"></script>
 
   <meta name="repository-name" content="jargon">
-  <title>Jargon::Completion - jargon main</title>
+  <title>Jargon::Validator - jargon main</title>
   <script type="text/javascript">
     CrystalDocs.base_path = "../";
   </script>
@@ -67,7 +67,7 @@
       
     </li>
   
-  <li class=" current" data-id="jargon/Jargon/Completion" data-name="jargon::completion">
+  <li class=" " data-id="jargon/Jargon/Completion" data-name="jargon::completion">
       <a href="../Jargon/Completion.html">Completion</a>
       
     </li>
@@ -112,7 +112,7 @@
       
     </li>
   
-  <li class=" " data-id="jargon/Jargon/Validator" data-name="jargon::validator">
+  <li class=" current" data-id="jargon/Jargon/Validator" data-name="jargon::validator">
       <a href="../Jargon/Validator.html">Validator</a>
       
     </li>
@@ -132,13 +132,11 @@
 <h1 class="type-name">
 
   <span class="kind">
-    class
-  </span> Jargon::<wbr>Completion
+    module
+  </span> Jargon::<wbr>Validator
 
 </h1>
 
-
-  <ul class="superclass-hierarchy"><li class="superclass"><a href="../Jargon/Completion.html">Jargon::Completion</a></li><li class="superclass">Reference</li><li class="superclass">Object</li></ul>
 
 
 
@@ -168,8 +166,8 @@
   </h2>
   
     
-      <a href="https://github.com/trans/jargon/blob/028c8fc34ef93000bab07f13cf540bce238573d2/src/jargon/completion.cr#L8" target="_blank">
-        jargon/completion.cr
+      <a href="https://github.com/trans/jargon/blob/028c8fc34ef93000bab07f13cf540bce238573d2/src/jargon/validator.cr#L5" target="_blank">
+        jargon/validator.cr
       </a>
     
     <br/>
@@ -180,18 +178,22 @@
 
 
   
+
+  
   <h2>
-    <a id="constructors" class="anchor" href="#constructors">
+    <a id="class-method-summary" class="anchor" href="#class-method-summary">
   <svg class="octicon-link" aria-hidden="true">
     <use href="#octicon-link"/>
   </svg>
 </a>
-    Constructors
+    Class Method Summary
   </h2>
   <ul class="list-summary">
     
       <li class="entry-summary">
-        <a href="#new%28cli%3ACLI%29-class-method" class="signature"><strong>.new</strong>(cli : CLI)</a>
+        <a href="#validate%28data%3AHash%28String%2CJSON%3A%3AAny%29%2Cschema%3ASchema%29%3AArray%28String%29-class-method" class="signature"><strong>.validate</strong>(data : Hash(String, JSON::Any), schema : Schema) : Array(String)</a>
+        
+          <div class="summary"><p>Validate data against a schema.</p></div>
         
       </li>
     
@@ -201,89 +203,41 @@
   
 
   
-
-  
-  <h2>
-    <a id="instance-method-summary" class="anchor" href="#instance-method-summary">
-  <svg class="octicon-link" aria-hidden="true">
-    <use href="#octicon-link"/>
-  </svg>
-</a>
-    Instance Method Summary
-  </h2>
-  <ul class="list-summary">
-    
-      <li class="entry-summary">
-        <a href="#bash%3AString-instance-method" class="signature"><strong>#bash</strong> : String</a>
-        
-      </li>
-    
-      <li class="entry-summary">
-        <a href="#fish%3AString-instance-method" class="signature"><strong>#fish</strong> : String</a>
-        
-      </li>
-    
-      <li class="entry-summary">
-        <a href="#zsh%3AString-instance-method" class="signature"><strong>#zsh</strong> : String</a>
-        
-      </li>
-    
-  </ul>
-
 
 
   <div class="methods-inherited">
     
-      
-
-
-      
-
-
-      
-
-
-      
-
-
-    
-      
-
-
-      
-
-
-      
-
-
-      
-
-
-    
   </div>
 
   
+
+  
   <h2>
-    <a id="constructor-detail" class="anchor" href="#constructor-detail">
+    <a id="class-method-detail" class="anchor" href="#class-method-detail">
   <svg class="octicon-link" aria-hidden="true">
     <use href="#octicon-link"/>
   </svg>
 </a>
-    Constructor Detail
+    Class Method Detail
   </h2>
   
-    <div class="entry-detail" id="new(cli:CLI)-class-method">
+    <div class="entry-detail" id="validate(data:Hash(String,JSON::Any),schema:Schema):Array(String)-class-method">
       <div class="signature">
         
-        def self.<strong>new</strong>(cli : <a href="../Jargon/CLI.html">CLI</a>)
+        def self.<strong>validate</strong>(data : Hash(String, JSON::Any), schema : <a href="../Jargon/Schema.html">Schema</a>) : Array(String)
 
-        <a class="method-permalink" href="#new%28cli%3ACLI%29-class-method">#</a>
+        <a class="method-permalink" href="#validate%28data%3AHash%28String%2CJSON%3A%3AAny%29%2Cschema%3ASchema%29%3AArray%28String%29-class-method">#</a>
       </div>
+      
+        <div class="doc">
+          
+          <p>Validate data against a schema. Returns an array of error strings (empty if valid).</p>
+        </div>
       
       <br/>
       <div>
         
-          [<a href="https://github.com/trans/jargon/blob/028c8fc34ef93000bab07f13cf540bce238573d2/src/jargon/completion.cr#L9" target="_blank">View source</a>]
+          [<a href="https://github.com/trans/jargon/blob/028c8fc34ef93000bab07f13cf540bce238573d2/src/jargon/validator.cr#L7" target="_blank">View source</a>]
         
       </div>
     </div>
@@ -293,66 +247,6 @@
   
 
   
-
-  
-  <h2>
-    <a id="instance-method-detail" class="anchor" href="#instance-method-detail">
-  <svg class="octicon-link" aria-hidden="true">
-    <use href="#octicon-link"/>
-  </svg>
-</a>
-    Instance Method Detail
-  </h2>
-  
-    <div class="entry-detail" id="bash:String-instance-method">
-      <div class="signature">
-        
-        def <strong>bash</strong> : String
-
-        <a class="method-permalink" href="#bash%3AString-instance-method">#</a>
-      </div>
-      
-      <br/>
-      <div>
-        
-          [<a href="https://github.com/trans/jargon/blob/028c8fc34ef93000bab07f13cf540bce238573d2/src/jargon/completion.cr#L12" target="_blank">View source</a>]
-        
-      </div>
-    </div>
-  
-    <div class="entry-detail" id="fish:String-instance-method">
-      <div class="signature">
-        
-        def <strong>fish</strong> : String
-
-        <a class="method-permalink" href="#fish%3AString-instance-method">#</a>
-      </div>
-      
-      <br/>
-      <div>
-        
-          [<a href="https://github.com/trans/jargon/blob/028c8fc34ef93000bab07f13cf540bce238573d2/src/jargon/completion.cr#L53" target="_blank">View source</a>]
-        
-      </div>
-    </div>
-  
-    <div class="entry-detail" id="zsh:String-instance-method">
-      <div class="signature">
-        
-        def <strong>zsh</strong> : String
-
-        <a class="method-permalink" href="#zsh%3AString-instance-method">#</a>
-      </div>
-      
-      <br/>
-      <div>
-        
-          [<a href="https://github.com/trans/jargon/blob/028c8fc34ef93000bab07f13cf540bce238573d2/src/jargon/completion.cr#L33" target="_blank">View source</a>]
-        
-      </div>
-    </div>
-  
-
 
 
 </div>

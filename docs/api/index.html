@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="generator" content="Crystal Docs 1.19.1">
-<meta name="crystal_docs.project_version" content="0.15.0-dev">
+<meta name="crystal_docs.project_version" content="main">
 <meta name="crystal_docs.project_name" content="jargon">
 
 
@@ -14,7 +14,7 @@
 <script type="text/javascript" src="js/doc.js"></script>
 
   <meta name="repository-name" content="jargon">
-  <title>jargon 0.15.0-dev</title>
+  <title>jargon main</title>
   <script type="text/javascript">
   CrystalDocs.base_path = "";
   </script>
@@ -45,7 +45,7 @@
       </h1>
 
       <span class="project-version">
-        0.15.0-dev
+        main
       </span>
     </div>
   </div>
@@ -112,6 +112,11 @@
       
     </li>
   
+  <li class=" " data-id="jargon/Jargon/Validator" data-name="jargon::validator">
+      <a href="Jargon/Validator.html">Validator</a>
+      
+    </li>
+  
 </ul>
 
       
@@ -136,7 +141,8 @@
   </svg>
 </a>Features</h2>
 <ul>
-<li><strong>Validation</strong>: Required fields, enum values, strict type checking</li>
+<li><strong>Validation</strong>: Required fields, enum values, strict type checking, <code>additionalProperties</code></li>
+<li><strong>Standalone validator</strong>: Use <code><a href="Jargon/Validator.html">Jargon::Validator</a></code> to validate data without the CLI parser</li>
 <li><strong>Defaults</strong>: Schema defaults, config file defaults, environment variables</li>
 <li><strong>Config files</strong>: Load from <code>.config/</code> (XDG spec) with deep merge support</li>
 <li><strong>Help text</strong>: Generated from schema descriptions</li>
@@ -293,6 +299,7 @@ result <span class="o">=</span> cli.parse([<span class="s">&quot;user.name=John&
 <li><code>format</code>: semantic formats (<code>email</code>, <code>uri</code>, <code>uuid</code>, <code>date</code>, <code>time</code>, <code>date-time</code>, <code>ipv4</code>, <code>ipv6</code>, <code>hostname</code>)</li>
 <li><code>enum</code>: allowed values (works for array items too)</li>
 <li><code>const</code>: exact value match</li>
+<li><code>additionalProperties</code>: when <code>false</code>, rejects unknown keys in objects</li>
 </ul>
 <h3><a id="boolean-flags" class="anchor" href="#boolean-flags">
   <svg class="octicon-link" aria-hidden="true">
@@ -830,6 +837,34 @@ cli.run(defaults: config) { <span class="o">|</span>result<span class="o">|</spa
 <span class="c"># From JSON</span>
 config <span class="o">=</span> <span class="t">JSON</span>.parse(<span class="t">File</span>.read(<span class="s">&quot;settings.json&quot;</span>))
 cli.run(defaults: config) { <span class="o">|</span>result<span class="o">|</span> ... }</code></pre>
+<h2><a id="standalone-validator" class="anchor" href="#standalone-validator">
+  <svg class="octicon-link" aria-hidden="true">
+    <use href="#octicon-link"/>
+  </svg>
+</a>Standalone Validator</h2>
+<p>Use <code><a href="Jargon/Validator.html">Jargon::Validator</a></code> to validate data against a schema without the CLI parser. This is useful for validating JSON from APIs, config files, or other sources:</p>
+<pre><code class="language-crystal"><span class="k">require</span> <span class="s">&quot;jargon&quot;</span>
+
+schema <span class="o">=</span> <span class="t">Jargon</span><span class="t">::</span><span class="t">Schema</span>.from_json(<span class="s">%({
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;properties&quot;: {
+    &quot;name&quot;: {&quot;type&quot;: &quot;string&quot;, &quot;minLength&quot;: 1},
+    &quot;age&quot;: {&quot;type&quot;: &quot;integer&quot;, &quot;minimum&quot;: 0},
+    &quot;role&quot;: {&quot;type&quot;: &quot;string&quot;, &quot;enum&quot;: [&quot;admin&quot;, &quot;user&quot;]}
+  },
+  &quot;required&quot;: [&quot;name&quot;],
+  &quot;additionalProperties&quot;: false
+})</span>)
+
+data <span class="o">=</span> {<span class="s">&quot;name&quot;</span> <span class="o">=&gt;</span> <span class="t">JSON</span><span class="t">::</span><span class="t">Any</span>.new(<span class="s">&quot;Alice&quot;</span>), <span class="s">&quot;age&quot;</span> <span class="o">=&gt;</span> <span class="t">JSON</span><span class="t">::</span><span class="t">Any</span>.new(<span class="n">30_i64</span>)}
+errors <span class="o">=</span> <span class="t">Jargon</span><span class="t">::</span><span class="t">Validator</span>.validate(data, schema)
+<span class="c"># =&gt; [] (empty = valid)</span>
+
+bad_data <span class="o">=</span> {<span class="s">&quot;name&quot;</span> <span class="o">=&gt;</span> <span class="t">JSON</span><span class="t">::</span><span class="t">Any</span>.new(<span class="s">&quot;&quot;</span>), <span class="s">&quot;extra&quot;</span> <span class="o">=&gt;</span> <span class="t">JSON</span><span class="t">::</span><span class="t">Any</span>.new(<span class="s">&quot;?&quot;</span>)}
+errors <span class="o">=</span> <span class="t">Jargon</span><span class="t">::</span><span class="t">Validator</span>.validate(bad_data, schema)
+<span class="c"># =&gt; [&quot;Value for name must be at least 1 characters&quot;,</span>
+<span class="c">#     &quot;Unknown property &#39;extra&#39;: additionalProperties is false&quot;]</span></code></pre>
+<p>The validator supports all the same constraints as CLI parsing: types, required fields, enums, numeric ranges, string patterns, formats, array constraints, <code>const</code>, <code>$ref</code>, nested objects, and <code>additionalProperties</code>.</p>
 <h2><a id="api" class="anchor" href="#api">
   <svg class="octicon-link" aria-hidden="true">
     <use href="#octicon-link"/>
@@ -892,7 +927,10 @@ cli.help(<span class="s">&quot;config set&quot;</span>) <span class="c"># =&gt; 
 <span class="c"># Completion scripts</span>
 cli.bash_completion  <span class="c"># =&gt; bash completion script</span>
 cli.zsh_completion   <span class="c"># =&gt; zsh completion script</span>
-cli.fish_completion  <span class="c"># =&gt; fish completion script</span></code></pre>
+cli.fish_completion  <span class="c"># =&gt; fish completion script</span>
+
+<span class="c"># Standalone validation (no CLI needed)</span>
+errors <span class="o">=</span> <span class="t">Jargon</span><span class="t">::</span><span class="t">Validator</span>.validate(data_hash, schema)  <span class="c"># =&gt; Array(String)</span></code></pre>
 <h2><a id="development" class="anchor" href="#development">
   <svg class="octicon-link" aria-hidden="true">
     <use href="#octicon-link"/>
@@ -925,6 +963,7 @@ crystal spec</code></pre>
     ├── schema.cr          <span class="c"># JSON Schema parsing</span>
     ├── schema<span class="o">/</span>property.cr <span class="c"># Property definitions</span>
     ├── result.cr          <span class="c"># Parse result container</span>
+    ├── validator.cr       <span class="c"># Standalone schema validator</span>
     ├── config.cr          <span class="c"># Config file loading (XDG)</span>
     ├── help.cr            <span class="c"># Help text generation</span>
     └── completion.cr      <span class="c"># Shell completion scripts</span>
