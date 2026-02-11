@@ -6,7 +6,8 @@ A Crystal library that generates CLI interfaces from JSON Schema definitions. De
 
 ## Features
 
-- **Validation**: Required fields, enum values, strict type checking
+- **Validation**: Required fields, enum values, strict type checking, `additionalProperties`
+- **Standalone validator**: Use `Jargon::Validator` to validate data without the CLI parser
 - **Defaults**: Schema defaults, config file defaults, environment variables
 - **Config files**: Load from `.config/` (XDG spec) with deep merge support
 - **Help text**: Generated from schema descriptions
@@ -171,6 +172,7 @@ Standard JSON Schema validation keywords are supported:
 - `format`: semantic formats (`email`, `uri`, `uuid`, `date`, `time`, `date-time`, `ipv4`, `ipv6`, `hostname`)
 - `enum`: allowed values (works for array items too)
 - `const`: exact value match
+- `additionalProperties`: when `false`, rejects unknown keys in objects
 
 ### Boolean Flags
 
@@ -807,6 +809,36 @@ config = JSON.parse(File.read("settings.json"))
 cli.run(defaults: config) { |result| ... }
 ```
 
+## Standalone Validator
+
+Use `Jargon::Validator` to validate data against a schema without the CLI parser. This is useful for validating JSON from APIs, config files, or other sources:
+
+```crystal
+require "jargon"
+
+schema = Jargon::Schema.from_json(%({
+  "type": "object",
+  "properties": {
+    "name": {"type": "string", "minLength": 1},
+    "age": {"type": "integer", "minimum": 0},
+    "role": {"type": "string", "enum": ["admin", "user"]}
+  },
+  "required": ["name"],
+  "additionalProperties": false
+}))
+
+data = {"name" => JSON::Any.new("Alice"), "age" => JSON::Any.new(30_i64)}
+errors = Jargon::Validator.validate(data, schema)
+# => [] (empty = valid)
+
+bad_data = {"name" => JSON::Any.new(""), "extra" => JSON::Any.new("?")}
+errors = Jargon::Validator.validate(bad_data, schema)
+# => ["Value for name must be at least 1 characters",
+#     "Unknown property 'extra': additionalProperties is false"]
+```
+
+The validator supports all the same constraints as CLI parsing: types, required fields, enums, numeric ranges, string patterns, formats, array constraints, `const`, `$ref`, nested objects, and `additionalProperties`.
+
 ## API
 
 ```crystal
@@ -868,6 +900,9 @@ cli.help("config set") # => help for nested subcommand
 cli.bash_completion  # => bash completion script
 cli.zsh_completion   # => zsh completion script
 cli.fish_completion  # => fish completion script
+
+# Standalone validation (no CLI needed)
+errors = Jargon::Validator.validate(data_hash, schema)  # => Array(String)
 ```
 
 ## Development
@@ -893,6 +928,7 @@ src/
     ├── schema.cr          # JSON Schema parsing
     ├── schema/property.cr # Property definitions
     ├── result.cr          # Parse result container
+    ├── validator.cr       # Standalone schema validator
     ├── config.cr          # Config file loading (XDG)
     ├── help.cr            # Help text generation
     └── completion.cr      # Shell completion scripts
