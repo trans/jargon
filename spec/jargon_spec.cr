@@ -2383,6 +2383,177 @@ describe Jargon do
     end
   end
 
+  describe "additionalProperties" do
+    it "allows unknown keys by default (additionalProperties absent)" do
+      schema = Jargon::Schema.from_json(%({
+        "type": "object",
+        "properties": {
+          "name": {"type": "string"}
+        }
+      }))
+
+      data = {"name" => JSON::Any.new("Alice"), "extra" => JSON::Any.new("value")}
+      errors = Jargon::Validator.validate(data, schema)
+      errors.should be_empty
+    end
+
+    it "allows unknown keys when additionalProperties is true" do
+      schema = Jargon::Schema.from_json(%({
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "name": {"type": "string"}
+        }
+      }))
+
+      data = {"name" => JSON::Any.new("Alice"), "extra" => JSON::Any.new("value")}
+      errors = Jargon::Validator.validate(data, schema)
+      errors.should be_empty
+    end
+
+    it "rejects unknown keys when additionalProperties is false" do
+      schema = Jargon::Schema.from_json(%({
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": {"type": "string"},
+          "age": {"type": "integer"}
+        }
+      }))
+
+      data = {"name" => JSON::Any.new("Alice"), "unknown" => JSON::Any.new("bad")}
+      errors = Jargon::Validator.validate(data, schema)
+      errors.size.should eq(1)
+      errors.first.should contain("Unknown property 'unknown'")
+      errors.first.should contain("additionalProperties is false")
+    end
+
+    it "reports multiple unknown keys" do
+      schema = Jargon::Schema.from_json(%({
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": {"type": "string"}
+        }
+      }))
+
+      data = {"name" => JSON::Any.new("Alice"), "foo" => JSON::Any.new("a"), "bar" => JSON::Any.new("b")}
+      errors = Jargon::Validator.validate(data, schema)
+      errors.size.should eq(2)
+    end
+
+    it "passes when all keys are known and additionalProperties is false" do
+      schema = Jargon::Schema.from_json(%({
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": {"type": "string"},
+          "age": {"type": "integer"}
+        }
+      }))
+
+      data = {"name" => JSON::Any.new("Alice"), "age" => JSON::Any.new(30_i64)}
+      errors = Jargon::Validator.validate(data, schema)
+      errors.should be_empty
+    end
+
+    it "works on nested objects" do
+      schema = Jargon::Schema.from_json(%({
+        "type": "object",
+        "properties": {
+          "user": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "name": {"type": "string"}
+            }
+          }
+        }
+      }))
+
+      data = {"user" => JSON::Any.new({"name" => JSON::Any.new("Alice"), "extra" => JSON::Any.new("bad")})}
+      errors = Jargon::Validator.validate(data, schema)
+      errors.size.should eq(1)
+      errors.first.should contain("Unknown property 'user.extra'")
+    end
+
+    it "works via CLI parse" do
+      cli = Jargon.cli("myapp", json: %({
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": {"type": "string"},
+          "verbose": {"type": "boolean"}
+        }
+      }))
+
+      result = cli.parse(["--name", "Alice", "--verbose"])
+      result.valid?.should be_true
+
+      # Stdin JSON can introduce unknown keys
+      input = IO::Memory.new(%({"name": "Alice", "unknown": "bad"}))
+      result = cli.parse(["-"], input)
+      result.valid?.should be_false
+      result.errors.first.should contain("Unknown property 'unknown'")
+    end
+  end
+
+  describe "Jargon::Validator" do
+    it "validates data directly against a schema" do
+      schema = Jargon::Schema.from_json(%({
+        "type": "object",
+        "properties": {
+          "name": {"type": "string"},
+          "age": {"type": "integer"}
+        },
+        "required": ["name"]
+      }))
+
+      errors = Jargon::Validator.validate({"name" => JSON::Any.new("Alice")} of String => JSON::Any, schema)
+      errors.should be_empty
+    end
+
+    it "returns errors for invalid data" do
+      schema = Jargon::Schema.from_json(%({
+        "type": "object",
+        "properties": {
+          "name": {"type": "string"},
+          "age": {"type": "integer", "minimum": 0}
+        },
+        "required": ["name"]
+      }))
+
+      errors = Jargon::Validator.validate({} of String => JSON::Any, schema)
+      errors.should contain("Missing required field: name")
+    end
+
+    it "validates numeric constraints" do
+      schema = Jargon::Schema.from_json(%({
+        "type": "object",
+        "properties": {
+          "port": {"type": "integer", "minimum": 1, "maximum": 65535}
+        }
+      }))
+
+      errors = Jargon::Validator.validate({"port" => JSON::Any.new(0_i64)}, schema)
+      errors.size.should eq(1)
+      errors.first.should contain("must be >= 1")
+    end
+
+    it "validates enum constraints" do
+      schema = Jargon::Schema.from_json(%({
+        "type": "object",
+        "properties": {
+          "level": {"type": "string", "enum": ["info", "warn", "error"]}
+        }
+      }))
+
+      errors = Jargon::Validator.validate({"level" => JSON::Any.new("debug")}, schema)
+      errors.size.should eq(1)
+      errors.first.should contain("must be one of")
+    end
+  end
+
   describe "shell completion" do
     describe "bash completion" do
       it "generates completion for flat CLI with flags" do

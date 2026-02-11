@@ -34,6 +34,7 @@ module Jargon
     getter pattern : Regex?
     getter const : JSON::Any?
     getter format : String?
+    getter additional_properties : Bool?
 
     def initialize(
       @name : String,
@@ -60,6 +61,7 @@ module Jargon
       @pattern : Regex? = nil,
       @const : JSON::Any? = nil,
       @format : String? = nil,
+      @additional_properties : Bool? = nil,
     )
     end
 
@@ -94,6 +96,9 @@ module Jargon
 
       # Format
       format = json["format"]?.try(&.as_s?)
+
+      # Additional properties
+      additional_properties = json["additionalProperties"]?.try(&.as_bool?)
 
       # String pattern
       pattern = if pattern_str = json["pattern"]?.try(&.as_s?)
@@ -135,7 +140,8 @@ module Jargon
         unique_items: unique_items,
         pattern: pattern,
         const: const_value,
-        format: format
+        format: format,
+        additional_properties: additional_properties
       )
     end
 

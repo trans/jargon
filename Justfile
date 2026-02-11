@@ -1,4 +1,4 @@
-# IPCK - Intelligent Project Construction Kit
+# Jargon - Define your CLI jargon with JSON Schema
 
 # Default task
 default: check
@@ -13,19 +13,19 @@ update:
 
 # Check syntax (fast, no codegen)
 check:
-  crystal build --no-codegen src/ipck.cr
+  crystal build --no-codegen src/jargon.cr
 
 # Build the binary
 build:
-  crystal build src/cli.cr -o bin/ipck
+  crystal build src/jargon.cr -o bin/jargon
 
 # Build release binary
 release:
-  crystal build --release src/cli.cr -o bin/ipck
+  crystal build --release src/jargon.cr -o bin/jargon
 
 # Run the REPL
 run:
-  crystal run src/cli.cr
+  crystal run src/jargon.cr
 
 # Run all tests
 test:
@@ -59,7 +59,7 @@ fmt-check:
 
 # Clean build artifacts
 clean:
-  rm -rf docs/api lib .crystal .shards bin/ipck
+  rm -rf docs/api lib .crystal .shards bin/jargon
 
 # Full rebuild
 rebuild: clean install check

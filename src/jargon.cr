@@ -1,10 +1,11 @@
 require "./jargon/schema"
+require "./jargon/validator"
 require "./jargon/cli"
 require "./jargon/result"
 require "./jargon/completion"
 
 module Jargon
-  VERSION = "0.15.0"
+  VERSION = "0.16.0"
 
   class ParseError < Exception
     getter errors : Array(String)
