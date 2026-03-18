@@ -608,6 +608,74 @@ describe Jargon do
       result = cli.parse(["--ip", "999.999.999.999"])
       result.valid?.should be_false
     end
+
+    it "validates format: path (always valid)" do
+      cli = Jargon.cli("cli", json: %({
+        "type": "object",
+        "properties": {
+          "file": {"type": "string", "format": "path"}
+        }
+      }))
+
+      result = cli.parse(["--file", "/tmp/test.txt"])
+      result.valid?.should be_true
+
+      result = cli.parse(["--file", "relative/path"])
+      result.valid?.should be_true
+    end
+
+    it "expands ~ in format: path values" do
+      cli = Jargon.cli("cli", json: %({
+        "type": "object",
+        "properties": {
+          "file": {"type": "string", "format": "path"}
+        }
+      }))
+
+      result = cli.parse(["--file", "~/documents/test.txt"])
+      result.valid?.should be_true
+      result["file"].as_s.should eq(Path.home.to_s + "/documents/test.txt")
+
+      result = cli.parse(["--file", "~"])
+      result["file"].as_s.should eq(Path.home.to_s)
+    end
+
+    it "does not expand ~ in non-path strings" do
+      cli = Jargon.cli("cli", json: %({
+        "type": "object",
+        "properties": {
+          "name": {"type": "string"}
+        }
+      }))
+
+      result = cli.parse(["--name", "~/something"])
+      result["name"].as_s.should eq("~/something")
+    end
+  end
+
+  describe "service hint" do
+    it "exposes service? on root property" do
+      cli = Jargon.cli("cli", json: %({
+        "type": "object",
+        "service": true,
+        "properties": {
+          "port": {"type": "integer"}
+        }
+      }))
+
+      cli.schema.not_nil!.root.service?.should be_true
+    end
+
+    it "defaults service? to false" do
+      cli = Jargon.cli("cli", json: %({
+        "type": "object",
+        "properties": {
+          "name": {"type": "string"}
+        }
+      }))
+
+      cli.schema.not_nil!.root.service?.should be_false
+    end
   end
 
   describe "defaults" do

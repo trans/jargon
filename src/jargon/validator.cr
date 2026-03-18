@@ -228,6 +228,8 @@ module Jargon
         value.matches?(/^([0-9a-f]{0,4}:){2,7}[0-9a-f]{0,4}$/i)
       when "hostname"
         value.matches?(/^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*$/i)
+      when "path"
+        true # Any string is a valid path; expansion happens at the CLI layer
       else
         true # Unknown formats pass (per JSON Schema spec)
       end

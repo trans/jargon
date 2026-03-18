@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="generator" content="Crystal Docs 1.19.1">
-<meta name="crystal_docs.project_version" content="main">
+<meta name="crystal_docs.project_version" content="0.16.0-dev">
 <meta name="crystal_docs.project_name" content="jargon">
 
 
@@ -14,7 +14,7 @@
 <script type="text/javascript" src="js/doc.js"></script>
 
   <meta name="repository-name" content="jargon">
-  <title>jargon main</title>
+  <title>jargon 0.16.0-dev</title>
   <script type="text/javascript">
   CrystalDocs.base_path = "";
   </script>
@@ -45,7 +45,7 @@
       </h1>
 
       <span class="project-version">
-        main
+        0.16.0-dev
       </span>
     </div>
   </div>
@@ -279,6 +279,7 @@ result <span class="o">=</span> cli.parse([<span class="s">&quot;user.name=John&
     &quot;password&quot;: {&quot;type&quot;: &quot;string&quot;, &quot;minLength&quot;: 8, &quot;maxLength&quot;: 64},
     &quot;email&quot;: {&quot;type&quot;: &quot;string&quot;, &quot;format&quot;: &quot;email&quot;},
     &quot;website&quot;: {&quot;type&quot;: &quot;string&quot;, &quot;format&quot;: &quot;uri&quot;},
+    &quot;config&quot;: {&quot;type&quot;: &quot;string&quot;, &quot;format&quot;: &quot;path&quot;},
     &quot;level&quot;: {&quot;type&quot;: &quot;string&quot;, &quot;enum&quot;: [&quot;debug&quot;, &quot;info&quot;, &quot;warn&quot;, &quot;error&quot;]},
     &quot;files&quot;: {&quot;type&quot;: &quot;array&quot;, &quot;minItems&quot;: 1, &quot;maxItems&quot;: 10, &quot;uniqueItems&quot;: true},
     &quot;apiVersion&quot;: {&quot;type&quot;: &quot;string&quot;, &quot;const&quot;: &quot;v1&quot;},
@@ -296,10 +297,11 @@ result <span class="o">=</span> cli.parse([<span class="s">&quot;user.name=John&
 <li><code>minItems</code>/<code>maxItems</code>: array length</li>
 <li><code>uniqueItems</code>: no duplicate values in array</li>
 <li><code>pattern</code>: regex validation for strings</li>
-<li><code>format</code>: semantic formats (<code>email</code>, <code>uri</code>, <code>uuid</code>, <code>date</code>, <code>time</code>, <code>date-time</code>, <code>ipv4</code>, <code>ipv6</code>, <code>hostname</code>)</li>
+<li><code>format</code>: semantic formats (<code>email</code>, <code>uri</code>, <code>uuid</code>, <code>date</code>, <code>time</code>, <code>date-time</code>, <code>ipv4</code>, <code>ipv6</code>, <code>hostname</code>, <code>path</code>). The <code>path</code> format expands <code>~</code> to the user's home directory</li>
 <li><code>enum</code>: allowed values (works for array items too)</li>
 <li><code>const</code>: exact value match</li>
 <li><code>additionalProperties</code>: when <code>false</code>, rejects unknown keys in objects</li>
+<li><code>service</code>: when <code>true</code>, marks the command as a long-running service (UI hint for consumers)</li>
 </ul>
 <h3><a id="boolean-flags" class="anchor" href="#boolean-flags">
   <svg class="octicon-link" aria-hidden="true">

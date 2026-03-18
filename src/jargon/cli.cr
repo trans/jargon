@@ -862,7 +862,23 @@ module Jargon
         items = value.split(",").map { |v| JSON::Any.new(v.strip) }
         {JSON::Any.new(items), nil}
       else
-        {JSON::Any.new(value), nil}
+        # Expand ~ for path format
+        if prop.try(&.format) == "path"
+          expanded = expand_tilde(value)
+          {JSON::Any.new(expanded), nil}
+        else
+          {JSON::Any.new(value), nil}
+        end
+      end
+    end
+
+    private def expand_tilde(path : String) : String
+      if path == "~"
+        Path.home.to_s
+      elsif path.starts_with?("~/")
+        Path.home.to_s + path[1..]
+      else
+        path
       end
     end
 

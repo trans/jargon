@@ -35,6 +35,7 @@ module Jargon
     getter const : JSON::Any?
     getter format : String?
     getter additional_properties : Bool?
+    getter? service : Bool
 
     def initialize(
       @name : String,
@@ -62,6 +63,7 @@ module Jargon
       @const : JSON::Any? = nil,
       @format : String? = nil,
       @additional_properties : Bool? = nil,
+      @service : Bool = false,
     )
     end
 
@@ -99,6 +101,9 @@ module Jargon
 
       # Additional properties
       additional_properties = json["additionalProperties"]?.try(&.as_bool?)
+
+      # Service hint (long-running command)
+      service = json["service"]?.try(&.as_bool?) || false
 
       # String pattern
       pattern = if pattern_str = json["pattern"]?.try(&.as_s?)
@@ -141,7 +146,8 @@ module Jargon
         pattern: pattern,
         const: const_value,
         format: format,
-        additional_properties: additional_properties
+        additional_properties: additional_properties,
+        service: service
       )
     end
 

@@ -151,6 +151,7 @@ Standard JSON Schema validation keywords are supported:
     "password": {"type": "string", "minLength": 8, "maxLength": 64},
     "email": {"type": "string", "format": "email"},
     "website": {"type": "string", "format": "uri"},
+    "config": {"type": "string", "format": "path"},
     "level": {"type": "string", "enum": ["debug", "info", "warn", "error"]},
     "files": {"type": "array", "minItems": 1, "maxItems": 10, "uniqueItems": true},
     "apiVersion": {"type": "string", "const": "v1"},
@@ -169,10 +170,11 @@ Standard JSON Schema validation keywords are supported:
 - `minItems`/`maxItems`: array length
 - `uniqueItems`: no duplicate values in array
 - `pattern`: regex validation for strings
-- `format`: semantic formats (`email`, `uri`, `uuid`, `date`, `time`, `date-time`, `ipv4`, `ipv6`, `hostname`)
+- `format`: semantic formats (`email`, `uri`, `uuid`, `date`, `time`, `date-time`, `ipv4`, `ipv6`, `hostname`, `path`). The `path` format expands `~` to the user's home directory
 - `enum`: allowed values (works for array items too)
 - `const`: exact value match
 - `additionalProperties`: when `false`, rejects unknown keys in objects
+- `service`: when `true`, marks the command as a long-running service (UI hint for consumers)
 
 ### Boolean Flags
 
