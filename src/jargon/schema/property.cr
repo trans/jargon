@@ -68,7 +68,17 @@ module Jargon
     end
 
     def self.from_json(name : String, json : JSON::Any, required_fields : Array(String) = [] of String) : Property
-      type = parse_type(json["type"]?.try(&.as_s?) || "string")
+      # When type is omitted, infer it from structural keywords (JSON Schema
+      # semantics: properties/items imply the shape; omitted type is not "string")
+      declared = json["type"]?.try(&.as_s?)
+      type = parse_type(declared || (json["properties"]? ? "object" : (json["items"]? ? "array" : "string")))
+
+      if declared && !type.object? && json["properties"]?
+        raise ArgumentError.new("Schema '#{name}' declares type '#{declared}' but has 'properties' (did you mean type: object?)")
+      end
+      if declared && !type.array? && json["items"]?
+        raise ArgumentError.new("Schema '#{name}' declares type '#{declared}' but has 'items' (did you mean type: array?)")
+      end
       description = json["description"]?.try(&.as_s?)
       default = json["default"]?
       enum_values = json["enum"]?.try(&.as_a?)

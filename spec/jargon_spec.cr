@@ -1513,6 +1513,77 @@ describe Jargon do
       result["force"].as_bool.should be_true
     end
 
+    it "infers type: object when multi-doc YAML omits type but has properties" do
+      yaml = <<-YAML
+        ---
+        name: fmt
+        description: Format files
+        positional: [file]
+        properties:
+          file:
+            type: string
+          output:
+            type: string
+            short: o
+            description: Output path
+        ---
+        name: check
+        description: Check files
+        properties:
+          group:
+            type: string
+            short: g
+        YAML
+
+      cli = Jargon.cli("myapp", yaml: yaml)
+
+      result = cli.parse(["fmt", "in.c0", "--output", "out.c0"])
+      result.valid?.should be_true
+      result["output"].as_s.should eq("out.c0")
+
+      result = cli.parse(["fmt", "in.c0", "-o", "out.c0"])
+      result.valid?.should be_true
+      result["output"].as_s.should eq("out.c0")
+
+      result = cli.parse(["check", "-g", "indent"])
+      result.valid?.should be_true
+      result["group"].as_s.should eq("indent")
+
+      help = cli.help("fmt")
+      help.should contain("Arguments:")
+      help.should contain("file")
+      help.should contain("-o, --output")
+    end
+
+    it "infers type: array when type is omitted but items is present" do
+      schema = Jargon::Schema.from_json(%({
+        "properties": {
+          "tags": {"items": {"type": "string"}}
+        }
+      }))
+      tags = schema.root.properties.not_nil!["tags"]
+      tags.type.array?.should be_true
+      tags.items.not_nil!.type.string?.should be_true
+    end
+
+    it "raises when properties is present under an explicit non-object type" do
+      expect_raises(ArgumentError, /type 'string' but has 'properties'/) do
+        Jargon::Schema.from_json(%({
+          "type": "string",
+          "properties": {"name": {"type": "string"}}
+        }))
+      end
+    end
+
+    it "raises when items is present under an explicit non-array type" do
+      expect_raises(ArgumentError, /type 'object' but has 'items'/) do
+        Jargon::Schema.from_json(%({
+          "type": "object",
+          "items": {"type": "string"}
+        }))
+      end
+    end
+
     it "loads multi-doc as nested subcommands when name provided" do
       File.write("/tmp/test_nested_multi.yaml", <<-YAML)
         ---
