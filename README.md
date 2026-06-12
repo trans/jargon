@@ -842,10 +842,10 @@ Annotations are exposed through the schema introspection API:
 schema = cli.subcommands["forget"].as(Jargon::Schema)
 
 schema.root.extensions             # => {"x-ui" => {"destructive" => true}}
-schema.root.extension("ui")        # => {"destructive" => true} ("ui" and "x-ui" both work)
+schema.root.extensions["x-ui"]?    # => keys are stored exactly as written
 
 query = schema.root.properties.not_nil!["query"]
-query.extension("ui").not_nil!["control"]  # => "typeahead"
+query.extensions["x-ui"]["control"]  # => "typeahead"
 ```
 
 Jargon assigns no meaning to any `x-` key — define whatever vocabulary your
@@ -953,8 +953,8 @@ schema = cli.subcommands["name"]       # => Jargon::Schema | Jargon::CLI
 schema.root                            # => Jargon::Property (command-level)
 schema.root.properties                 # => Hash(String, Property)?
 schema.positional                      # => Array(String)
-property.extensions                    # => Hash(String, JSON::Any) (x-* annotations)
-property.extension("ui")               # => JSON::Any? (finds "ui" or "x-ui")
+property.extensions                    # => Hash(String, JSON::Any) (x-* annotations, keys as written)
+property.extensions["x-ui"]?           # => JSON::Any?
 ```
 
 ## Development

@@ -69,13 +69,6 @@ module Jargon
     )
     end
 
-    # Look up a consumer-defined `x-` extension annotation by key.
-    # Accepts the bare name or the prefixed form: `extension("ui")` and
-    # `extension("x-ui")` both find `x-ui`.
-    def extension(key : String) : JSON::Any?
-      extensions[key]? || extensions["x-#{key}"]?
-    end
-
     def self.from_json(name : String, json : JSON::Any, required_fields : Array(String) = [] of String) : Property
       # When type is omitted, infer it from structural keywords (JSON Schema
       # semantics: properties/items imply the shape; omitted type is not "string")

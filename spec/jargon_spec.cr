@@ -1771,8 +1771,8 @@ describe Jargon do
 
       query = schema.root.properties.not_nil!["query"]
       query.extensions["x-ui"]["control"].as_s.should eq("typeahead")
-      query.extension("ui").not_nil!["source"].as_s.should eq("documents")
-      query.extension("x-ui").not_nil!["control"].as_s.should eq("typeahead")
+      query.extensions["x-ui"]["source"].as_s.should eq("documents")
+      query.extensions["ui"]?.should be_nil
     end
 
     it "preserves doc-level x-* keys on the root property (command annotations)" do
@@ -1799,11 +1799,11 @@ describe Jargon do
       cli = Jargon.cli("transfs", yaml: yaml)
 
       forget = cli.subcommands["forget"].as(Jargon::Schema)
-      forget.root.extension("ui").not_nil!["destructive"].as_bool.should be_true
-      forget.root.properties.not_nil!["query"].extension("ui").not_nil!["control"].as_s.should eq("typeahead")
+      forget.root.extensions["x-ui"]["destructive"].as_bool.should be_true
+      forget.root.properties.not_nil!["query"].extensions["x-ui"]["control"].as_s.should eq("typeahead")
 
       add = cli.subcommands["add"].as(Jargon::Schema)
-      add.root.extension("ui").not_nil!["control"].as_s.should eq("dropzone")
+      add.root.extensions["x-ui"]["control"].as_s.should eq("dropzone")
     end
 
     it "ignores x-* keys for parsing and validation" do
@@ -1831,7 +1831,7 @@ describe Jargon do
       result.data.as_h.has_key?("x-ui").should be_false
     end
 
-    it "returns nil from extension lookup when no annotation exists" do
+    it "has empty extensions when no annotations exist" do
       schema = Jargon::Schema.from_json(%({
         "type": "object",
         "properties": {"name": {"type": "string"}}
@@ -1839,7 +1839,7 @@ describe Jargon do
 
       prop = schema.root.properties.not_nil!["name"]
       prop.extensions.empty?.should be_true
-      prop.extension("ui").should be_nil
+      prop.extensions["x-ui"]?.should be_nil
     end
   end
 
