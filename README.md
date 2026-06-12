@@ -21,6 +21,7 @@ A Crystal library that generates CLI interfaces from JSON Schema definitions. De
 - **Stdin JSON**: Read arguments as JSON from stdin with `-`
 - **Typo suggestions**: "Did you mean?" for mistyped options
 - **$ref support**: Reuse definitions with `$ref: "#/$defs/typename"`
+- **Extension annotations**: `x-*` keys pass through untouched for GUI/tooling consumers
 
 ## Installation
 
@@ -175,6 +176,7 @@ Standard JSON Schema validation keywords are supported:
 - `const`: exact value match
 - `additionalProperties`: when `false`, rejects unknown keys in objects
 - `service`: when `true`, marks the command as a long-running service (UI hint for consumers)
+- `x-*`: any key starting with `x-` is preserved verbatim as an extension annotation (see [Extension Annotations](#extension-annotations-x-))
 
 ### Boolean Flags
 
@@ -811,6 +813,45 @@ config = JSON.parse(File.read("settings.json"))
 cli.run(defaults: config) { |result| ... }
 ```
 
+## Extension Annotations (x-*)
+
+Schema keys starting with `x-` are treated as consumer-defined metadata,
+following the JSON Schema / OpenAPI extension convention. Jargon preserves
+them verbatim — on commands (doc level) and on individual properties — and
+ignores them completely for parsing and validation. This gives downstream
+consumers (a GUI, a docs generator, an AI tool layer) an open vocabulary of
+hints carried by the same schema that drives the CLI:
+
+```yaml
+---
+name: forget
+description: Remove a document from the store
+x-ui:
+  destructive: true        # GUI: confirm before running
+properties:
+  query:
+    type: string
+    x-ui:
+      control: typeahead   # GUI: render a search box, not a text field
+      source: documents
+```
+
+Annotations are exposed through the schema introspection API:
+
+```crystal
+schema = cli.subcommands["forget"].as(Jargon::Schema)
+
+schema.root.extensions             # => {"x-ui" => {"destructive" => true}}
+schema.root.extension("ui")        # => {"destructive" => true} ("ui" and "x-ui" both work)
+
+query = schema.root.properties.not_nil!["query"]
+query.extension("ui").not_nil!["control"]  # => "typeahead"
+```
+
+Jargon assigns no meaning to any `x-` key — define whatever vocabulary your
+consumers need. (The built-in `service` hint predates this mechanism and
+remains first-class.)
+
 ## Standalone Validator
 
 Use `Jargon::Validator` to validate data against a schema without the CLI parser. This is useful for validating JSON from APIs, config files, or other sources:
@@ -905,6 +946,15 @@ cli.fish_completion  # => fish completion script
 
 # Standalone validation (no CLI needed)
 errors = Jargon::Validator.validate(data_hash, schema)  # => Array(String)
+
+# Schema introspection (for GUI/tooling consumers)
+schema = cli.schema                    # => Jargon::Schema? (root schema, if any)
+schema = cli.subcommands["name"]       # => Jargon::Schema | Jargon::CLI
+schema.root                            # => Jargon::Property (command-level)
+schema.root.properties                 # => Hash(String, Property)?
+schema.positional                      # => Array(String)
+property.extensions                    # => Hash(String, JSON::Any) (x-* annotations)
+property.extension("ui")               # => JSON::Any? (finds "ui" or "x-ui")
 ```
 
 ## Development

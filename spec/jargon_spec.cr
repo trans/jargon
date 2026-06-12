@@ -1757,6 +1757,92 @@ describe Jargon do
     end
   end
 
+  describe "extension annotations (x-*)" do
+    it "preserves x-* keys on properties and exposes them via extensions" do
+      schema = Jargon::Schema.from_json(%({
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "x-ui": {"control": "typeahead", "source": "documents"}
+          }
+        }
+      }))
+
+      query = schema.root.properties.not_nil!["query"]
+      query.extensions["x-ui"]["control"].as_s.should eq("typeahead")
+      query.extension("ui").not_nil!["source"].as_s.should eq("documents")
+      query.extension("x-ui").not_nil!["control"].as_s.should eq("typeahead")
+    end
+
+    it "preserves doc-level x-* keys on the root property (command annotations)" do
+      yaml = <<-YAML
+        ---
+        name: forget
+        description: Remove a document
+        x-ui:
+          destructive: true
+        properties:
+          query:
+            type: string
+            x-ui:
+              control: typeahead
+        ---
+        name: add
+        x-ui:
+          control: dropzone
+        properties:
+          file:
+            type: string
+        YAML
+
+      cli = Jargon.cli("transfs", yaml: yaml)
+
+      forget = cli.subcommands["forget"].as(Jargon::Schema)
+      forget.root.extension("ui").not_nil!["destructive"].as_bool.should be_true
+      forget.root.properties.not_nil!["query"].extension("ui").not_nil!["control"].as_s.should eq("typeahead")
+
+      add = cli.subcommands["add"].as(Jargon::Schema)
+      add.root.extension("ui").not_nil!["control"].as_s.should eq("dropzone")
+    end
+
+    it "ignores x-* keys for parsing and validation" do
+      yaml = <<-YAML
+        ---
+        name: forget
+        x-ui:
+          destructive: true
+        properties:
+          query:
+            type: string
+            x-ui:
+              control: typeahead
+        ---
+        name: add
+        properties:
+          file:
+            type: string
+        YAML
+
+      cli = Jargon.cli("transfs", yaml: yaml)
+      result = cli.parse(["forget", "--query", "report"])
+      result.valid?.should be_true
+      result["query"].as_s.should eq("report")
+      result.data.as_h.has_key?("x-ui").should be_false
+    end
+
+    it "returns nil from extension lookup when no annotation exists" do
+      schema = Jargon::Schema.from_json(%({
+        "type": "object",
+        "properties": {"name": {"type": "string"}}
+      }))
+
+      prop = schema.root.properties.not_nil!["name"]
+      prop.extensions.empty?.should be_true
+      prop.extension("ui").should be_nil
+    end
+  end
+
   describe "subcommand abbreviations" do
     it "matches unambiguous prefix" do
       cli = Jargon.new("myapp")

@@ -36,6 +36,7 @@ module Jargon
     getter format : String?
     getter additional_properties : Bool?
     getter? service : Bool
+    getter extensions : Hash(String, JSON::Any)
 
     def initialize(
       @name : String,
@@ -64,7 +65,15 @@ module Jargon
       @format : String? = nil,
       @additional_properties : Bool? = nil,
       @service : Bool = false,
+      @extensions : Hash(String, JSON::Any) = {} of String => JSON::Any,
     )
+    end
+
+    # Look up a consumer-defined `x-` extension annotation by key.
+    # Accepts the bare name or the prefixed form: `extension("ui")` and
+    # `extension("x-ui")` both find `x-ui`.
+    def extension(key : String) : JSON::Any?
+      extensions[key]? || extensions["x-#{key}"]?
     end
 
     def self.from_json(name : String, json : JSON::Any, required_fields : Array(String) = [] of String) : Property
@@ -115,6 +124,15 @@ module Jargon
       # Service hint (long-running command)
       service = json["service"]?.try(&.as_bool?) || false
 
+      # Consumer-defined extension annotations (x-ui, x-anything): preserved
+      # verbatim for introspection, ignored by parsing and validation
+      extensions = {} of String => JSON::Any
+      if hash = json.as_h?
+        hash.each do |key, value|
+          extensions[key] = value if key.starts_with?("x-")
+        end
+      end
+
       # String pattern
       pattern = if pattern_str = json["pattern"]?.try(&.as_s?)
                   Regex.new(pattern_str)
@@ -157,7 +175,8 @@ module Jargon
         const: const_value,
         format: format,
         additional_properties: additional_properties,
-        service: service
+        service: service,
+        extensions: extensions
       )
     end
 
