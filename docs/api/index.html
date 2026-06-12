@@ -4,8 +4,8 @@
   <meta charset="utf-8" />
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="generator" content="Crystal Docs 1.19.1">
-<meta name="crystal_docs.project_version" content="0.16.0-dev">
+<meta name="generator" content="Crystal Docs 1.20.2">
+<meta name="crystal_docs.project_version" content="main">
 <meta name="crystal_docs.project_name" content="jargon">
 
 
@@ -14,7 +14,7 @@
 <script type="text/javascript" src="js/doc.js"></script>
 
   <meta name="repository-name" content="jargon">
-  <title>jargon 0.16.0-dev</title>
+  <title>jargon main</title>
   <script type="text/javascript">
   CrystalDocs.base_path = "";
   </script>
@@ -45,7 +45,7 @@
       </h1>
 
       <span class="project-version">
-        0.16.0-dev
+        main
       </span>
     </div>
   </div>
@@ -156,6 +156,7 @@
 <li><strong>Stdin JSON</strong>: Read arguments as JSON from stdin with <code>-</code></li>
 <li><strong>Typo suggestions</strong>: &quot;Did you mean?&quot; for mistyped options</li>
 <li><strong>$ref support</strong>: Reuse definitions with <code>$ref: &quot;#/$defs/typename&quot;</code></li>
+<li><strong>Extension annotations</strong>: <code>x-*</code> keys pass through untouched for GUI/tooling consumers</li>
 </ul>
 <h2><a id="installation" class="anchor" href="#installation">
   <svg class="octicon-link" aria-hidden="true">
@@ -302,6 +303,7 @@ result <span class="o">=</span> cli.parse([<span class="s">&quot;user.name=John&
 <li><code>const</code>: exact value match</li>
 <li><code>additionalProperties</code>: when <code>false</code>, rejects unknown keys in objects</li>
 <li><code>service</code>: when <code>true</code>, marks the command as a long-running service (UI hint for consumers)</li>
+<li><code>x-*</code>: any key starting with <code>x-</code> is preserved verbatim as an extension annotation (see <a href="#extension-annotations-x-">Extension Annotations</a>)</li>
 </ul>
 <h3><a id="boolean-flags" class="anchor" href="#boolean-flags">
   <svg class="octicon-link" aria-hidden="true">
@@ -839,6 +841,39 @@ cli.run(defaults: config) { <span class="o">|</span>result<span class="o">|</spa
 <span class="c"># From JSON</span>
 config <span class="o">=</span> <span class="t">JSON</span>.parse(<span class="t">File</span>.read(<span class="s">&quot;settings.json&quot;</span>))
 cli.run(defaults: config) { <span class="o">|</span>result<span class="o">|</span> ... }</code></pre>
+<h2><a id="extension-annotations-x-" class="anchor" href="#extension-annotations-x-">
+  <svg class="octicon-link" aria-hidden="true">
+    <use href="#octicon-link"/>
+  </svg>
+</a>Extension Annotations (x-*)</h2>
+<p>Schema keys starting with <code>x-</code> are treated as consumer-defined metadata,
+following the JSON Schema / OpenAPI extension convention. Jargon preserves
+them verbatim — on commands (doc level) and on individual properties — and
+ignores them completely for parsing and validation. This gives downstream
+consumers (a GUI, a docs generator, an AI tool layer) an open vocabulary of
+hints carried by the same schema that drives the CLI:</p>
+<pre><code class="language-yaml">---
+name: forget
+description: Remove a document from the store
+x-ui:
+  destructive: true        # GUI: confirm before running
+properties:
+  query:
+    type: string
+    x-ui:
+      control: typeahead   # GUI: render a search box, not a text field
+      source: documents</code></pre>
+<p>Annotations are exposed through the schema introspection API:</p>
+<pre><code class="language-crystal">schema <span class="o">=</span> cli.subcommands[<span class="s">&quot;forget&quot;</span>].<span class="k">as</span>(<span class="t">Jargon</span><span class="t">::</span><span class="t">Schema</span>)
+
+schema.root.extensions             <span class="c"># =&gt; {&quot;x-ui&quot; =&gt; {&quot;destructive&quot; =&gt; true}}</span>
+schema.root.extension(<span class="s">&quot;ui&quot;</span>)        <span class="c"># =&gt; {&quot;destructive&quot; =&gt; true} (&quot;ui&quot; and &quot;x-ui&quot; both work)</span>
+
+query <span class="o">=</span> schema.root.properties.not_nil![<span class="s">&quot;query&quot;</span>]
+query.extension(<span class="s">&quot;ui&quot;</span>).not_nil![<span class="s">&quot;control&quot;</span>]  <span class="c"># =&gt; &quot;typeahead&quot;</span></code></pre>
+<p>Jargon assigns no meaning to any <code>x-</code> key — define whatever vocabulary your
+consumers need. (The built-in <code>service</code> hint predates this mechanism and
+remains first-class.)</p>
 <h2><a id="standalone-validator" class="anchor" href="#standalone-validator">
   <svg class="octicon-link" aria-hidden="true">
     <use href="#octicon-link"/>
@@ -932,7 +967,16 @@ cli.zsh_completion   <span class="c"># =&gt; zsh completion script</span>
 cli.fish_completion  <span class="c"># =&gt; fish completion script</span>
 
 <span class="c"># Standalone validation (no CLI needed)</span>
-errors <span class="o">=</span> <span class="t">Jargon</span><span class="t">::</span><span class="t">Validator</span>.validate(data_hash, schema)  <span class="c"># =&gt; Array(String)</span></code></pre>
+errors <span class="o">=</span> <span class="t">Jargon</span><span class="t">::</span><span class="t">Validator</span>.validate(data_hash, schema)  <span class="c"># =&gt; Array(String)</span>
+
+<span class="c"># Schema introspection (for GUI/tooling consumers)</span>
+schema <span class="o">=</span> cli.schema                    <span class="c"># =&gt; Jargon::Schema? (root schema, if any)</span>
+schema <span class="o">=</span> cli.subcommands[<span class="s">&quot;name&quot;</span>]       <span class="c"># =&gt; Jargon::Schema | Jargon::CLI</span>
+schema.root                            <span class="c"># =&gt; Jargon::Property (command-level)</span>
+schema.root.properties                 <span class="c"># =&gt; Hash(String, Property)?</span>
+schema.positional                      <span class="c"># =&gt; Array(String)</span>
+property.extensions                    <span class="c"># =&gt; Hash(String, JSON::Any) (x-* annotations)</span>
+property.extension(<span class="s">&quot;ui&quot;</span>)               <span class="c"># =&gt; JSON::Any? (finds &quot;ui&quot; or &quot;x-ui&quot;)</span></code></pre>
 <h2><a id="development" class="anchor" href="#development">
   <svg class="octicon-link" aria-hidden="true">
     <use href="#octicon-link"/>
