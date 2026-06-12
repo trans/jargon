@@ -867,10 +867,10 @@ properties:
 <pre><code class="language-crystal">schema <span class="o">=</span> cli.subcommands[<span class="s">&quot;forget&quot;</span>].<span class="k">as</span>(<span class="t">Jargon</span><span class="t">::</span><span class="t">Schema</span>)
 
 schema.root.extensions             <span class="c"># =&gt; {&quot;x-ui&quot; =&gt; {&quot;destructive&quot; =&gt; true}}</span>
-schema.root.extension(<span class="s">&quot;ui&quot;</span>)        <span class="c"># =&gt; {&quot;destructive&quot; =&gt; true} (&quot;ui&quot; and &quot;x-ui&quot; both work)</span>
+schema.root.extensions[<span class="s">&quot;x-ui&quot;</span>]?    <span class="c"># =&gt; keys are stored exactly as written</span>
 
 query <span class="o">=</span> schema.root.properties.not_nil![<span class="s">&quot;query&quot;</span>]
-query.extension(<span class="s">&quot;ui&quot;</span>).not_nil![<span class="s">&quot;control&quot;</span>]  <span class="c"># =&gt; &quot;typeahead&quot;</span></code></pre>
+query.extensions[<span class="s">&quot;x-ui&quot;</span>][<span class="s">&quot;control&quot;</span>]  <span class="c"># =&gt; &quot;typeahead&quot;</span></code></pre>
 <p>Jargon assigns no meaning to any <code>x-</code> key — define whatever vocabulary your
 consumers need. (The built-in <code>service</code> hint predates this mechanism and
 remains first-class.)</p>
@@ -975,8 +975,8 @@ schema <span class="o">=</span> cli.subcommands[<span class="s">&quot;name&quot;
 schema.root                            <span class="c"># =&gt; Jargon::Property (command-level)</span>
 schema.root.properties                 <span class="c"># =&gt; Hash(String, Property)?</span>
 schema.positional                      <span class="c"># =&gt; Array(String)</span>
-property.extensions                    <span class="c"># =&gt; Hash(String, JSON::Any) (x-* annotations)</span>
-property.extension(<span class="s">&quot;ui&quot;</span>)               <span class="c"># =&gt; JSON::Any? (finds &quot;ui&quot; or &quot;x-ui&quot;)</span></code></pre>
+property.extensions                    <span class="c"># =&gt; Hash(String, JSON::Any) (x-* annotations, keys as written)</span>
+property.extensions[<span class="s">&quot;x-ui&quot;</span>]?           <span class="c"># =&gt; JSON::Any?</span></code></pre>
 <h2><a id="development" class="anchor" href="#development">
   <svg class="octicon-link" aria-hidden="true">
     <use href="#octicon-link"/>
