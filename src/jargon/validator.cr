@@ -30,163 +30,136 @@ module Jargon
 
       return unless value
 
-      # Type validation
+      validate_type_match(value, prop, errors, full_name)
+      validate_const(value, prop, errors, full_name)
+      validate_enum(value, prop, errors, full_name)
+      validate_numeric(value, prop, errors, full_name)
+      validate_string(value, prop, errors, full_name)
+      validate_array(value, prop, errors, full_name, schema)
+      validate_object(value, prop, errors, full_name, schema)
+    end
+
+    private def self.validate_array_item(value : JSON::Any, prop : Property, errors : Array(String), item_name : String)
+      validate_type_match(value, prop, errors, item_name)
+      validate_enum(value, prop, errors, item_name)
+      validate_numeric(value, prop, errors, item_name)
+      validate_string(value, prop, errors, item_name)
+    end
+
+    private def self.validate_type_match(value : JSON::Any, prop : Property, errors : Array(String), label : String)
       unless valid_type?(value, prop.type)
-        errors << "Invalid type for #{full_name}: expected #{prop.type}, got #{value.raw.class}"
+        errors << "Invalid type for #{label}: expected #{prop.type}, got #{value.raw.class}"
       end
+    end
 
-      # Const validation
-      if const_val = prop.const
-        unless value == const_val
-          errors << "Value for #{full_name} must be #{const_val.as_s? || const_val.to_json}"
-        end
+    private def self.validate_const(value : JSON::Any, prop : Property, errors : Array(String), label : String)
+      return unless const_val = prop.const
+      unless value == const_val
+        errors << "Value for #{label} must be #{const_val.as_s? || const_val.to_json}"
       end
+    end
 
-      # Enum validation
-      if enum_values = prop.enum_values
-        unless enum_values.includes?(value)
-          formatted = enum_values.map { |v| v.as_s? || v.to_json }.join(", ")
-          errors << "Invalid value for #{full_name}: must be one of #{formatted}"
-        end
+    private def self.validate_enum(value : JSON::Any, prop : Property, errors : Array(String), label : String)
+      return unless enum_values = prop.enum_values
+      unless enum_values.includes?(value)
+        formatted = enum_values.map { |v| v.as_s? || v.to_json }.join(", ")
+        errors << "Invalid value for #{label}: must be one of #{formatted}"
       end
+    end
 
-      # Minimum/maximum validation for numbers
-      if prop.type.integer? || prop.type.number?
-        if num = value.as_f? || value.as_i64?.try(&.to_f)
-          if min = prop.minimum
-            errors << "Value for #{full_name} must be >= #{format_num(min)}" if num < min
-          end
-          if max = prop.maximum
-            errors << "Value for #{full_name} must be <= #{format_num(max)}" if num > max
-          end
-          if min = prop.exclusive_minimum
-            errors << "Value for #{full_name} must be > #{format_num(min)}" if num <= min
-          end
-          if max = prop.exclusive_maximum
-            errors << "Value for #{full_name} must be < #{format_num(max)}" if num >= max
-          end
-          if mult = prop.multiple_of
-            unless (num % mult).abs < 1e-10
-              errors << "Value for #{full_name} must be a multiple of #{format_num(mult)}"
-            end
-          end
-        end
+    private def self.validate_array(value : JSON::Any, prop : Property, errors : Array(String), label : String, schema : Schema)
+      return unless prop.type.array?
+      return unless arr = value.as_a?
+
+      if min = prop.min_items
+        errors << "#{label} must have at least #{min} items" if arr.size < min
       end
-
-      # String validation
-      if prop.type.string?
-        if str = value.as_s?
-          if min = prop.min_length
-            errors << "Value for #{full_name} must be at least #{min} characters" if str.size < min
-          end
-          if max = prop.max_length
-            errors << "Value for #{full_name} must be at most #{max} characters" if str.size > max
-          end
-          if pattern = prop.pattern
-            errors << "Value for #{full_name} must match pattern: #{pattern.source}" unless pattern.matches?(str)
-          end
-          if fmt = prop.format
-            unless valid_format?(str, fmt)
-              errors << "Value for #{full_name} must be a valid #{fmt}"
-            end
-          end
-        end
+      if max = prop.max_items
+        errors << "#{label} must have at most #{max} items" if arr.size > max
       end
+      validate_unique_items(arr, prop, errors, label)
 
-      # Array validation
-      if prop.type.array?
-        if arr = value.as_a?
-          if min = prop.min_items
-            errors << "#{full_name} must have at least #{min} items" if arr.size < min
-          end
-          if max = prop.max_items
-            errors << "#{full_name} must have at most #{max} items" if arr.size > max
-          end
-          if prop.unique_items?
-            seen = Set(String).new
-            arr.each do |item|
-              key = item.to_json
-              if seen.includes?(key)
-                errors << "#{full_name} must have unique items (duplicate: #{item.as_s? || item.to_json})"
-                break
-              end
-              seen << key
-            end
-          end
-          if items_prop = prop.items
-            arr.each_with_index do |item, i|
-              validate_array_item(item, items_prop, errors, "#{full_name}[#{i}]", schema)
-            end
-          end
-        end
-      end
-
-      # Nested object validation
-      if prop.type.object? && (nested_props = prop.properties)
-        if nested_data = value.as_h?
-          check_additional_properties(nested_data, prop, errors, full_name, nested_props)
-
-          nested_props.each do |nested_name, nested_prop|
-            validate_property(nested_data, nested_name, resolve_property(nested_prop, schema), errors, full_name, schema)
-          end
+      if items_prop = prop.items
+        arr.each_with_index do |item, i|
+          validate_array_item(item, items_prop, errors, "#{label}[#{i}]")
         end
       end
     end
 
-    private def self.validate_array_item(value : JSON::Any, prop : Property, errors : Array(String), item_name : String, schema : Schema)
-      # Type validation
-      unless valid_type?(value, prop.type)
-        errors << "Invalid type for #{item_name}: expected #{prop.type}, got #{value.raw.class}"
-      end
+    private def self.validate_unique_items(arr : Array(JSON::Any), prop : Property, errors : Array(String), label : String)
+      return unless prop.unique_items?
 
-      # Enum validation
-      if enum_values = prop.enum_values
-        unless enum_values.includes?(value)
-          formatted = enum_values.map { |v| v.as_s? || v.to_json }.join(", ")
-          errors << "Invalid value for #{item_name}: must be one of #{formatted}"
+      seen = Set(String).new
+      arr.each do |item|
+        key = item.to_json
+        if seen.includes?(key)
+          errors << "#{label} must have unique items (duplicate: #{item.as_s? || item.to_json})"
+          break
         end
+        seen << key
       end
+    end
 
-      # Numeric validation
-      if prop.type.integer? || prop.type.number?
-        if num = value.as_f? || value.as_i64?.try(&.to_f)
-          if min = prop.minimum
-            errors << "Value for #{item_name} must be >= #{format_num(min)}" if num < min
-          end
-          if max = prop.maximum
-            errors << "Value for #{item_name} must be <= #{format_num(max)}" if num > max
-          end
-          if min = prop.exclusive_minimum
-            errors << "Value for #{item_name} must be > #{format_num(min)}" if num <= min
-          end
-          if max = prop.exclusive_maximum
-            errors << "Value for #{item_name} must be < #{format_num(max)}" if num >= max
-          end
-          if mult = prop.multiple_of
-            unless (num % mult).abs < 1e-10
-              errors << "Value for #{item_name} must be a multiple of #{format_num(mult)}"
-            end
-          end
-        end
+    private def self.validate_object(value : JSON::Any, prop : Property, errors : Array(String), label : String, schema : Schema)
+      return unless prop.type.object? && (nested_props = prop.properties)
+      return unless nested_data = value.as_h?
+
+      check_additional_properties(nested_data, prop, errors, label, nested_props)
+      nested_props.each do |nested_name, nested_prop|
+        validate_property(nested_data, nested_name, resolve_property(nested_prop, schema), errors, label, schema)
       end
+    end
 
-      # String validation
-      if prop.type.string?
-        if str = value.as_s?
-          if min = prop.min_length
-            errors << "Value for #{item_name} must be at least #{min} characters" if str.size < min
-          end
-          if max = prop.max_length
-            errors << "Value for #{item_name} must be at most #{max} characters" if str.size > max
-          end
-          if pattern = prop.pattern
-            errors << "Value for #{item_name} must match pattern: #{pattern.source}" unless pattern.matches?(str)
-          end
-          if fmt = prop.format
-            unless valid_format?(str, fmt)
-              errors << "Value for #{item_name} must be a valid #{fmt}"
-            end
-          end
+    # Shared numeric-constraint checks. `label` is the field or item path used
+    # in error messages.
+    private def self.validate_numeric(value : JSON::Any, prop : Property, errors : Array(String), label : String)
+      return unless prop.type.integer? || prop.type.number?
+      return unless num = value.as_f? || value.as_i64?.try(&.to_f)
+
+      validate_range(num, prop, errors, label)
+      validate_multiple_of(num, prop, errors, label)
+    end
+
+    private def self.validate_range(num : Float64, prop : Property, errors : Array(String), label : String)
+      if min = prop.minimum
+        errors << "Value for #{label} must be >= #{format_num(min)}" if num < min
+      end
+      if max = prop.maximum
+        errors << "Value for #{label} must be <= #{format_num(max)}" if num > max
+      end
+      if min = prop.exclusive_minimum
+        errors << "Value for #{label} must be > #{format_num(min)}" if num <= min
+      end
+      if max = prop.exclusive_maximum
+        errors << "Value for #{label} must be < #{format_num(max)}" if num >= max
+      end
+    end
+
+    private def self.validate_multiple_of(num : Float64, prop : Property, errors : Array(String), label : String)
+      return unless mult = prop.multiple_of
+      unless (num % mult).abs < 1e-10
+        errors << "Value for #{label} must be a multiple of #{format_num(mult)}"
+      end
+    end
+
+    # Shared string-constraint checks (minLength/maxLength/pattern/format).
+    # `label` is the field or item path used in error messages.
+    private def self.validate_string(value : JSON::Any, prop : Property, errors : Array(String), label : String)
+      return unless prop.type.string?
+      return unless str = value.as_s?
+
+      if min = prop.min_length
+        errors << "Value for #{label} must be at least #{min} characters" if str.size < min
+      end
+      if max = prop.max_length
+        errors << "Value for #{label} must be at most #{max} characters" if str.size > max
+      end
+      if pattern = prop.pattern
+        errors << "Value for #{label} must match pattern: #{pattern.source}" unless pattern.matches?(str)
+      end
+      if fmt = prop.format
+        unless valid_format?(str, fmt)
+          errors << "Value for #{label} must be a valid #{fmt}"
         end
       end
     end
