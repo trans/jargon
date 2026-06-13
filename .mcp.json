@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "arcana": {
+      "type": "stdio",
+      "command": "arcana-mcp",
+      "env": {
+        "ARCANA_URL": "http://127.0.0.1:19118"
+      }
+    }
+  }
+}
