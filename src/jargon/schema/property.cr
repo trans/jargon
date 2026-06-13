@@ -70,8 +70,42 @@ module Jargon
     end
 
     def self.from_json(name : String, json : JSON::Any, required_fields : Array(String) = [] of String) : Property
-      # When type is omitted, infer it from structural keywords (JSON Schema
-      # semantics: properties/items imply the shape; omitted type is not "string")
+      type = resolve_type(name, json)
+
+      Property.new(
+        name: name,
+        type: type,
+        description: json["description"]?.try(&.as_s?),
+        required: required_fields.includes?(name),
+        default: json["default"]?,
+        enum_values: json["enum"]?.try(&.as_a?),
+        properties: parse_properties(type, json),
+        items: parse_items(type, json),
+        ref: json["$ref"]?.try(&.as_s?),
+        short: json["short"]?.try(&.as_s?),
+        env: json["env"]?.try(&.as_s?),
+        minimum: parse_number(json, "minimum"),
+        maximum: parse_number(json, "maximum"),
+        exclusive_minimum: parse_number(json, "exclusiveMinimum"),
+        exclusive_maximum: parse_number(json, "exclusiveMaximum"),
+        multiple_of: parse_number(json, "multipleOf"),
+        min_length: parse_int(json, "minLength"),
+        max_length: parse_int(json, "maxLength"),
+        min_items: parse_int(json, "minItems"),
+        max_items: parse_int(json, "maxItems"),
+        unique_items: json["uniqueItems"]?.try(&.as_bool?) || false,
+        pattern: parse_pattern(json),
+        const: json["const"]?,
+        format: json["format"]?.try(&.as_s?),
+        additional_properties: json["additionalProperties"]?.try(&.as_bool?),
+        service: json["service"]?.try(&.as_bool?) || false,
+        extensions: parse_extensions(json)
+      )
+    end
+
+    # When type is omitted, infer it from structural keywords (JSON Schema
+    # semantics: properties/items imply the shape; omitted type is not "string")
+    private def self.resolve_type(name : String, json : JSON::Any) : Type
       declared = json["type"]?.try(&.as_s?)
       type = parse_type(declared || (json["properties"]? ? "object" : (json["items"]? ? "array" : "string")))
 
@@ -81,96 +115,49 @@ module Jargon
       if declared && !type.array? && json["items"]?
         raise ArgumentError.new("Schema '#{name}' declares type '#{declared}' but has 'items' (did you mean type: array?)")
       end
-      description = json["description"]?.try(&.as_s?)
-      default = json["default"]?
-      enum_values = json["enum"]?.try(&.as_a?)
-      ref = json["$ref"]?.try(&.as_s?)
-      short = json["short"]?.try(&.as_s?)
-      env = json["env"]?.try(&.as_s?)
-      is_required = required_fields.includes?(name)
 
-      # Numeric constraints
-      minimum = json["minimum"]?.try(&.as_f?) || json["minimum"]?.try(&.as_i64?.try(&.to_f))
-      maximum = json["maximum"]?.try(&.as_f?) || json["maximum"]?.try(&.as_i64?.try(&.to_f))
-      exclusive_minimum = json["exclusiveMinimum"]?.try(&.as_f?) || json["exclusiveMinimum"]?.try(&.as_i64?.try(&.to_f))
-      exclusive_maximum = json["exclusiveMaximum"]?.try(&.as_f?) || json["exclusiveMaximum"]?.try(&.as_i64?.try(&.to_f))
-      multiple_of = json["multipleOf"]?.try(&.as_f?) || json["multipleOf"]?.try(&.as_i64?.try(&.to_f))
+      type
+    end
 
-      # String constraints
-      min_length = json["minLength"]?.try(&.as_i?.try(&.to_i32))
-      max_length = json["maxLength"]?.try(&.as_i?.try(&.to_i32))
+    private def self.parse_properties(type : Type, json : JSON::Any) : Hash(String, Property)?
+      return unless type.object? && (props = json["properties"]?)
 
-      # Array constraints
-      min_items = json["minItems"]?.try(&.as_i?.try(&.to_i32))
-      max_items = json["maxItems"]?.try(&.as_i?.try(&.to_i32))
-      unique_items = json["uniqueItems"]?.try(&.as_bool?) || false
+      nested_required = json["required"]?.try(&.as_a.map(&.as_s)) || [] of String
+      props.as_h.map do |prop_name, prop_schema|
+        {prop_name, Property.from_json(prop_name, prop_schema, nested_required)}
+      end.to_h
+    end
 
-      # Const value
-      const_value = json["const"]?
+    private def self.parse_items(type : Type, json : JSON::Any) : Property?
+      return unless type.array? && (item_schema = json["items"]?)
 
-      # Format
-      format = json["format"]?.try(&.as_s?)
+      Property.from_json("items", item_schema)
+    end
 
-      # Additional properties
-      additional_properties = json["additionalProperties"]?.try(&.as_bool?)
+    private def self.parse_number(json : JSON::Any, key : String) : Float64?
+      json[key]?.try(&.as_f?) || json[key]?.try(&.as_i64?.try(&.to_f))
+    end
 
-      # Service hint (long-running command)
-      service = json["service"]?.try(&.as_bool?) || false
+    private def self.parse_int(json : JSON::Any, key : String) : Int32?
+      json[key]?.try(&.as_i?.try(&.to_i32))
+    end
 
-      # Consumer-defined extension annotations (x-ui, x-anything): preserved
-      # verbatim for introspection, ignored by parsing and validation
+    private def self.parse_pattern(json : JSON::Any) : Regex?
+      if pattern_str = json["pattern"]?.try(&.as_s?)
+        Regex.new(pattern_str)
+      end
+    end
+
+    # Consumer-defined extension annotations (x-ui, x-anything): preserved
+    # verbatim for introspection, ignored by parsing and validation
+    private def self.parse_extensions(json : JSON::Any) : Hash(String, JSON::Any)
       extensions = {} of String => JSON::Any
       if hash = json.as_h?
         hash.each do |key, value|
           extensions[key] = value if key.starts_with?("x-")
         end
       end
-
-      # String pattern
-      pattern = if pattern_str = json["pattern"]?.try(&.as_s?)
-                  Regex.new(pattern_str)
-                end
-
-      properties = if type.object? && (props = json["properties"]?)
-                     nested_required = json["required"]?.try(&.as_a.map(&.as_s)) || [] of String
-                     props.as_h.map do |prop_name, prop_schema|
-                       {prop_name, Property.from_json(prop_name, prop_schema, nested_required)}
-                     end.to_h
-                   end
-
-      items = if type.array? && (item_schema = json["items"]?)
-                Property.from_json("items", item_schema)
-              end
-
-      Property.new(
-        name: name,
-        type: type,
-        description: description,
-        required: is_required,
-        default: default,
-        enum_values: enum_values,
-        properties: properties,
-        items: items,
-        ref: ref,
-        short: short,
-        env: env,
-        minimum: minimum,
-        maximum: maximum,
-        exclusive_minimum: exclusive_minimum,
-        exclusive_maximum: exclusive_maximum,
-        multiple_of: multiple_of,
-        min_length: min_length,
-        max_length: max_length,
-        min_items: min_items,
-        max_items: max_items,
-        unique_items: unique_items,
-        pattern: pattern,
-        const: const_value,
-        format: format,
-        additional_properties: additional_properties,
-        service: service,
-        extensions: extensions
-      )
+      extensions
     end
 
     private def self.parse_type(type_str : String) : Type
