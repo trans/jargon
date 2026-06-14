@@ -85,6 +85,15 @@ $(delete old logs) → rm ...  # destructive, confirm first
 
 **Not a priority now** - Jargon is the foundation (self-describing tools). This layer can come later. See also: memo, xerp projects.
 
+### Dynamic Completion Follow-ups
+
+Scoped out of the initial dynamic-completion work (v0.19.0). All are refinements, not blockers:
+
+- **Nested-object field completers.** Completer paths currently target schema-root fields (flags/positionals) and `subcommand.field`. Completing a nested object field (e.g. `--a.b`) is not handled.
+- **Subcommand abbreviation during completion.** The completion engine resolves subcommands by exact match only; abbreviations (which `parse` supports) aren't expanded when computing candidates.
+- **bash 3.2 portability.** The generated bash shim uses `readarray` (bash 4+). macOS ships bash 3.2 by default — provide a `read`-loop fallback if that matters.
+- **Streaming/lazy completer results.** Completer blocks return `Array(String)`; a truly lazy/streaming return isn't wired (the `ctx.partial` scoping already covers the main performance concern).
+
 ### Other Ideas
 
 - Man page generation
