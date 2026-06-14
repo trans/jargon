@@ -67,13 +67,18 @@
       
     </li>
   
-  <li class=" " data-id="jargon/Jargon/Completion" data-name="jargon::completion">
+  <li class="parent " data-id="jargon/Jargon/Completion" data-name="jargon::completion">
       <a href="Jargon/Completion.html">Completion</a>
+      
+        <ul>
+  
+  <li class=" " data-id="jargon/Jargon/Completion/Context" data-name="jargon::completion::context">
+      <a href="Jargon/Completion/Context.html">Context</a>
       
     </li>
   
-  <li class=" " data-id="jargon/Jargon/FlagInfo" data-name="jargon::flaginfo">
-      <a href="Jargon/FlagInfo.html">FlagInfo</a>
+</ul>
+
       
     </li>
   
@@ -104,11 +109,6 @@
   
   <li class=" " data-id="jargon/Jargon/Schema" data-name="jargon::schema">
       <a href="Jargon/Schema.html">Schema</a>
-      
-    </li>
-  
-  <li class=" " data-id="jargon/Jargon/SubcommandInfo" data-name="jargon::subcommandinfo">
-      <a href="Jargon/SubcommandInfo.html">SubcommandInfo</a>
       
     </li>
   
@@ -147,7 +147,7 @@
 <li><strong>Config files</strong>: Load from <code>.config/</code> (XDG spec) with deep merge support</li>
 <li><strong>Help text</strong>: Generated from schema descriptions</li>
 <li><strong>Auto help flags</strong>: <code>--help</code> and <code>-h</code> detected automatically</li>
-<li><strong>Shell completions</strong>: Generate completion scripts for bash, zsh, and fish</li>
+<li><strong>Shell completions</strong>: Generate completion shims for bash, zsh, and fish, with optional app-driven dynamic completers for live data</li>
 <li><strong>Positional args</strong>: Non-flag arguments assigned by position and variadic support.</li>
 <li><strong>Short flags</strong>: Single-character flag aliases (<code>-v</code>, <code>-n 5</code>)</li>
 <li><strong>Boolean flags</strong>: Support both <code>--verbose</code> and <code>--verbose false</code> styles</li>
@@ -457,13 +457,14 @@ result[<span class="s">&quot;host&quot;</span>].as_s     <span class="c"># =&gt;
     <use href="#octicon-link"/>
   </svg>
 </a>Shell Completions</h2>
-<p>Jargon can generate shell completion scripts for bash, zsh, and fish. When using <code>run</code>, the <code>--completions &lt;shell&gt;</code> flag is handled automatically:</p>
+<p>Jargon can generate shell completion scripts for bash, zsh, and fish. When using <code>run</code>, the <code>--completions &lt;shell&gt;</code> flag is handled automatically.</p>
+<p>The generated scripts are small, fixed <strong>shims</strong>: on every Tab they forward the cursor position and typed words back to your program (a hidden <code>__complete</code> verb that <code>run</code> and <code>handle_completion</code> recognize), and the program computes the candidates from the schema. This means one code path serves both static completion (subcommand names, flags, enum values) and <a href="#dynamic-completions">dynamic completion</a> (live data only your app knows) — and the installed script never needs regenerating when your CLI changes.</p>
 <h3><a id="installing-completions" class="anchor" href="#installing-completions">
   <svg class="octicon-link" aria-hidden="true">
     <use href="#octicon-link"/>
   </svg>
 </a>Installing Completions</h3>
-<p>Generate the completion script once and save it to your shell's completions directory:</p>
+<p>Generate the completion shim once and save it to your shell's completions directory:</p>
 <pre><code class="language-sh"># Bash
 myapp --completions bash &gt; ~/.local/share/bash-completion/completions/myapp
 
@@ -472,14 +473,43 @@ myapp --completions zsh &gt; ~/.zfunc/_myapp
 
 # Fish
 myapp --completions fish &gt; ~/.config/fish/completions/myapp.fish</code></pre>
-<p>The generated scripts provide completions for:</p>
-<ul>
-<li>Subcommand names</li>
-<li>Long flags (<code>--verbose</code>, <code>--output</code>)</li>
-<li>Short flags (<code>-v</code>, <code>-o</code>)</li>
-<li>Enum values (e.g., <code>--format json|yaml|xml</code>)</li>
-<li>Nested subcommands</li>
-</ul>
+<p>Out of the box you get completion for subcommand names (including nested), long and short flags, and <code>enum</code> values — all derived from the schema, no extra code.</p>
+<h3><a id="dynamic-completions" class="anchor" href="#dynamic-completions">
+  <svg class="octicon-link" aria-hidden="true">
+    <use href="#octicon-link"/>
+  </svg>
+</a>Dynamic Completions</h3>
+<p>For values the schema can't know — a document name, a tag, a key in a live store — register a <strong>completer</strong> against a field. It runs inside your program at completion time and returns the candidates:</p>
+<pre><code class="language-crystal">cli <span class="o">=</span> <span class="t">Jargon</span>.cli(<span class="s">&quot;transfs&quot;</span>, yaml: schema)
+
+<span class="c"># Field path: the field name for a flat CLI, or `subcommand.field`</span>
+<span class="c"># (`a.b.field` when nested). Raises if the path isn&#39;t a real field.</span>
+cli.completer(<span class="s">&quot;forget.query&quot;</span>) <span class="k">do</span> <span class="o">|</span>ctx<span class="o">|</span>
+  store.search(ctx.partial).map(<span class="o">&amp;</span>.name)   <span class="c"># candidates (Array(String))</span>
+<span class="k">end</span>
+
+cli.run { <span class="o">|</span>result<span class="o">|</span> ... }   <span class="c"># `run` answers the __complete verb automatically</span></code></pre>
+<p>The block receives a <code>Completion::Context</code>:</p>
+<p>| Field | Description |
+|-------|-------------|
+| <code>ctx.partial</code> | the token being completed (use it to scope your query) |
+| <code>ctx.subcommand</code> | the resolved subcommand path, or <code>nil</code> at top level |
+| <code>ctx.arguments</code> | a lenient parse of what's already typed, for filtering |
+| <code>ctx.words</code> | the raw tokens, as an escape hatch |</p>
+<p>A registered field completes dynamically; everything else stays static. You never write the <code>__complete</code> verb yourself — the shim supplies it.</p>
+<h4><a id="answering-completion-from-a-separate-binary" class="anchor" href="#answering-completion-from-a-separate-binary">
+  <svg class="octicon-link" aria-hidden="true">
+    <use href="#octicon-link"/>
+  </svg>
+</a>Answering completion from a separate binary</h4>
+<p>Each Tab spawns whatever the shim calls. If your main program is heavy to start, point the shim at a small dedicated binary instead of paying full startup per keypress:</p>
+<pre><code class="language-crystal"><span class="c"># generate a shim that calls `transfs-complete` rather than `transfs`</span>
+<span class="t">File</span>.write(path, cli.bash_completion(command: <span class="s">&quot;transfs-complete&quot;</span>))</code></pre>
+<pre><code class="language-crystal"><span class="c"># transfs-complete.cr — a minimal helper that only answers completion</span>
+cli <span class="o">=</span> build_cli
+cli.completer(<span class="s">&quot;forget.query&quot;</span>) { <span class="o">|</span>ctx<span class="o">|</span> index.search(ctx.partial) }
+exit cli.handle_completion   <span class="c"># answers __complete and exits</span></code></pre>
+<p><code>handle_completion</code> returns immediately for a normal invocation, so you can also call it at the very top of your existing <code>main</code> to answer completion <em>before</em> heavy initialization runs, without a second binary. (The separate-binary win only materializes if your candidate source has a light access path — an on-disk index, a cache, a daemon — rather than requiring the full app to boot.)</p>
 <h3><a id="manual-completion-handling" class="anchor" href="#manual-completion-handling">
   <svg class="octicon-link" aria-hidden="true">
     <use href="#octicon-link"/>
@@ -961,10 +991,15 @@ cli.help              <span class="c"># =&gt; usage string with all options</spa
 cli.help(<span class="s">&quot;fetch&quot;</span>)     <span class="c"># =&gt; help for specific subcommand</span>
 cli.help(<span class="s">&quot;config set&quot;</span>) <span class="c"># =&gt; help for nested subcommand</span>
 
-<span class="c"># Completion scripts</span>
-cli.bash_completion  <span class="c"># =&gt; bash completion script</span>
-cli.zsh_completion   <span class="c"># =&gt; zsh completion script</span>
-cli.fish_completion  <span class="c"># =&gt; fish completion script</span>
+<span class="c"># Completion shims (pass command: to target a separate helper binary)</span>
+cli.bash_completion                       <span class="c"># =&gt; bash completion shim</span>
+cli.zsh_completion                        <span class="c"># =&gt; zsh completion shim</span>
+cli.fish_completion                       <span class="c"># =&gt; fish completion shim</span>
+cli.bash_completion(command: <span class="s">&quot;app-complete&quot;</span>)
+
+<span class="c"># Dynamic completers</span>
+cli.completer(<span class="s">&quot;forget.query&quot;</span>) { <span class="o">|</span>ctx<span class="o">|</span> ... }  <span class="c"># register; returns Array(String)</span>
+cli.handle_completion                         <span class="c"># answer __complete + exit (no-op otherwise)</span>
 
 <span class="c"># Standalone validation (no CLI needed)</span>
 errors <span class="o">=</span> <span class="t">Jargon</span><span class="t">::</span><span class="t">Validator</span>.validate(data_hash, schema)  <span class="c"># =&gt; Array(String)</span>
