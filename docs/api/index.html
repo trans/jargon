@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="generator" content="Crystal Docs 1.20.2">
-<meta name="crystal_docs.project_version" content="main">
+<meta name="crystal_docs.project_version" content="main-dev">
 <meta name="crystal_docs.project_name" content="jargon">
 
 
@@ -14,7 +14,7 @@
 <script type="text/javascript" src="js/doc.js"></script>
 
   <meta name="repository-name" content="jargon">
-  <title>jargon main</title>
+  <title>jargon main-dev</title>
   <script type="text/javascript">
   CrystalDocs.base_path = "";
   </script>
@@ -45,7 +45,7 @@
       </h1>
 
       <span class="project-version">
-        main
+        main-dev
       </span>
     </div>
   </div>
@@ -389,6 +389,25 @@ result <span class="o">=</span> cli.parse([<span class="s">&quot;-n&quot;</span>
 <span class="c"># =&gt; {&quot;number&quot;: true, &quot;files&quot;: [&quot;a.txt&quot;, &quot;b.txt&quot;, &quot;c.txt&quot;]}</span></code></pre>
 <pre><code class="language-sh">cat -n a.txt b.txt c.txt</code></pre>
 <p>Note: Flags should come before variadic positionals. Collection stops at the first flag encountered.</p>
+<h3><a id="end-of-options-" class="anchor" href="#end-of-options-">
+  <svg class="octicon-link" aria-hidden="true">
+    <use href="#octicon-link"/>
+  </svg>
+</a>End of Options (<code>--</code>)</h3>
+<p>A bare <code>--</code> marks the end of options (POSIX convention). Everything after it is treated as a positional argument, even if it looks like a flag — useful for passing flags through to another program. The <code>--</code> marker itself is discarded, and a variadic positional captures the rest verbatim:</p>
+<pre><code class="language-crystal">schema <span class="o">=</span> <span class="s">%({
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;positional&quot;: [&quot;argv&quot;],
+  &quot;properties&quot;: {
+    &quot;verbose&quot;: {&quot;type&quot;: &quot;boolean&quot;, &quot;short&quot;: &quot;v&quot;},
+    &quot;argv&quot;: {&quot;type&quot;: &quot;array&quot;}
+  }
+})</span>
+
+cli <span class="o">=</span> <span class="t">Jargon</span>.cli(<span class="s">&quot;run&quot;</span>, json: schema)
+result <span class="o">=</span> cli.parse([<span class="s">&quot;--verbose&quot;</span>, <span class="s">&quot;--&quot;</span>, <span class="s">&quot;ls&quot;</span>, <span class="s">&quot;-la&quot;</span>, <span class="s">&quot;--color&quot;</span>])
+<span class="c"># =&gt; {&quot;verbose&quot;: true, &quot;argv&quot;: [&quot;ls&quot;, &quot;-la&quot;, &quot;--color&quot;]}</span></code></pre>
+<p>Options before <code>--</code> parse normally; only the first <code>--</code> is special (a second one is a literal operand).</p>
 <h2><a id="short-flags" class="anchor" href="#short-flags">
   <svg class="octicon-link" aria-hidden="true">
     <use href="#octicon-link"/>
