@@ -960,6 +960,76 @@ describe Jargon do
     end
   end
 
+  describe "end-of-options (--)" do
+    it "captures flag-like tokens after -- into a variadic positional" do
+      cli = Jargon.cli("app", json: %({
+        "type": "object",
+        "positional": ["cmd", "rest"],
+        "properties": {
+          "verbose": {"type": "boolean", "short": "v"},
+          "cmd": {"type": "string"},
+          "rest": {"type": "array"}
+        }
+      }))
+
+      result = cli.parse(["--verbose", "--", "echo", "--foo", "bar"])
+      result.valid?.should be_true
+      result["verbose"].as_bool.should be_true
+      result["cmd"].as_s.should eq("echo")
+      result["rest"].as_a.map(&.as_s).should eq(["--foo", "bar"])
+    end
+
+    it "discards the -- marker and parses options before it normally" do
+      cli = Jargon.cli("app", json: %({
+        "type": "object",
+        "positional": ["rest"],
+        "properties": {"rest": {"type": "array"}}
+      }))
+
+      result = cli.parse(["--", "--flag", "-x", "value"])
+      result.valid?.should be_true
+      result["rest"].as_a.map(&.as_s).should eq(["--flag", "-x", "value"])
+    end
+
+    it "treats a second -- as a literal operand" do
+      cli = Jargon.cli("app", json: %({
+        "type": "object",
+        "positional": ["rest"],
+        "properties": {"rest": {"type": "array"}}
+      }))
+
+      result = cli.parse(["--", "a", "--", "b"])
+      result.valid?.should be_true
+      result["rest"].as_a.map(&.as_s).should eq(["a", "--", "b"])
+    end
+
+    it "yields an empty tail when nothing follows --" do
+      cli = Jargon.cli("app", json: %({
+        "type": "object",
+        "positional": ["rest"],
+        "properties": {"rest": {"type": "array"}}
+      }))
+
+      result = cli.parse(["--"])
+      result.valid?.should be_true
+      result["rest"].as_a.should be_empty
+    end
+
+    it "works within a subcommand's arguments" do
+      cli = Jargon.new("app")
+      cli.subcommand("run", json: %({
+        "type": "object",
+        "positional": ["argv"],
+        "properties": {"argv": {"type": "array"}}
+      }))
+
+      result = cli.parse(["run", "--", "ls", "-la", "--color"])
+      result.valid?.should be_true
+      result.subcommand.should eq("run")
+      result["argv"].as_a.map(&.as_s).should eq(["ls", "-la", "--color"])
+    end
+  end
+
   describe "short flags" do
     it "parses short flags" do
       cli = Jargon.cli("myapp", json: %({

@@ -531,25 +531,8 @@ module Jargon
       data = {} of String => JSON::Any
       errors = [] of String
       positional_names = schema.positional
-      positional_index = 0
-      short_to_long = build_short_map(schema)
-      i = 0
 
-      while i < args.size
-        arg = args[i]
-
-        if short_flag?(arg)
-          i += handle_short_flag(arg, args, i, data, errors, short_to_long, schema)
-        elsif flag?(arg)
-          i += handle_long_flag(arg, args, i, data, errors, schema)
-        elsif positional_index < positional_names.size
-          consumed, pos_advance = handle_positional(arg, args, i, positional_index, positional_names, data, errors, schema)
-          i += consumed
-          positional_index += pos_advance
-        else
-          i += handle_extra_arg(arg, args, i, data, errors, schema)
-        end
-      end
+      positional_index = consume_tokens(args, schema, data, errors, positional_names)
 
       # Initialize unfilled variadic positionals to empty arrays
       init_empty_variadic(positional_index, positional_names, data, errors, schema)
@@ -564,6 +547,38 @@ module Jargon
       errors.concat(Validator.validate(data, schema))
 
       Result.new(data, errors)
+    end
+
+    # Walk the argument tokens, filling `data`/`errors`. Returns the number of
+    # positional slots consumed (for variadic initialization).
+    private def consume_tokens(args : Array(String), schema : Schema, data : Hash(String, JSON::Any), errors : Array(String), positional_names : Array(String)) : Int32
+      short_to_long = build_short_map(schema)
+      positional_index = 0
+      options_ended = false
+      i = 0
+
+      while i < args.size
+        arg = args[i]
+
+        if !options_ended && arg == "--"
+          # POSIX end-of-options: everything after is treated as a positional,
+          # even if it looks like a flag. The marker itself is discarded.
+          options_ended = true
+          i += 1
+        elsif !options_ended && short_flag?(arg)
+          i += handle_short_flag(arg, args, i, data, errors, short_to_long, schema)
+        elsif !options_ended && flag?(arg)
+          i += handle_long_flag(arg, args, i, data, errors, schema)
+        elsif positional_index < positional_names.size
+          consumed, pos_advance = handle_positional(arg, args, i, positional_index, positional_names, data, errors, schema, options_ended)
+          i += consumed
+          positional_index += pos_advance
+        else
+          i += handle_extra_arg(arg, args, i, data, errors, schema)
+        end
+      end
+
+      positional_index
     end
 
     private def flag?(arg : String) : Bool
@@ -628,12 +643,12 @@ module Jargon
       consumed
     end
 
-    private def handle_positional(arg : String, args : Array(String), i : Int32, positional_index : Int32, positional_names : Array(String), data : Hash(String, JSON::Any), errors : Array(String), schema : Schema) : {Int32, Int32}
+    private def handle_positional(arg : String, args : Array(String), i : Int32, positional_index : Int32, positional_names : Array(String), data : Hash(String, JSON::Any), errors : Array(String), schema : Schema, options_ended : Bool = false) : {Int32, Int32}
       key = positional_names[positional_index]
       prop = find_property(key, schema)
 
       if prop.try(&.type) == Property::Type::Array && positional_index == positional_names.size - 1
-        consumed = collect_variadic(args, i, key, data, errors)
+        consumed = collect_variadic(args, i, key, data, errors, options_ended)
         {consumed, 1}
       else
         coerced, coerce_error = coerce_value(key, arg, schema)
@@ -643,13 +658,17 @@ module Jargon
       end
     end
 
-    private def collect_variadic(args : Array(String), start : Int32, key : String, data : Hash(String, JSON::Any), errors : Array(String)) : Int32
+    private def collect_variadic(args : Array(String), start : Int32, key : String, data : Hash(String, JSON::Any), errors : Array(String), passthrough : Bool = false) : Int32
       items = [] of JSON::Any
       i = start
       while i < args.size
         current_arg = args[i]
-        break if current_arg.starts_with?("-")
-        break if current_arg.includes?("=") || current_arg.includes?(":")
+        # After `--` everything is captured verbatim; otherwise stop at the
+        # first flag-like or key=value token so it can be parsed normally.
+        unless passthrough
+          break if current_arg.starts_with?("-")
+          break if current_arg.includes?("=") || current_arg.includes?(":")
+        end
         items << JSON::Any.new(current_arg)
         i += 1
       end

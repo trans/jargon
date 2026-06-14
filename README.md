@@ -279,6 +279,27 @@ cat -n a.txt b.txt c.txt
 
 Note: Flags should come before variadic positionals. Collection stops at the first flag encountered.
 
+### End of Options (`--`)
+
+A bare `--` marks the end of options (POSIX convention). Everything after it is treated as a positional argument, even if it looks like a flag — useful for passing flags through to another program. The `--` marker itself is discarded, and a variadic positional captures the rest verbatim:
+
+```crystal
+schema = %({
+  "type": "object",
+  "positional": ["argv"],
+  "properties": {
+    "verbose": {"type": "boolean", "short": "v"},
+    "argv": {"type": "array"}
+  }
+})
+
+cli = Jargon.cli("run", json: schema)
+result = cli.parse(["--verbose", "--", "ls", "-la", "--color"])
+# => {"verbose": true, "argv": ["ls", "-la", "--color"]}
+```
+
+Options before `--` parse normally; only the first `--` is special (a second one is a literal operand).
+
 ## Short Flags
 
 Define short flag aliases with the `short` property:
