@@ -1,518 +1,273 @@
+require "./schema"
+
 module Jargon
-  # Information about a flag for completion generation
-  record FlagInfo, long : String, short : String?, description : String?, enum_values : Array(String)?
-
-  # Information about a subcommand for completion generation
-  record SubcommandInfo, name : String, description : String?, schema : Schema?
-
+  # Shell completion: generates a small "shim" script per shell that, on every
+  # Tab, forwards the cursor position and typed words to the program itself
+  # (the hidden `__complete` verb). The program then computes candidates from
+  # the schema plus any registered dynamic completers — so static (flags,
+  # enums, subcommands) and dynamic (live app data) completion share one path.
   class Completion
+    # Hidden subcommand the generated shim invokes at completion time. Never
+    # written by the developer — it is an internal token between the shim and
+    # CLI#handle_completion.
+    COMPLETE_VERB = "__complete"
+
+    # Context handed to a registered completer block. `partial` is the token
+    # being completed; `words` is the full command line as the shell tokenized
+    # it (program name at index 0); `subcommand` is the resolved subcommand
+    # path (nil at top level); `arguments` is a lenient parse of what has been
+    # typed so far, for filtering.
+    struct Context
+      getter partial : String
+      getter words : Array(String)
+      getter subcommand : String?
+      getter arguments : Hash(String, String)
+
+      def initialize(@partial : String, @words : Array(String), @subcommand : String?, @arguments : Hash(String, String))
+      end
+    end
+
     def initialize(@cli : CLI)
+      @words = [] of String
     end
 
-    def bash : String
+    # ---- shim generation -------------------------------------------------
+
+    def bash(command : String) : String
       program = @cli.program_name
-      func_name = "_#{program.gsub("-", "_")}_completions"
-
-      lines = [] of String
-      lines << "#{func_name}() {"
-      lines << "    local cur=\"${COMP_WORDS[COMP_CWORD]}\""
-      lines << "    local prev=\"${COMP_WORDS[COMP_CWORD-1]}\""
-      lines << ""
-
-      if !@cli.subcommands.empty?
-        lines << bash_with_subcommands(program)
-      else
-        lines << bash_flat(program)
-      end
-
-      lines << "}"
-      lines << "complete -F #{func_name} #{program}"
-      lines.join("\n")
+      func = "_#{sanitize(program)}_complete"
+      <<-BASH
+      #{func}() {
+          readarray -t COMPREPLY < <(#{command} #{COMPLETE_VERB} "$COMP_CWORD" "${COMP_WORDS[@]}")
+      }
+      complete -F #{func} #{program}
+      BASH
     end
 
-    def zsh : String
+    def zsh(command : String) : String
       program = @cli.program_name
-
-      lines = [] of String
-      lines << "#compdef #{program}"
-      lines << ""
-      lines << "_#{program.gsub("-", "_")}() {"
-
-      if !@cli.subcommands.empty?
-        lines << zsh_with_subcommands(program)
-      else
-        lines << zsh_flat(program)
-      end
-
-      lines << "}"
-      lines << ""
-      lines << "_#{program.gsub("-", "_")} \"$@\""
-      lines.join("\n")
+      func = "_#{sanitize(program)}"
+      <<-ZSH
+      #compdef #{program}
+      #{func}() {
+          local -a candidates
+          candidates=("${(@f)$(#{command} #{COMPLETE_VERB} $((CURRENT - 1)) $words)}")
+          compadd -U -- $candidates
+      }
+      compdef #{func} #{program}
+      ZSH
     end
 
-    def fish : String
+    def fish(command : String) : String
       program = @cli.program_name
-
-      lines = [] of String
-      lines << "# Disable file completion by default"
-      lines << "complete -c #{program} -f"
-      lines << ""
-
-      if !@cli.subcommands.empty?
-        lines << fish_with_subcommands(program)
-      else
-        lines << fish_flat(program)
+      func = "__#{sanitize(program)}_complete"
+      <<-FISH
+      function #{func}
+          set -l tokens (commandline --current-process --tokenize --cut-at-cursor)
+          set -l current (commandline --current-token)
+          #{command} #{COMPLETE_VERB} (count $tokens) $tokens $current
       end
-
-      lines.join("\n")
+      complete -c #{program} -f -a '(#{func})'
+      FISH
     end
 
-    private def bash_with_subcommands(program : String) : String
-      lines = [] of String
-
-      # Collect top-level subcommands (escaped for shell safety)
-      subcmd_names = @cli.subcommands.keys.map { |n| escape_bash(n) }
-      top_level_words = subcmd_names.join(" ") + " --help -h"
-
-      lines << "    # Top-level: subcommands"
-      lines << "    if [[ ${COMP_CWORD} -eq 1 ]]; then"
-      lines << "        COMPREPLY=( $(compgen -W \"#{top_level_words}\" -- \"$cur\") )"
-      lines << "        return"
-      lines << "    fi"
-      lines << ""
-      lines << "    # Subcommand-specific completions"
-      lines << "    local cmd=\"${COMP_WORDS[1]}\""
-      lines << "    case \"$cmd\" in"
-
-      @cli.subcommands.each do |name, subcmd|
-        case subcmd
-        when Schema
-          lines << bash_subcommand_case(name, subcmd, 2)
-        when CLI
-          lines << bash_nested_cli_case(name, subcmd, 2)
-        end
-      end
-
-      lines << "    esac"
-      lines.join("\n")
+    private def sanitize(name : String) : String
+      name.gsub(/[^a-zA-Z0-9_]/, "_")
     end
 
-    private def bash_subcommand_case(name : String, schema : Schema, depth : Int32) : String
-      lines = [] of String
-      indent = "    " * depth
-      flags = collect_flags(schema)
+    # ---- runtime engine --------------------------------------------------
 
-      # Build flag words (escaped for shell safety)
-      flag_words = [] of String
-      flags.each do |flag|
-        flag_words << "--#{escape_bash(flag.long)}"
-        if short = flag.short
-          flag_words << "-#{escape_bash(short)}"
-        end
-      end
-      flag_words << "--help" << "-h"
-
-      # Build enum cases
-      enum_flags = flags.select(&.enum_values)
-
-      escaped_name = escape_bash(name)
-      lines << "#{indent}#{escaped_name})"
-      if !enum_flags.empty?
-        lines << "#{indent}    case \"$prev\" in"
-        enum_flags.each do |flag|
-          if ev = flag.enum_values
-            flag_patterns = ["--#{escape_bash(flag.long)}"]
-            if short = flag.short
-              flag_patterns << "-#{escape_bash(short)}"
-            end
-            enum_values_escaped = ev.map { |v| escape_bash(v) }.join(" ")
-            lines << "#{indent}        #{flag_patterns.join("|")})"
-            lines << "#{indent}            COMPREPLY=( $(compgen -W \"#{enum_values_escaped}\" -- \"$cur\") )"
-            lines << "#{indent}            ;;"
-          end
-        end
-        lines << "#{indent}        *)"
-        lines << "#{indent}            COMPREPLY=( $(compgen -W \"#{flag_words.join(" ")}\" -- \"$cur\") )"
-        lines << "#{indent}            ;;"
-        lines << "#{indent}    esac"
-      else
-        lines << "#{indent}    COMPREPLY=( $(compgen -W \"#{flag_words.join(" ")}\" -- \"$cur\") )"
-      end
-      lines << "#{indent}    ;;"
-
-      lines.join("\n")
+    # Compute completion candidates for a tokenized command line. `words`
+    # includes the program name at index 0; `cword` is the index of the word
+    # under the cursor (may equal words.size when completing a fresh token).
+    def candidates(words : Array(String), cword : Int32) : Array(String)
+      @words = words
+      partial = (cword >= 0 && cword < words.size) ? words[cword] : ""
+      args = words.size > 1 ? words[1..] : [] of String
+      complete_cli(@cli, args, cword - 1, "", partial)
     end
 
-    private def bash_nested_cli_case(name : String, cli : CLI, depth : Int32) : String
-      lines = [] of String
-      indent = "    " * depth
+    private def complete_cli(cli : CLI, args : Array(String), cursor : Int32, path : String, partial : String) : Array(String)
+      unless cli.subcommands.empty?
+        # Completing the subcommand token itself.
+        if cursor <= 0
+          names = cli.subcommands.keys
+          names += ["--help", "-h"] if partial.starts_with?("-")
+          return filter(names, partial)
+        end
 
-      # Get nested subcommand names (escaped for shell safety)
-      nested_names = cli.subcommands.keys.map { |n| escape_bash(n) }
-      escaped_name = escape_bash(name)
-
-      lines << "#{indent}#{escaped_name})"
-      lines << "#{indent}    if [[ ${COMP_CWORD} -eq 2 ]]; then"
-      lines << "#{indent}        COMPREPLY=( $(compgen -W \"#{nested_names.join(" ")} --help -h\" -- \"$cur\") )"
-      lines << "#{indent}        return"
-      lines << "#{indent}    fi"
-      lines << "#{indent}    local subcmd=\"${COMP_WORDS[2]}\""
-      lines << "#{indent}    case \"$subcmd\" in"
-
-      cli.subcommands.each do |sub_name, sub|
+        # Descend into the chosen subcommand.
+        name = args[0]?
+        sub = name ? cli.subcommands[name]? : nil
+        sub_path = name ? join(path, name) : path
         case sub
-        when Schema
-          lines << bash_subcommand_case(sub_name, sub, depth + 1)
-        when CLI
-          # For deeper nesting, simplify to just --help
-          lines << "#{indent}        #{escape_bash(sub_name)})"
-          lines << "#{indent}            COMPREPLY=( $(compgen -W \"--help -h\" -- \"$cur\") )"
-          lines << "#{indent}            ;;"
+        when CLI    then return complete_cli(sub, args[1..], cursor - 1, sub_path, partial)
+        when Schema then return complete_schema(sub, args[1..], cursor - 1, sub_path, partial)
+        else             return [] of String
         end
       end
 
-      lines << "#{indent}    esac"
-      lines << "#{indent}    ;;"
+      if schema = cli.schema
+        return complete_schema(schema, args, cursor, path, partial)
+      end
 
-      lines.join("\n")
+      [] of String
     end
 
-    private def bash_flat(program : String) : String
-      lines = [] of String
+    private def complete_schema(schema : Schema, args : Array(String), cursor : Int32, path : String, partial : String) : Array(String)
+      # Completing a flag name.
+      return flag_name_candidates(schema, partial) if partial.starts_with?("-")
 
-      if schema = @cli.schema
-        flags = collect_flags(schema)
-        # Build flag words (escaped for shell safety)
-        flag_words = [] of String
-        flags.each do |flag|
-          flag_words << "--#{escape_bash(flag.long)}"
-          if short = flag.short
-            flag_words << "-#{escape_bash(short)}"
-          end
+      # Completing the value of the preceding value-taking flag. This is
+      # terminal: the current token IS that flag's value, so never fall through
+      # to positional completion (an absent enum/completer just means no
+      # candidates).
+      if cursor >= 1 && (prev = args[cursor - 1]?) && prev.starts_with?("-")
+        if (field = field_for_flag(prev, schema)) && !boolean?(schema, field)
+          return value_candidates(schema, field, path, partial, args) || [] of String
         end
-        flag_words << "--help" << "-h"
+      end
 
-        enum_flags = flags.select(&.enum_values)
+      # Completing a positional.
+      if field = positional_at(schema, args, cursor)
+        return value_candidates(schema, field, path, partial, args) || [] of String
+      end
 
-        if !enum_flags.empty?
-          lines << "    case \"$prev\" in"
-          enum_flags.each do |flag|
-            if ev = flag.enum_values
-              flag_patterns = ["--#{escape_bash(flag.long)}"]
-              if short = flag.short
-                flag_patterns << "-#{escape_bash(short)}"
-              end
-              enum_values_escaped = ev.map { |v| escape_bash(v) }.join(" ")
-              lines << "        #{flag_patterns.join("|")})"
-              lines << "            COMPREPLY=( $(compgen -W \"#{enum_values_escaped}\" -- \"$cur\") )"
-              lines << "            ;;"
-            end
-          end
-          lines << "        *)"
-          lines << "            COMPREPLY=( $(compgen -W \"#{flag_words.join(" ")}\" -- \"$cur\") )"
-          lines << "            ;;"
-          lines << "    esac"
+      [] of String
+    end
+
+    private def value_candidates(schema : Schema, field : String, path : String, partial : String, args : Array(String)) : Array(String)?
+      key = path.empty? ? field : "#{path}.#{field}"
+      if completer = @cli.completers[key]?
+        ctx = Context.new(partial, @words, path.empty? ? nil : path, collect_arguments(schema, args))
+        return completer.call(ctx)
+      end
+
+      if (prop = props_of(schema)[field]?) && (enum_values = prop.enum_values)
+        return filter(enum_values.map { |v| v.as_s? || v.to_json }, partial)
+      end
+
+      nil
+    end
+
+    private def flag_name_candidates(schema : Schema, partial : String) : Array(String)
+      positional = schema.positional
+      tokens = ["--help", "-h"]
+      props_of(schema).each do |name, prop|
+        next if positional.includes?(name)
+        tokens << "--#{name}"
+        tokens << "-#{prop.short}" if prop.short
+      end
+      filter(tokens, partial)
+    end
+
+    # Which positional slot the cursor sits in, accounting for flags (and the
+    # values non-boolean flags consume). Returns the last positional when it is
+    # a variadic array and the cursor is past the declared slots.
+    private def positional_at(schema : Schema, args : Array(String), cursor : Int32) : String?
+      names = schema.positional
+      return nil if names.empty?
+
+      idx = positional_index(schema, args, Math.min(cursor, args.size))
+      return names[idx] if idx < names.size
+
+      last = names.last?
+      (last && array?(schema, last)) ? last : nil
+    end
+
+    # Count how many positional slots are filled within args[0...limit],
+    # skipping flags and the values that value-taking flags consume.
+    private def positional_index(schema : Schema, args : Array(String), limit : Int32) : Int32
+      idx = 0
+      i = 0
+      while i < limit
+        tok = args[i]
+        if value_taking_flag?(schema, tok) && i + 1 < limit
+          i += 2
+        elsif skip_token?(tok)
+          i += 1
         else
-          lines << "    COMPREPLY=( $(compgen -W \"#{flag_words.join(" ")}\" -- \"$cur\") )"
+          idx += 1
+          i += 1
         end
+      end
+      idx
+    end
+
+    private def value_taking_flag?(schema : Schema, token : String) : Bool
+      return false unless token.starts_with?("-")
+      if field = field_for_flag(token, schema)
+        !boolean?(schema, field)
       else
-        lines << "    COMPREPLY=( $(compgen -W \"--help -h\" -- \"$cur\") )"
+        false
       end
-
-      lines.join("\n")
     end
 
-    private def zsh_with_subcommands(program : String) : String
-      lines = [] of String
-
-      lines << "    local -a commands"
-      lines << "    commands=("
-
-      @cli.subcommands.each do |name, subcmd|
-        desc = case subcmd
-               when Schema
-                 subcmd.root.description || name
-               when CLI
-                 name
-               else
-                 name
-               end
-        lines << "        '#{name}:#{escape_zsh(desc)}'"
-      end
-
-      lines << "    )"
-      lines << ""
-      lines << "    _arguments -C \\"
-      lines << "        '1:command:->command' \\"
-      lines << "        '*::arg:->args'"
-      lines << ""
-      lines << "    case \"$state\" in"
-      lines << "        command)"
-      lines << "            _describe 'command' commands"
-      lines << "            ;;"
-      lines << "        args)"
-      lines << "            case \"$words[1]\" in"
-
-      @cli.subcommands.each do |name, subcmd|
-        case subcmd
-        when Schema
-          lines << zsh_subcommand_case(name, subcmd)
-        when CLI
-          lines << zsh_nested_cli_case(name, subcmd)
-        end
-      end
-
-      lines << "            esac"
-      lines << "            ;;"
-      lines << "    esac"
-
-      lines.join("\n")
+    private def skip_token?(token : String) : Bool
+      token.starts_with?("-") || token.includes?("=") || token.includes?(":")
     end
 
-    private def zsh_subcommand_case(name : String, schema : Schema) : String
-      lines = [] of String
-      flags = collect_flags(schema)
-
-      lines << "                #{name})"
-      lines << "                    _arguments \\"
-
-      flags.each do |flag|
-        lines << "                        #{build_zsh_flag_arg(flag)} \\"
-      end
-
-      # Remove trailing backslash from last line if there are flags
-      if !flags.empty?
-        lines[-1] = lines[-1].rstrip(" \\")
-      else
-        lines << "                        '--help[Show help]'"
-      end
-
-      lines << "                    ;;"
-
-      lines.join("\n")
-    end
-
-    private def zsh_nested_cli_case(name : String, cli : CLI) : String
-      lines = [] of String
-
-      lines << "                #{name})"
-      lines << "                    local -a #{name}_commands"
-      lines << "                    #{name}_commands=("
-
-      cli.subcommands.each do |sub_name, sub|
-        desc = case sub
-               when Schema
-                 sub.root.description || sub_name
-               else
-                 sub_name
-               end
-        lines << "                        '#{sub_name}:#{escape_zsh(desc)}'"
-      end
-
-      lines << "                    )"
-      lines << "                    _describe '#{name} command' #{name}_commands"
-      lines << "                    ;;"
-
-      lines.join("\n")
-    end
-
-    private def zsh_flat(program : String) : String
-      lines = [] of String
-
-      if schema = @cli.schema
-        flags = collect_flags(schema)
-
-        lines << "    _arguments \\"
-
-        flags.each do |flag|
-          lines << "        #{build_zsh_flag_arg(flag)} \\"
-        end
-
-        lines << "        '--help[Show help]'"
-      else
-        lines << "    _arguments '--help[Show help]'"
-      end
-
-      lines.join("\n")
-    end
-
-    private def fish_with_subcommands(program : String) : String
-      lines = [] of String
-
-      lines << "# Subcommands"
-      @cli.subcommands.each do |name, subcmd|
-        desc = case subcmd
-               when Schema
-                 subcmd.root.description
-               else
-                 nil
-               end
-        if desc
-          lines << "complete -c #{program} -n \"__fish_use_subcommand\" -a \"#{name}\" -d \"#{escape_fish(desc)}\""
-        else
-          lines << "complete -c #{program} -n \"__fish_use_subcommand\" -a \"#{name}\""
-        end
-      end
-
-      lines << ""
-
-      @cli.subcommands.each do |name, subcmd|
-        case subcmd
-        when Schema
-          lines << fish_subcommand_flags(program, name, subcmd)
-        when CLI
-          lines << fish_nested_cli(program, name, subcmd)
-        end
-        lines << ""
-      end
-
-      lines.join("\n")
-    end
-
-    private def fish_subcommand_flags(program : String, name : String, schema : Schema) : String
-      lines = [] of String
-      flags = collect_flags(schema)
-
-      lines << "# #{name} subcommand options"
-      flags.each do |flag|
-        lines << build_fish_flag_line(program, flag, "\"__fish_seen_subcommand_from #{name}\"")
-      end
-
-      lines.join("\n")
-    end
-
-    private def fish_nested_cli(program : String, parent_name : String, cli : CLI) : String
-      lines = [] of String
-
-      lines << "# #{parent_name} nested subcommands"
-      cli.subcommands.each do |name, subcmd|
-        desc = case subcmd
-               when Schema
-                 subcmd.root.description
-               else
-                 nil
-               end
-
-        condition = "__fish_seen_subcommand_from #{parent_name}; and not __fish_seen_subcommand_from #{cli.subcommands.keys.join(" ")}"
-        if desc
-          lines << "complete -c #{program} -n \"#{condition}\" -a \"#{name}\" -d \"#{escape_fish(desc)}\""
-        else
-          lines << "complete -c #{program} -n \"#{condition}\" -a \"#{name}\""
-        end
-      end
-
-      # Add flags for each nested subcommand
-      cli.subcommands.each do |sub_name, sub|
-        case sub
-        when Schema
-          condition = "\"__fish_seen_subcommand_from #{parent_name}; and __fish_seen_subcommand_from #{sub_name}\""
-          collect_flags(sub).each do |flag|
-            lines << build_fish_flag_line(program, flag, condition)
+    private def collect_arguments(schema : Schema, args : Array(String)) : Hash(String, String)
+      result = {} of String => String
+      i = 0
+      while i < args.size
+        tok = args[i]
+        if tok.starts_with?("--") && tok.includes?("=")
+          k, v = tok[2..].split("=", 2)
+          result[k] = v
+          i += 1
+        elsif tok.starts_with?("-")
+          field = field_for_flag(tok, schema)
+          if field && !boolean?(schema, field) && i + 1 < args.size
+            result[field] = args[i + 1]
+            i += 2
+          else
+            result[field || tok] = "true"
+            i += 1
           end
+        elsif tok.includes?("=")
+          k, v = tok.split("=", 2)
+          result[k] = v
+          i += 1
+        else
+          i += 1
         end
       end
-
-      lines.join("\n")
+      result
     end
 
-    private def fish_flat(program : String) : String
-      lines = [] of String
+    # ---- small schema helpers --------------------------------------------
 
-      if schema = @cli.schema
-        lines << "# Options"
-        collect_flags(schema).each do |flag|
-          lines << build_fish_flag_line(program, flag, nil)
-        end
-      end
-
-      lines.join("\n")
+    private def props_of(schema : Schema) : Hash(String, Property)
+      schema.root.properties || {} of String => Property
     end
 
-    private def build_zsh_flag_arg(flag : FlagInfo) : String
-      desc = escape_zsh(flag.description || flag.long)
-      enum_suffix = if enum_values = flag.enum_values
-                      ":value:(#{enum_values.join(" ")})"
-                    else
-                      ""
-                    end
-
-      if short = flag.short
-        "{-#{short},--#{flag.long}}'[#{desc}]#{enum_suffix}'"
-      else
-        "'--#{flag.long}[#{desc}]#{enum_suffix}'"
+    private def field_for_flag(token : String, schema : Schema) : String?
+      if token.starts_with?("--")
+        name = token[2..].split("=", 2)[0]
+        props_of(schema).has_key?(name) ? name : nil
+      elsif token.starts_with?("-")
+        short = token[1..]
+        props_of(schema).each { |field, prop| return field if prop.short == short }
+        nil
       end
     end
 
-    private def build_fish_flag_line(program : String, flag : FlagInfo, condition : String?) : String
-      parts = ["complete", "-c", program]
-      if cond = condition
-        parts << "-n" << cond
-      end
-      if short = flag.short
-        parts << "-s" << short
-      end
-      parts << "-l" << flag.long
-      if desc = flag.description
-        parts << "-d" << "\"#{escape_fish(desc)}\""
-      end
-      if enum_values = flag.enum_values
-        parts << "-xa" << "\"#{enum_values.join(" ")}\""
-      end
-      parts.join(" ")
+    private def boolean?(schema : Schema, field : String) : Bool
+      props_of(schema)[field]?.try(&.type.boolean?) || false
     end
 
-    private def collect_flags(schema : Schema) : Array(FlagInfo)
-      flags = [] of FlagInfo
-      root = resolve_property(schema.root, schema)
-      positional_names = schema.positional
-
-      if props = root.properties
-        props.each do |name, prop|
-          next if positional_names.includes?(name)
-          resolved = resolve_property(prop, schema)
-
-          enum_values = if ev = resolved.enum_values
-                          ev.map(&.raw.to_s)
-                        else
-                          nil
-                        end
-
-          flags << FlagInfo.new(
-            long: name,
-            short: resolved.short,
-            description: resolved.description,
-            enum_values: enum_values
-          )
-        end
-      end
-
-      flags
+    private def array?(schema : Schema, field : String) : Bool
+      props_of(schema)[field]?.try(&.type.array?) || false
     end
 
-    private def resolve_property(prop : Property, schema : Schema) : Property
-      if ref = prop.ref
-        schema.resolve_ref(ref) || prop
-      else
-        prop
-      end
+    private def join(path : String, name : String) : String
+      path.empty? ? name : "#{path}.#{name}"
     end
 
-    # Escape for bash double-quoted strings
-    private def escape_bash(str : String) : String
-      str.gsub("\\", "\\\\")
-        .gsub("\"", "\\\"")
-        .gsub("$", "\\$")
-        .gsub("`", "\\`")
-    end
-
-    private def escape_zsh(str : String?) : String
-      return "" unless str
-      str.gsub("'", "'\\''").gsub("[", "\\[").gsub("]", "\\]")
-    end
-
-    private def escape_fish(str : String?) : String
-      return "" unless str
-      str.gsub("\"", "\\\"").gsub("$", "\\$")
+    private def filter(candidates : Array(String), partial : String) : Array(String)
+      return candidates if partial.empty?
+      candidates.select(&.starts_with?(partial))
     end
   end
 end

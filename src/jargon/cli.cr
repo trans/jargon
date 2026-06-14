@@ -4,6 +4,7 @@ require "./result"
 require "./config"
 require "./help"
 require "./validator"
+require "./completion"
 
 module Jargon
   class CLI
@@ -12,6 +13,7 @@ module Jargon
     getter subcommands : Hash(String, Schema | CLI)
     getter default_subcommand : String?
     getter subcommand_key : String
+    getter completers : Hash(String, Proc(Completion::Context, Array(String)))
     property output : IO = STDOUT
 
     # Create a CLI from a JSON schema string.
@@ -95,6 +97,7 @@ module Jargon
       @subcommands = {} of String => Schema | CLI
       @default_subcommand = nil
       @subcommand_key = "subcommand"
+      @completers = {} of String => Proc(Completion::Context, Array(String))
     end
 
     def initialize(@program_name : String)
@@ -102,6 +105,7 @@ module Jargon
       @subcommands = {} of String => Schema | CLI
       @default_subcommand = nil
       @subcommand_key = "subcommand"
+      @completers = {} of String => Proc(Completion::Context, Array(String))
     end
 
     def subcommand(name : String, schema : Schema)
@@ -350,12 +354,14 @@ module Jargon
     end
 
     def run(args : Array(String), input : IO, *, defaults : JSON::Any | Hash(String, JSON::Any) | Nil = nil) : Result
+      handle_completion(args)
       result = parse(args, input, defaults: defaults)
       handle_run_result(result)
       result
     end
 
     def run(args : Array(String), input : IO, *, defaults : JSON::Any | Hash(String, JSON::Any) | Nil = nil, &) : Nil
+      handle_completion(args)
       result = parse(args, input, defaults: defaults)
       handle_run_result(result)
       yield result
@@ -759,16 +765,68 @@ module Jargon
       validate(result.data.as_h, result.subcommand)
     end
 
-    def bash_completion : String
-      Completion.new(self).bash
+    # Generate a shell completion shim. By default it calls back into this
+    # program; pass `command:` to point completion at a separate (e.g. lighter)
+    # binary that answers the hidden `__complete` verb.
+    def bash_completion(command : String = @program_name) : String
+      Completion.new(self).bash(command)
     end
 
-    def zsh_completion : String
-      Completion.new(self).zsh
+    def zsh_completion(command : String = @program_name) : String
+      Completion.new(self).zsh(command)
     end
 
-    def fish_completion : String
-      Completion.new(self).fish
+    def fish_completion(command : String = @program_name) : String
+      Completion.new(self).fish(command)
+    end
+
+    # Register a dynamic completer for a field, identified by its dotted path:
+    # the field name for a flat CLI, or `subcommand.field` (`a.b.field` when
+    # nested). The block receives a Completion::Context and returns the
+    # candidate strings. Raises if the path does not match a schema field, so
+    # typos and renames fail fast.
+    def completer(path : String, &block : Completion::Context -> Array(String))
+      schema = resolve_completer_schema(path)
+      field = path.split(".").last
+      unless schema && (props = schema.root.properties) && props.has_key?(field)
+        raise ArgumentError.new("completer path '#{path}' does not match any field in the schema")
+      end
+      @completers[path] = block
+    end
+
+    private def resolve_completer_schema(path : String) : Schema?
+      parts = path.split(".")
+      subcommand_path = parts[0...-1]
+      return @schema if subcommand_path.empty?
+
+      cli = self
+      parts_schema : Schema? = nil
+      subcommand_path.each do |name|
+        case sub = cli.subcommands[name]?
+        when CLI    then cli = sub
+        when Schema then parts_schema = sub
+        else             return nil
+        end
+      end
+      parts_schema || cli.schema
+    end
+
+    # If this invocation is a completion request (the hidden `__complete`
+    # verb), print candidates and — unless `exit_process: false` — exit 0.
+    # Returns true when it handled completion, false otherwise, so it can be
+    # called early in a program (before heavy initialization) or as the whole
+    # body of a dedicated completion helper binary. The developer never types
+    # the verb itself; the generated shim supplies it.
+    def handle_completion(args : Array(String) = ARGV, *, io : IO = @output, exit_process : Bool = true) : Bool
+      return false unless args.first? == Completion::COMPLETE_VERB
+
+      rest = args[1..]
+      cword = rest[0]?.try(&.to_i?) || 0
+      words = rest.size > 1 ? rest[1..] : [] of String
+      Completion.new(self).candidates(words, cword).each { |candidate| io.puts(candidate) }
+
+      exit 0 if exit_process
+      true
     end
 
     private def parse_argument(arg : String, args : Array(String), index : Int32, schema : Schema) : {String?, JSON::Any?, Int32, String?}

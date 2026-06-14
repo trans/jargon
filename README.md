@@ -12,7 +12,7 @@ A Crystal library that generates CLI interfaces from JSON Schema definitions. De
 - **Config files**: Load from `.config/` (XDG spec) with deep merge support
 - **Help text**: Generated from schema descriptions
 - **Auto help flags**: `--help` and `-h` detected automatically
-- **Shell completions**: Generate completion scripts for bash, zsh, and fish
+- **Shell completions**: Generate completion shims for bash, zsh, and fish, with optional app-driven dynamic completers for live data
 - **Positional args**: Non-flag arguments assigned by position and variadic support.
 - **Short flags**: Single-character flag aliases (`-v`, `-n 5`)
 - **Boolean flags**: Support both `--verbose` and `--verbose false` styles
@@ -360,11 +360,13 @@ result["host"].as_s     # => "localhost"
 
 ## Shell Completions
 
-Jargon can generate shell completion scripts for bash, zsh, and fish. When using `run`, the `--completions <shell>` flag is handled automatically:
+Jargon can generate shell completion scripts for bash, zsh, and fish. When using `run`, the `--completions <shell>` flag is handled automatically.
+
+The generated scripts are small, fixed **shims**: on every Tab they forward the cursor position and typed words back to your program (a hidden `__complete` verb that `run` and `handle_completion` recognize), and the program computes the candidates from the schema. This means one code path serves both static completion (subcommand names, flags, enum values) and [dynamic completion](#dynamic-completions) (live data only your app knows) — and the installed script never needs regenerating when your CLI changes.
 
 ### Installing Completions
 
-Generate the completion script once and save it to your shell's completions directory:
+Generate the completion shim once and save it to your shell's completions directory:
 
 ```sh
 # Bash
@@ -377,12 +379,52 @@ myapp --completions zsh > ~/.zfunc/_myapp
 myapp --completions fish > ~/.config/fish/completions/myapp.fish
 ```
 
-The generated scripts provide completions for:
-- Subcommand names
-- Long flags (`--verbose`, `--output`)
-- Short flags (`-v`, `-o`)
-- Enum values (e.g., `--format json|yaml|xml`)
-- Nested subcommands
+Out of the box you get completion for subcommand names (including nested), long and short flags, and `enum` values — all derived from the schema, no extra code.
+
+### Dynamic Completions
+
+For values the schema can't know — a document name, a tag, a key in a live store — register a **completer** against a field. It runs inside your program at completion time and returns the candidates:
+
+```crystal
+cli = Jargon.cli("transfs", yaml: schema)
+
+# Field path: the field name for a flat CLI, or `subcommand.field`
+# (`a.b.field` when nested). Raises if the path isn't a real field.
+cli.completer("forget.query") do |ctx|
+  store.search(ctx.partial).map(&.name)   # candidates (Array(String))
+end
+
+cli.run { |result| ... }   # `run` answers the __complete verb automatically
+```
+
+The block receives a `Completion::Context`:
+
+| Field | Description |
+|-------|-------------|
+| `ctx.partial` | the token being completed (use it to scope your query) |
+| `ctx.subcommand` | the resolved subcommand path, or `nil` at top level |
+| `ctx.arguments` | a lenient parse of what's already typed, for filtering |
+| `ctx.words` | the raw tokens, as an escape hatch |
+
+A registered field completes dynamically; everything else stays static. You never write the `__complete` verb yourself — the shim supplies it.
+
+#### Answering completion from a separate binary
+
+Each Tab spawns whatever the shim calls. If your main program is heavy to start, point the shim at a small dedicated binary instead of paying full startup per keypress:
+
+```crystal
+# generate a shim that calls `transfs-complete` rather than `transfs`
+File.write(path, cli.bash_completion(command: "transfs-complete"))
+```
+
+```crystal
+# transfs-complete.cr — a minimal helper that only answers completion
+cli = build_cli
+cli.completer("forget.query") { |ctx| index.search(ctx.partial) }
+exit cli.handle_completion   # answers __complete and exits
+```
+
+`handle_completion` returns immediately for a normal invocation, so you can also call it at the very top of your existing `main` to answer completion *before* heavy initialization runs, without a second binary. (The separate-binary win only materializes if your candidate source has a light access path — an on-disk index, a cache, a daemon — rather than requiring the full app to boot.)
 
 ### Manual Completion Handling
 
@@ -939,10 +981,15 @@ cli.help              # => usage string with all options
 cli.help("fetch")     # => help for specific subcommand
 cli.help("config set") # => help for nested subcommand
 
-# Completion scripts
-cli.bash_completion  # => bash completion script
-cli.zsh_completion   # => zsh completion script
-cli.fish_completion  # => fish completion script
+# Completion shims (pass command: to target a separate helper binary)
+cli.bash_completion                       # => bash completion shim
+cli.zsh_completion                        # => zsh completion shim
+cli.fish_completion                       # => fish completion shim
+cli.bash_completion(command: "app-complete")
+
+# Dynamic completers
+cli.completer("forget.query") { |ctx| ... }  # register; returns Array(String)
+cli.handle_completion                         # answer __complete + exit (no-op otherwise)
 
 # Standalone validation (no CLI needed)
 errors = Jargon::Validator.validate(data_hash, schema)  # => Array(String)

@@ -2780,308 +2780,242 @@ describe Jargon do
   end
 
   describe "shell completion" do
-    describe "bash completion" do
-      it "generates completion for flat CLI with flags" do
+    # The candidates engine is what each shell's shim calls at runtime.
+    # words[0] is the program name; cword is the index of the word under the
+    # cursor (== words.size when completing a fresh trailing token).
+    describe "candidates engine" do
+      it "completes long flag names from a flat schema" do
         cli = Jargon.cli("myapp", json: %({
-          "type": "object",
-          "properties": {
-            "name": {"type": "string", "description": "User name"},
-            "verbose": {"type": "boolean", "short": "v"}
-          }
-        }))
-
-        bash = cli.bash_completion
-        bash.should contain("_myapp_completions")
-        bash.should contain("--name")
-        bash.should contain("--verbose")
-        bash.should contain("-v")
-        bash.should contain("--help")
-        bash.should contain("complete -F _myapp_completions myapp")
-      end
-
-      it "generates completion for CLI with subcommands" do
-        cli = Jargon.new("myapp")
-        cli.subcommand("fetch", json: %({
-          "type": "object",
-          "properties": {
-            "url": {"type": "string"},
-            "depth": {"type": "integer", "short": "d"}
-          }
-        }))
-        cli.subcommand("save", json: %({
-          "type": "object",
-          "properties": {
-            "file": {"type": "string"}
-          }
-        }))
-
-        bash = cli.bash_completion
-        bash.should contain("fetch")
-        bash.should contain("save")
-        bash.should contain("--url")
-        bash.should contain("--depth")
-        bash.should contain("-d")
-        bash.should contain("--file")
-      end
-
-      it "generates enum completions" do
-        cli = Jargon.cli("myapp", json: %({
-          "type": "object",
-          "properties": {
-            "format": {"type": "string", "enum": ["json", "yaml", "xml"]}
-          }
-        }))
-
-        bash = cli.bash_completion
-        bash.should contain("--format")
-        bash.should contain("json yaml xml")
-      end
-
-      it "generates completion for nested subcommands" do
-        remote = Jargon.new("remote")
-        remote.subcommand("add", json: %({
           "type": "object",
           "properties": {
             "name": {"type": "string"},
-            "url": {"type": "string"}
-          }
-        }))
-        remote.subcommand("remove", json: %({
-          "type": "object",
-          "properties": {
-            "name": {"type": "string"}
-          }
-        }))
-
-        cli = Jargon.new("git")
-        cli.subcommand("remote", remote)
-
-        bash = cli.bash_completion
-        bash.should contain("remote")
-        bash.should contain("add")
-        bash.should contain("remove")
-        bash.should contain("--name")
-        bash.should contain("--url")
-      end
-    end
-
-    describe "zsh completion" do
-      it "generates completion for flat CLI with flags" do
-        cli = Jargon.cli("myapp", json: %({
-          "type": "object",
-          "properties": {
-            "name": {"type": "string", "description": "User name"},
             "verbose": {"type": "boolean", "short": "v"}
           }
         }))
+        c = Jargon::Completion.new(cli)
+        c.candidates(["myapp", "--"], 1).should eq(["--help", "--name", "--verbose"])
+      end
 
+      it "completes short and long flag names when partial is a single dash" do
+        cli = Jargon.cli("myapp", json: %({
+          "type": "object",
+          "properties": {"verbose": {"type": "boolean", "short": "v"}}
+        }))
+        c = Jargon::Completion.new(cli)
+        candidates = c.candidates(["myapp", "-"], 1)
+        candidates.should contain("-v")
+        candidates.should contain("--verbose")
+        candidates.should contain("-h")
+      end
+
+      it "filters flag names by the typed prefix" do
+        cli = Jargon.cli("myapp", json: %({
+          "type": "object",
+          "properties": {"name": {"type": "string"}, "number": {"type": "integer"}}
+        }))
+        c = Jargon::Completion.new(cli)
+        c.candidates(["myapp", "--na"], 1).should eq(["--name"])
+      end
+
+      it "excludes positional fields from flag-name candidates" do
+        cli = Jargon.cli("myapp", json: %({
+          "type": "object",
+          "positional": ["file"],
+          "properties": {
+            "file": {"type": "string"},
+            "verbose": {"type": "boolean", "short": "v"}
+          }
+        }))
+        c = Jargon::Completion.new(cli)
+        candidates = c.candidates(["myapp", "--"], 1)
+        candidates.should contain("--verbose")
+        candidates.should_not contain("--file")
+      end
+
+      it "completes enum values for a flag (string and numeric)" do
+        cli = Jargon.cli("myapp", json: %({
+          "type": "object",
+          "properties": {
+            "format": {"type": "string", "enum": ["json", "yaml", "xml"]},
+            "level": {"type": "integer", "enum": [1, 2, 3]}
+          }
+        }))
+        c = Jargon::Completion.new(cli)
+        c.candidates(["myapp", "--format", ""], 2).should eq(["json", "yaml", "xml"])
+        c.candidates(["myapp", "--format", "y"], 2).should eq(["yaml"])
+        c.candidates(["myapp", "--level", ""], 2).should eq(["1", "2", "3"])
+      end
+
+      it "lists and filters subcommands at the first position" do
+        cli = Jargon.new("git")
+        cli.subcommand("fetch", json: %({"type": "object", "properties": {}}))
+        cli.subcommand("save", json: %({"type": "object", "properties": {}}))
+        c = Jargon::Completion.new(cli)
+        c.candidates(["git", ""], 1).should eq(["fetch", "save"])
+        c.candidates(["git", "fe"], 1).should eq(["fetch"])
+      end
+
+      it "completes flags within a chosen subcommand" do
+        cli = Jargon.new("git")
+        cli.subcommand("fetch", json: %({
+          "type": "object",
+          "properties": {"url": {"type": "string"}, "depth": {"type": "integer", "short": "d"}}
+        }))
+        c = Jargon::Completion.new(cli)
+        c.candidates(["git", "fetch", "--"], 2).should eq(["--help", "--url", "--depth"])
+      end
+
+      it "completes flags within a nested subcommand CLI" do
+        remote = Jargon.new("remote")
+        remote.subcommand("add", json: %({
+          "type": "object", "properties": {"name": {"type": "string"}, "url": {"type": "string"}}
+        }))
+        cli = Jargon.new("git")
+        cli.subcommand("remote", remote)
+        c = Jargon::Completion.new(cli)
+        c.candidates(["git", "remote", ""], 2).should eq(["add"])
+        c.candidates(["git", "remote", "add", "--"], 3).should eq(["--help", "--name", "--url"])
+      end
+
+      it "returns nothing for a flag value with no enum or completer" do
+        cli = Jargon.cli("myapp", json: %({
+          "type": "object", "properties": {"name": {"type": "string"}}
+        }))
+        c = Jargon::Completion.new(cli)
+        c.candidates(["myapp", "--name", ""], 2).should eq([] of String)
+      end
+    end
+
+    describe "dynamic completers" do
+      it "invokes a registered completer for a positional, passing the partial" do
+        cli = Jargon.cli("app", json: %({
+          "type": "object",
+          "positional": ["query"],
+          "properties": {"query": {"type": "string"}}
+        }))
+        cli.completer("query") { |ctx| ["doc-#{ctx.partial}-1", "doc-#{ctx.partial}-2"] }
+        c = Jargon::Completion.new(cli)
+        c.candidates(["app", "rep"], 1).should eq(["doc-rep-1", "doc-rep-2"])
+      end
+
+      it "invokes a registered completer for a flag value" do
+        cli = Jargon.cli("app", json: %({
+          "type": "object",
+          "properties": {"out": {"type": "string"}}
+        }))
+        cli.completer("out") { |_ctx| ["a.txt", "b.txt"] }
+        c = Jargon::Completion.new(cli)
+        c.candidates(["app", "--out", ""], 2).should eq(["a.txt", "b.txt"])
+      end
+
+      it "invokes a completer scoped to a subcommand field" do
+        cli = Jargon.new("git")
+        cli.subcommand("fetch", json: %({
+          "type": "object", "positional": ["url"], "properties": {"url": {"type": "string"}}
+        }))
+        cli.completer("fetch.url") { |ctx| ["https://#{ctx.partial}.example"] }
+        c = Jargon::Completion.new(cli)
+        c.candidates(["git", "fetch", "site"], 2).should eq(["https://site.example"])
+      end
+
+      it "exposes subcommand and prior arguments on the context" do
+        cli = Jargon.new("app")
+        cli.subcommand("tag", json: %({
+          "type": "object",
+          "positional": ["name"],
+          "properties": {"name": {"type": "string"}, "project": {"type": "string"}}
+        }))
+        seen_subcommand = nil
+        seen_project = nil
+        cli.completer("tag.name") do |ctx|
+          seen_subcommand = ctx.subcommand
+          seen_project = ctx.arguments["project"]?
+          [] of String
+        end
+        Jargon::Completion.new(cli).candidates(["app", "tag", "--project", "acme", "na"], 4)
+        seen_subcommand.should eq("tag")
+        seen_project.should eq("acme")
+      end
+
+      it "raises when a completer path does not match a schema field" do
+        cli = Jargon.cli("app", json: %({"type": "object", "properties": {"name": {"type": "string"}}}))
+        expect_raises(ArgumentError, /does not match any field/) do
+          cli.completer("nope") { |_ctx| [] of String }
+        end
+      end
+
+      it "raises when a subcommand-scoped completer path is wrong" do
+        cli = Jargon.new("git")
+        cli.subcommand("fetch", json: %({"type": "object", "properties": {"url": {"type": "string"}}}))
+        expect_raises(ArgumentError, /does not match any field/) do
+          cli.completer("fetch.bogus") { |_ctx| [] of String }
+        end
+      end
+    end
+
+    # The generated scripts are thin shims that forward (cursor, words) to the
+    # program's hidden __complete verb — they carry no schema knowledge.
+    describe "shim generation" do
+      it "generates a bash shim that calls back via __complete" do
+        cli = Jargon.cli("myapp", json: %({"type": "object", "properties": {"name": {"type": "string"}}}))
+        bash = cli.bash_completion
+        bash.should contain("_myapp_complete")
+        bash.should contain("myapp __complete")
+        bash.should contain("$COMP_CWORD")
+        bash.should contain("complete -F _myapp_complete myapp")
+      end
+
+      it "generates a zsh shim that calls back via __complete" do
+        cli = Jargon.cli("myapp", json: %({"type": "object", "properties": {"name": {"type": "string"}}}))
         zsh = cli.zsh_completion
         zsh.should contain("#compdef myapp")
-        zsh.should contain("_myapp")
-        zsh.should contain("--name")
-        zsh.should contain("--verbose")
-        zsh.should contain("-v")
-        zsh.should contain("User name")
+        zsh.should contain("myapp __complete")
+        zsh.should contain("compdef _myapp myapp")
       end
 
-      it "generates completion for CLI with subcommands" do
-        cli = Jargon.new("myapp")
-        cli.subcommand("fetch", json: %({
-          "type": "object",
-          "properties": {
-            "url": {"type": "string", "description": "Resource URL"},
-            "depth": {"type": "integer", "short": "d", "description": "Crawl depth"}
-          }
-        }))
-
-        zsh = cli.zsh_completion
-        zsh.should contain("'fetch:")
-        zsh.should contain("--url")
-        zsh.should contain("Resource URL")
-        zsh.should contain("{-d,--depth}")
-        zsh.should contain("Crawl depth")
-      end
-
-      it "generates enum completions" do
-        cli = Jargon.cli("myapp", json: %({
-          "type": "object",
-          "properties": {
-            "format": {"type": "string", "enum": ["json", "yaml", "xml"]}
-          }
-        }))
-
-        zsh = cli.zsh_completion
-        zsh.should contain("--format")
-        zsh.should contain("json yaml xml")
-      end
-
-      it "generates completion for nested subcommands" do
-        remote = Jargon.new("remote")
-        remote.subcommand("add", json: %({
-          "type": "object",
-          "properties": {
-            "name": {"type": "string"}
-          }
-        }))
-
-        cli = Jargon.new("git")
-        cli.subcommand("remote", remote)
-
-        zsh = cli.zsh_completion
-        zsh.should contain("'remote:")
-        zsh.should contain("remote_commands")
-        zsh.should contain("'add:")
-      end
-    end
-
-    describe "fish completion" do
-      it "generates completion for flat CLI with flags" do
-        cli = Jargon.cli("myapp", json: %({
-          "type": "object",
-          "properties": {
-            "name": {"type": "string", "description": "User name"},
-            "verbose": {"type": "boolean", "short": "v", "description": "Verbose mode"}
-          }
-        }))
-
+      it "generates a fish shim that calls back via __complete" do
+        cli = Jargon.cli("myapp", json: %({"type": "object", "properties": {"name": {"type": "string"}}}))
         fish = cli.fish_completion
         fish.should contain("complete -c myapp -f")
-        fish.should contain("-l name")
-        fish.should contain("-l verbose")
-        fish.should contain("-s v")
-        fish.should contain("User name")
-        fish.should contain("Verbose mode")
+        fish.should contain("myapp __complete")
+        fish.should contain("commandline")
       end
 
-      it "generates completion for CLI with subcommands" do
-        cli = Jargon.new("myapp")
-        cli.subcommand("fetch", json: %({
-          "type": "object",
-          "properties": {
-            "url": {"type": "string", "description": "Resource URL"},
-            "depth": {"type": "integer", "short": "d"}
-          }
-        }))
-        cli.subcommand("save", json: %({
-          "type": "object",
-          "properties": {
-            "file": {"type": "string"}
-          }
-        }))
-
-        fish = cli.fish_completion
-        fish.should contain("__fish_use_subcommand")
-        fish.should contain("-a \"fetch\"")
-        fish.should contain("-a \"save\"")
-        fish.should contain("__fish_seen_subcommand_from fetch")
-        fish.should contain("-l url")
-        fish.should contain("-l depth")
-        fish.should contain("-s d")
-        fish.should contain("-l file")
-      end
-
-      it "generates enum completions" do
-        cli = Jargon.cli("myapp", json: %({
-          "type": "object",
-          "properties": {
-            "format": {"type": "string", "enum": ["json", "yaml", "xml"]}
-          }
-        }))
-
-        fish = cli.fish_completion
-        fish.should contain("-l format")
-        fish.should contain("-xa \"json yaml xml\"")
-      end
-
-      it "generates completion for nested subcommands" do
-        remote = Jargon.new("remote")
-        remote.subcommand("add", json: %({
-          "type": "object",
-          "properties": {
-            "name": {"type": "string", "description": "Remote name"}
-          }
-        }))
-        remote.subcommand("remove", json: %({
-          "type": "object",
-          "properties": {
-            "force": {"type": "boolean", "short": "f"}
-          }
-        }))
-
-        cli = Jargon.new("git")
-        cli.subcommand("remote", remote)
-
-        fish = cli.fish_completion
-        fish.should contain("__fish_seen_subcommand_from remote")
-        fish.should contain("-a \"add\"")
-        fish.should contain("-a \"remove\"")
-        fish.should contain("-l name")
-        fish.should contain("Remote name")
-        fish.should contain("-l force")
-        fish.should contain("-s f")
+      it "points the shim at a configurable target command" do
+        cli = Jargon.cli("transfs", json: %({"type": "object", "properties": {"q": {"type": "string"}}}))
+        cli.bash_completion(command: "transfs-complete").should contain("transfs-complete __complete")
+        cli.zsh_completion(command: "transfs-complete").should contain("transfs-complete __complete")
+        cli.fish_completion(command: "transfs-complete").should contain("transfs-complete __complete")
       end
     end
 
-    it "excludes positional arguments from flag completions" do
-      cli = Jargon.cli("myapp", json: %({
-        "type": "object",
-        "positional": ["file"],
-        "properties": {
-          "file": {"type": "string"},
-          "verbose": {"type": "boolean", "short": "v"}
-        }
-      }))
+    describe "handle_completion dispatch" do
+      it "answers the __complete verb by printing candidates" do
+        cli = Jargon.cli("app", json: %({
+          "type": "object", "properties": {"name": {"type": "string"}, "number": {"type": "integer"}}
+        }))
+        io = IO::Memory.new
+        handled = cli.handle_completion(["__complete", "1", "app", "--n"], io: io, exit_process: false)
+        handled.should be_true
+        io.to_s.lines.should eq(["--name", "--number"])
+      end
 
-      bash = cli.bash_completion
-      bash.should contain("--verbose")
-      bash.should_not contain("--file")
+      it "routes the __complete verb to a dynamic completer" do
+        cli = Jargon.cli("app", json: %({
+          "type": "object", "positional": ["query"], "properties": {"query": {"type": "string"}}
+        }))
+        cli.completer("query") { |ctx| ["hit:#{ctx.partial}"] }
+        io = IO::Memory.new
+        cli.handle_completion(["__complete", "1", "app", "foo"], io: io, exit_process: false)
+        io.to_s.lines.should eq(["hit:foo"])
+      end
 
-      zsh = cli.zsh_completion
-      zsh.should contain("--verbose")
-      zsh.should_not contain("--file")
-
-      fish = cli.fish_completion
-      fish.should contain("-l verbose")
-      fish.should_not contain("-l file")
-    end
-
-    it "escapes shell metacharacters in bash completions" do
-      cli = Jargon.cli("myapp", json: %({
-        "type": "object",
-        "properties": {
-          "mode": {"type": "string", "enum": ["$HOME", "`whoami`", "test\\"quote"]}
-        }
-      }))
-
-      bash = cli.bash_completion
-      # Should escape $ to prevent variable expansion
-      bash.should contain("\\$HOME")
-      # Should escape backticks to prevent command substitution
-      bash.should contain("\\`whoami\\`")
-      # Should escape quotes
-      bash.should contain("test\\\"quote")
-    end
-
-    it "handles numeric and boolean enum values in completions" do
-      cli = Jargon.cli("myapp", json: %({
-        "type": "object",
-        "properties": {
-          "level": {"type": "integer", "enum": [1, 2, 3]},
-          "enabled": {"type": "boolean", "enum": [true, false]}
-        }
-      }))
-
-      bash = cli.bash_completion
-      bash.should contain("1 2 3")
-      bash.should contain("true false")
-
-      zsh = cli.zsh_completion
-      zsh.should contain("1 2 3")
-      zsh.should contain("true false")
-
-      fish = cli.fish_completion
-      fish.should contain("1 2 3")
-      fish.should contain("true false")
+      it "returns false and does nothing for a normal invocation" do
+        cli = Jargon.cli("app", json: %({"type": "object", "properties": {"name": {"type": "string"}}}))
+        io = IO::Memory.new
+        cli.handle_completion(["--name", "value"], io: io, exit_process: false).should be_false
+        io.to_s.should eq("")
+      end
     end
 
     describe "--completions flag" do
