@@ -124,3 +124,4 @@ during that work and are low-priority refinements.
 - Config file generation from schema
 - Shell completion for enum values with descriptions
 - Strict `allOf` property intersection — `merge_allof` flattens with last-wins when the same property appears in multiple subschemas; true JSON Schema semantics would intersect the constraints (e.g. both `enum` lists must hold). Low priority, but noted in the README.
+- Promo graphic for the docs site — a 2048×2048 "ad" image (green/orange circuit-board style, schema → generated CLI, feature icons) was generated Jun 2026 and moved to the asset store pending fixes: the schema snippet shows a bogus `"type": "user"`, and the terminal example (`--user 'Alex' --log`) should reflect real usage. Once corrected, downsize/compress (6.5 MB → well under 500 KB) and add it to `docs/` as a hero or `og:image`.
