@@ -1858,6 +1858,63 @@ describe Jargon do
       end
     end
 
+    it "does not leak one subcommand's properties into others through a shared mixin" do
+      cli = Jargon.cli("myapp", yaml: <<-YAML)
+        ---
+        $id: output
+        properties:
+          format: {type: string}
+        required: [format]
+        ---
+        $id: auth
+        properties:
+          token: {type: string}
+        required: [token]
+        ---
+        name: first
+        allOf:
+          - {$ref: output}
+          - properties:
+              only_first: {type: string}
+        ---
+        name: second
+        allOf:
+          - {$ref: output}
+          - {$ref: auth}
+        YAML
+
+      # `only_first` was merged into `first` after `output` was referenced;
+      # it must not show up in `second`, which references the same mixin.
+      second = cli.subcommands["second"].as(Jargon::Schema)
+      second.root.properties.not_nil!.keys.sort.should eq(["format", "token"])
+      # `required` lists from every mixin are unioned rather than the first winning.
+      second.root.properties.not_nil!.values.select(&.required?).map(&.name).sort.should eq(["format", "token"])
+
+      cli.parse(["second", "--only_first", "x"]).valid?.should be_false
+    end
+
+    it "unions a subcommand's own required list with its mixins' required lists" do
+      cli = Jargon.cli("myapp", yaml: <<-YAML)
+        ---
+        $id: output
+        properties:
+          format: {type: string}
+        required: [format]
+        ---
+        name: report
+        allOf:
+          - {$ref: output}
+        properties:
+          title: {type: string}
+        required: [title]
+        YAML
+
+      report = cli.subcommands["report"].as(Jargon::Schema)
+      report.root.properties.not_nil!.values.select(&.required?).map(&.name).sort.should eq(["format", "title"])
+      cli.parse(["report", "--title", "x"]).valid?.should be_false
+      cli.parse(["report", "--title", "x", "--format", "json"]).valid?.should be_true
+    end
+
     it "supports $id mixins with $ref in allOf" do
       File.write("/tmp/test_mixin.yaml", <<-YAML)
         ---

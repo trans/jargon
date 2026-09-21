@@ -2,6 +2,7 @@
 
 ## Completed
 
+- **Mixin isolation and `required` union** (v0.20.1) — `merge_schema` copied a mixin's `properties` hash by reference, so options added to one subcommand after a `$ref` leaked into every other subcommand sharing that mixin (found via camelot). `required` lists are now unioned across mixins and the subcommand's own list instead of first/last-wins. Last-wins `properties` flattening is documented in the README as a deliberate approximation of `allOf`; see "Other Ideas".
 - **Consistent positional parsing** (v0.20.0) — variadics are greedy (capture `:`/`=` tokens and negative numbers literally, stop only at a real flag); negative numbers parse as values everywhere (`short_flag?` exempts `-<digit>`); variadic items coerce to the array's `items` type; new `cli.bare_assignment(false)` opt-out for implicit `key:value`/`key=value` assignment. Remaining edges under "Positional Parsing Follow-ups" below.
 - **Subcommand descriptions in top-level `--help`** (v0.19.1) — the command list shows each subcommand's `description:`, column-aligned. (transfs req #5)
 - **Dynamic shell completions** (v0.19.0) — all-callback shim model; `cli.completer(path)` + `cli.handle_completion`; configurable target binary. See `notes/` and the v0.19.0 release. Remaining edges tracked under "Dynamic Completion Follow-ups" below.
@@ -122,3 +123,4 @@ during that work and are low-priority refinements.
 - Man page generation
 - Config file generation from schema
 - Shell completion for enum values with descriptions
+- Strict `allOf` property intersection — `merge_allof` flattens with last-wins when the same property appears in multiple subschemas; true JSON Schema semantics would intersect the constraints (e.g. both `enum` lists must hold). Low priority, but noted in the README.

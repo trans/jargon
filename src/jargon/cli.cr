@@ -279,14 +279,14 @@ module Jargon
         end
       end
 
-      # Merge remaining schema properties (excluding allOf)
+      # Merge the subcommand's own keys (excluding allOf). The schema is one
+      # more conjunct of the allOf, so `properties` and `required` combine
+      # with the mixins' rather than replacing them; other keys override.
       schema.each do |key, value|
         next if key == "allOf"
-        if key == "properties" && merged["properties"]?
-          # Deep merge properties
-          merged_props = merged["properties"].as_h
-          value.as_h.each { |k, v| merged_props[k] = v }
-          merged["properties"] = JSON::Any.new(merged_props)
+        case key
+        when "properties", "required"
+          merge_schema(merged, {key => value})
         else
           merged[key] = value
         end
@@ -300,15 +300,21 @@ module Jargon
       merged
     end
 
-    # Merge source schema into target
+    # Merge source schema into target. Containers are copied, never aliased:
+    # a mixin is merged into many subcommands, and mutating its `properties`
+    # through one would leak that subcommand's options into the others.
     private def merge_schema(target : Hash(String, JSON::Any), source : Hash(String, JSON::Any))
       source.each do |key, value|
         next if key == "$id" # Don't copy $id to merged schema
-        if key == "properties" && target["properties"]?
-          # Deep merge properties
-          target_props = target["properties"].as_h
+        case key
+        when "properties"
+          target_props = target["properties"]?.try(&.as_h) || {} of String => JSON::Any
           value.as_h.each { |k, v| target_props[k] = v }
           target["properties"] = JSON::Any.new(target_props)
+        when "required"
+          required = target["required"]?.try(&.as_a) || [] of JSON::Any
+          value.as_a.each { |v| required << v unless required.includes?(v) }
+          target["required"] = JSON::Any.new(required)
         else
           target[key] = value unless target.has_key?(key)
         end

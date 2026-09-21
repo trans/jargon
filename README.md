@@ -773,9 +773,12 @@ allOf:
 - Schemas with `$id` (no `name`) are mixins - not registered as subcommands
 - `$ref` in `allOf` resolves to mixins defined in the same file
 - Properties are merged; `type: object` is inferred if missing
+- `required` lists are unioned across every mixin and the subcommand itself
 - Subcommands explicitly opt-in via `allOf`
 
 This approach uses standard JSON Schema keywords while keeping mixin definitions alongside subcommands in a single file.
+
+Note that Jargon *flattens* `allOf` rather than evaluating it as a true conjunction: if the same property is defined in more than one subschema, the last definition wins. Strict JSON Schema would intersect the constraints instead. This rarely matters for CLI schemas, but it is a deliberate approximation.
 
 ### JSON from Stdin
 
